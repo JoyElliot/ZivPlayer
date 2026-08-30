@@ -5,15 +5,20 @@ high-quality rendering, and advanced subtitles.
 
 ## Project status
 
-The M0-M3 foundation is complete: architecture and licensing decisions are
+The host-side M0-M4 foundation is complete: architecture and licensing decisions are
 recorded, the Gradle dependency supply chain is locked and verified, the
 Android application builds with a MIUIX-backed Compose shell, and a pure
 Kotlin player contract now drives a serialized runtime with core generation
-filtering.
+filtering. A Media3 `MediaSessionService` owns that runtime and the single
+libmpv backend; the activity connects only through a `MediaController` and
+hands short-lived video `Surface` instances to the service.
 
-The reviewed libmpv AAR is present only behind the Android adapter module. It
-is not yet connected to the application APK. Surface rendering, foreground
-playback ownership, and real-device media validation begin in M4.
+The reviewed bootstrap libmpv AAR is now packaged behind the Android adapter
+module and connected to the application APK. JVM and Android build checks
+cover state projection, command policy, reset recovery, Surface lease ordering,
+and service manifest composition. A physical device or configured emulator is
+still required to prove actual media output, foreground notification behavior,
+Surface recreation, audio focus, and native shutdown.
 
 The bootstrap adapter fences callbacks only under a single-instance,
 serialized stop/load policy. Its reviewed AAR discards event payloads and
@@ -21,8 +26,8 @@ playlist-entry identity, so this is not a release-grade stale-callback
 guarantee. Native callbacks enter one ordered adapter event stream, and an
 accepted load that never prepares or fails is terminated by a bounded runtime
 readiness deadline instead of remaining in `LOADING` indefinitely. A reset
-error makes that session non-reusable; its Android owner must close and
-recreate the backend/session pair.
+error makes that session non-reusable; its Android owner closes and recreates
+the backend/session pair before accepting the next media item.
 
 The application is written in Kotlin with Jetpack Compose and MIUIX. libmpv is
 the only playback engine; AndroidX Media3 is reserved for Android media-session
@@ -53,7 +58,7 @@ point.
 Dependency versions, locks, and verification metadata are committed so that
 the same source revision resolves the same reviewed dependency set.
 
-The local M0-M3 quality gate is:
+The local M0-M4 quality gate is:
 
 ```powershell
 .\gradlew.bat -p build-logic build
@@ -65,6 +70,10 @@ The local M0-M3 quality gate is:
   :platform:libmpv-android:assembleRelease `
   :platform:libmpv-android:testDebugUnitTest `
   :platform:libmpv-android:lintDebug `
+  :platform:playback-android:assembleDebug `
+  :platform:playback-android:assembleRelease `
+  :platform:playback-android:testDebugUnitTest `
+  :platform:playback-android:lintDebug `
   :apps:android:assembleDebug `
   :apps:android:assembleRelease `
   :apps:android:compileDebugAndroidTestKotlin `
