@@ -52,6 +52,46 @@ to the ignored cache by default, verifies a `.part` file, and atomically
 renames it. An explicitly supplied custom cache path is the caller's chosen
 write boundary.
 
+`native/tools/materialize_sources.py` is the offline bridge from that cache to
+an upstream-shaped build workspace. It verifies the complete cache before any
+output write, pre-scans every archive member, rejects path/link escape,
+case/Unicode collisions, sparse or special entries, and applies only the
+parent/destination placements declared by the manifest. The complete closure
+is assembled in one random sibling staging directory, license paths are
+rechecked, and the final workspace is published only by rename; an existing
+workspace is never replaced.
+
+Archive bytes are first copied into a digest-verified temporary snapshot, so
+the bytes extracted are the bytes that passed the manifest lock. Generated
+timestamps are normalized to nanosecond precision. Bounded TAR metadata reads
+and a bounded decompressed stream apply before Python's GNU longname or PAX
+parsers can allocate their payloads. Per-archive and global entry/byte limits,
+link-expansion accounting, and cross-archive path/type/case/Unicode collision
+checks run before extraction. The materialization receipt records the manifest
+digest, source identities, destinations, Android tuple, link mode, and a tree
+digest covering entry types, paths, modes, file bytes, and symbolic-link
+targets. The verifier rechecks the locked cache, receipt, complete tree, and
+link topology derived from the locked archives. It also compares every
+ordinary materialized file with its archive bytes and rejects missing, extra,
+type-changed, or permission-drifted entries on the canonical POSIX builder.
+
+`preserve` is the only canonical mode for a Linux native build. `portable-copy`
+exists solely to inspect the locked closure on a non-canonical path when the
+host, notably Windows, cannot create the two safe upstream symbolic links; the
+verifier rejects its receipt
+unless the inspection-only exception and a non-canonical workspace path are
+explicit. Windows inspection records observed modes without claiming POSIX
+archive-mode parity. The materializer never interprets `.gitmodules` as
+authority to fetch a source.
+
+The repository, cache, output parent, and process identity are trusted. A
+receipt is an integrity record, not an authentication signature against a
+concurrent process running as the same user. Release jobs therefore materialize
+and verify a fresh workspace under an exclusive controlled builder. If the
+final rename succeeds but syncing its parent directory fails, the published
+workspace is retained and reported as durability-unconfirmed; an operator must
+verify it and then deliberately keep or remove it rather than blindly retry.
+
 ### Android and ABI boundary
 
 The source-built pipeline must build native code with Android API 26 and

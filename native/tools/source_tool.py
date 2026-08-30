@@ -8,13 +8,15 @@ import hashlib
 import math
 import os
 import re
+import stat
 import sys
 import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path, PurePosixPath
-from typing import BinaryIO, NoReturn
+from contextlib import contextmanager
+from typing import BinaryIO, Iterator, NoReturn
 
 if sys.version_info < (3, 11):
     raise SystemExit("source_tool.py requires Python 3.11 or newer")
@@ -32,6 +34,7 @@ EXIT_NETWORK = 5
 NATIVE_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_MANIFEST = NATIVE_DIR / "source-manifest.toml"
 DEFAULT_CACHE = NATIVE_DIR / "cache" / "sources"
+MAX_SOURCE_ARCHIVE_BYTES = 512 * 1024 * 1024
 
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
@@ -102,6 +105,31 @@ LINKAGES = {
     "unused-upstream-submodule",
 }
 MUTABLE_REVISIONS = {"head", "latest", "main", "master", "tip", "trunk"}
+CANONICAL_SOURCE_IDS = (
+    "curl",
+    "dav1d",
+    "dlg",
+    "fast-float",
+    "ffmpeg",
+    "fontconfig",
+    "freetype",
+    "fribidi",
+    "gas-preprocessor",
+    "glad",
+    "harfbuzz",
+    "jinja",
+    "libass",
+    "libplacebo",
+    "libunibreak",
+    "libxml2",
+    "lua",
+    "markupsafe",
+    "mbedtls",
+    "mpv",
+    "mpv-android",
+    "nuklear",
+    "vulkan-headers",
+)
 
 
 class SourceToolError(Exception):
@@ -318,6 +346,7 @@ def _validate_source(value: object, index: int) -> dict[str, object]:
     source_id = _expect_string(source["id"], f"{location}.id")
     if not ID_RE.fullmatch(source_id):
         _schema(f"{location}.id must match {ID_RE.pattern}")
+    _check_portable_name(source_id, f"{location}.id")
     version = _expect_string(source["version"], f"{location}.version")
     if not VERSION_RE.fullmatch(version):
         _schema(f"{location}.version is not a valid immutable label")
@@ -345,7 +374,11 @@ def _validate_source(value: object, index: int) -> dict[str, object]:
     if Path(archive).name != archive or "/" in archive or "\\" in archive or archive in {".", ".."}:
         _schema(f"{location}.archive must be a safe basename")
     _check_portable_name(archive, f"{location}.archive")
-    _expect_int(source["size"], f"{location}.size", minimum=1)
+    source_size = _expect_int(source["size"], f"{location}.size", minimum=1)
+    if source_size > MAX_SOURCE_ARCHIVE_BYTES:
+        _schema(
+            f"{location}.size must be <= {MAX_SOURCE_ARCHIVE_BYTES} bytes"
+        )
     digest = _expect_string(source["sha256"], f"{location}.sha256")
     if not SHA256_RE.fullmatch(digest):
         _schema(f"{location}.sha256 must be a lowercase 64-hex digest")
@@ -472,6 +505,12 @@ def load_manifest(path: Path) -> tuple[dict[str, object], list[dict[str, object]
     except (OSError, UnicodeDecodeError, tomllib.TOMLDecodeError) as error:
         raise SourceToolError(f"cannot read manifest {path}: {error}", EXIT_SCHEMA) from error
     sources = validate_manifest_data(data)
+    source_ids = tuple(str(source["id"]) for source in sources)
+    if source_ids != CANONICAL_SOURCE_IDS:
+        _schema(
+            "source manifest must contain the canonical 23-input closure: "
+            + ", ".join(CANONICAL_SOURCE_IDS)
+        )
     return data, sources
 
 
@@ -487,34 +526,128 @@ def _hash_stream(stream: BinaryIO) -> tuple[int, str]:
     return size, digest.hexdigest()
 
 
-def _verify_archive(source: dict[str, object], path: Path) -> None:
+def _is_windows_reparse(stat_result: os.stat_result) -> bool:
+    return bool(
+        os.name == "nt"
+        and (
+            getattr(stat_result, "st_file_attributes", 0)
+            & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+        )
+    )
+
+
+@contextmanager
+def open_verified_archive(
+    source: dict[str, object], path: Path
+) -> Iterator[BinaryIO]:
+    """Yield an immutable temporary snapshot of one verified cache input."""
     expected_size = int(source["size"])
     expected_digest = str(source["sha256"])
-    if path.is_symlink() or not path.is_file():
-        raise SourceToolError(f"cached archive must be a regular non-symlink file: {path}", EXIT_INTEGRITY)
+    descriptor = -1
+    source_stream: BinaryIO | None = None
+    snapshot: BinaryIO | None = None
     try:
-        stat_size = path.stat().st_size
+        path_stat = os.lstat(path)
+        if not stat.S_ISREG(path_stat.st_mode) or _is_windows_reparse(path_stat):
+            raise SourceToolError(
+                f"cached archive must be a regular non-symlink file: {path}",
+                EXIT_INTEGRITY,
+            )
+        flags = (
+            os.O_RDONLY
+            | getattr(os, "O_BINARY", 0)
+            | getattr(os, "O_NOFOLLOW", 0)
+            | getattr(os, "O_NONBLOCK", 0)
+        )
+        descriptor = os.open(path, flags)
+        file_stat = os.fstat(descriptor)
+        if not stat.S_ISREG(file_stat.st_mode):
+            raise SourceToolError(
+                f"cached archive must be a regular file: {path}", EXIT_INTEGRITY
+            )
+        if _is_windows_reparse(file_stat):
+            raise SourceToolError(
+                f"cached archive must not be a reparse point: {path}", EXIT_INTEGRITY
+            )
+        current_path_stat = os.lstat(path)
+        if (
+            current_path_stat.st_dev,
+            current_path_stat.st_ino,
+        ) != (file_stat.st_dev, file_stat.st_ino) or _is_windows_reparse(current_path_stat):
+            raise SourceToolError(
+                f"cached archive changed while it was being opened: {path}",
+                EXIT_INTEGRITY,
+            )
+        stat_size = file_stat.st_size
         if stat_size != expected_size:
             raise SourceToolError(
                 f"size mismatch for {path.name}: expected {expected_size}, got {stat_size}",
                 EXIT_INTEGRITY,
             )
-        with path.open("rb") as stream:
-            actual_size, actual_digest = _hash_stream(stream)
-    except SourceToolError:
+        source_stream = os.fdopen(descriptor, "rb")
+        descriptor = -1
+        snapshot = tempfile.TemporaryFile(mode="w+b")
+        digest = hashlib.sha256()
+        actual_size = 0
+        while True:
+            chunk = source_stream.read(1024 * 1024)
+            if not chunk:
+                break
+            actual_size += len(chunk)
+            if actual_size > expected_size:
+                raise SourceToolError(
+                    f"size mismatch for {path.name}: expected {expected_size}, "
+                    f"got more than {actual_size}",
+                    EXIT_INTEGRITY,
+                )
+            digest.update(chunk)
+            snapshot.write(chunk)
+        actual_digest = digest.hexdigest()
+        source_stream.close()
+        source_stream = None
+        if actual_size != expected_size:
+            raise SourceToolError(
+                f"size mismatch for {path.name}: expected {expected_size}, got {actual_size}",
+                EXIT_INTEGRITY,
+            )
+        if actual_digest != expected_digest:
+            raise SourceToolError(
+                f"SHA-256 mismatch for {path.name}: expected {expected_digest}, "
+                f"got {actual_digest}",
+                EXIT_INTEGRITY,
+            )
+        snapshot.flush()
+        snapshot.seek(0)
+    except BaseException as error:
+        if source_stream is not None:
+            source_stream.close()
+        if snapshot is not None:
+            snapshot.close()
+        if isinstance(error, SourceToolError):
+            raise
+        if isinstance(error, OSError):
+            raise SourceToolError(
+                f"cannot read cached archive {path}: {error}", EXIT_INTEGRITY
+            ) from error
         raise
-    except OSError as error:
-        raise SourceToolError(f"cannot read cached archive {path}: {error}", EXIT_INTEGRITY) from error
-    if actual_size != expected_size:
-        raise SourceToolError(
-            f"size mismatch for {path.name}: expected {expected_size}, got {actual_size}",
-            EXIT_INTEGRITY,
-        )
-    if actual_digest != expected_digest:
-        raise SourceToolError(
-            f"SHA-256 mismatch for {path.name}: expected {expected_digest}, got {actual_digest}",
-            EXIT_INTEGRITY,
-        )
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+
+    try:
+        yield snapshot
+    finally:
+        snapshot.close()
+
+
+def _verify_archive(source: dict[str, object], path: Path) -> None:
+    with open_verified_archive(source, path):
+        pass
+
+
+def verify_archive(source: dict[str, object], path: Path) -> None:
+    """Verify one locked cache input as a regular, byte-exact file."""
+    _verify_archive(source, path)
 
 
 def verify_cache(sources: list[dict[str, object]], cache: Path) -> None:
@@ -540,19 +673,47 @@ def verify_cache(sources: list[dict[str, object]], cache: Path) -> None:
         )
     for source in sources:
         archive = cache / str(source["archive"])
-        _verify_archive(source, archive)
+        verify_archive(source, archive)
         print(f"verified {source['id']}: {archive.name}")
 
 
-def _cleanup_partial(part: Path | None) -> str | None:
+def _cleanup_partial(
+    part: Path | None, expected_identity: tuple[int, int] | None = None
+) -> str | None:
     if part is None:
         return None
     try:
         if part.is_symlink() or part.exists():
+            part_stat = part.lstat()
+            if (
+                expected_identity is not None
+                and (part_stat.st_dev, part_stat.st_ino) != expected_identity
+            ):
+                return "partial path identity changed; refusing cleanup"
             part.unlink()
     except OSError as error:
         return str(error)
     return None
+
+
+def _publish_download_no_replace(
+    part: Path, archive: Path, expected_identity: tuple[int, int]
+) -> bool:
+    """Publish a verified partial without replacing a concurrent cache winner."""
+    try:
+        part_stat = part.lstat()
+        if (part_stat.st_dev, part_stat.st_ino) != expected_identity:
+            raise SourceToolError(
+                "download partial identity changed before publication", EXIT_INTEGRITY
+            )
+        if os.name == "nt":
+            os.rename(part, archive)
+        else:
+            os.link(part, archive, follow_symlinks=False)
+            part.unlink()
+        return True
+    except FileExistsError:
+        return False
 
 
 def _download_source(source: dict[str, object], cache: Path, timeout: float) -> None:
@@ -562,11 +723,12 @@ def _download_source(source: dict[str, object], cache: Path, timeout: float) -> 
     if archive.exists():
         if not archive.is_file():
             raise SourceToolError(f"cache path is not a file: {archive}", EXIT_INTEGRITY)
-        _verify_archive(source, archive)
+        verify_archive(source, archive)
         print(f"cached {source['id']}: {archive.name}")
         return
 
     part: Path | None = None
+    part_identity: tuple[int, int] | None = None
     try:
         request = urllib.request.Request(
             str(source["url"]),
@@ -585,6 +747,8 @@ def _download_source(source: dict[str, object], cache: Path, timeout: float) -> 
                 dir=cache,
             )
             part = Path(part_name)
+            descriptor_stat = os.fstat(descriptor)
+            part_identity = (descriptor_stat.st_dev, descriptor_stat.st_ino)
             expected_size = int(source["size"])
             digest = hashlib.sha256()
             size = 0
@@ -613,12 +777,23 @@ def _download_source(source: dict[str, object], cache: Path, timeout: float) -> 
                 f"SHA-256 mismatch for downloaded {source['id']}",
                 EXIT_INTEGRITY,
             )
-        os.replace(part, archive)
-        part = None
-        _verify_archive(source, archive)
-        print(f"fetched {source['id']}: {archive.name}")
+        published = _publish_download_no_replace(part, archive, part_identity)
+        if published:
+            part = None
+            verify_archive(source, archive)
+            print(f"fetched {source['id']}: {archive.name}")
+        else:
+            verify_archive(source, archive)
+            cleanup_error = _cleanup_partial(part, part_identity)
+            if cleanup_error is not None:
+                raise SourceToolError(
+                    f"cannot remove losing download partial: {cleanup_error}",
+                    EXIT_NETWORK,
+                )
+            part = None
+            print(f"cached {source['id']}: {archive.name}")
     except BaseException as error:
-        cleanup_error = _cleanup_partial(part)
+        cleanup_error = _cleanup_partial(part, part_identity)
         if cleanup_error is not None:
             raise SourceToolError(
                 f"download failed for {source['id']} and partial cleanup failed: {cleanup_error}",

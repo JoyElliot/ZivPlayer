@@ -108,7 +108,11 @@ def partial_files(cache: Path) -> list[Path]:
 class SourceManifestTest(unittest.TestCase):
     def test_committed_manifest_is_valid(self) -> None:
         _, sources = source_tool.load_manifest(REPOSITORY_ROOT / "native" / "source-manifest.toml")
-        self.assertGreaterEqual(len(sources), 1)
+        self.assertEqual(23, len(sources))
+        self.assertEqual(
+            source_tool.CANONICAL_SOURCE_IDS,
+            tuple(str(source["id"]) for source in sources),
+        )
 
     def test_rejects_duplicate_source_ids(self) -> None:
         manifest = valid_manifest()
@@ -152,6 +156,22 @@ class SourceManifestTest(unittest.TestCase):
                 ) as raised:
                     source_tool.validate_manifest_data(manifest)
                 self.assertEqual(source_tool.EXIT_SCHEMA, raised.exception.exit_code)
+
+    def test_rejects_nonportable_source_ids(self) -> None:
+        for source_id in ("con", "a" * 201):
+            with self.subTest(source_id=source_id):
+                manifest = valid_manifest()
+                manifest["source"][0]["id"] = source_id
+                with self.assertRaises(source_tool.SourceToolError) as raised:
+                    source_tool.validate_manifest_data(manifest)
+                self.assertEqual(source_tool.EXIT_SCHEMA, raised.exception.exit_code)
+
+    def test_rejects_oversized_source_archive(self) -> None:
+        manifest = valid_manifest()
+        manifest["source"][0]["size"] = source_tool.MAX_SOURCE_ARCHIVE_BYTES + 1
+        with self.assertRaisesRegex(source_tool.SourceToolError, "must be <=") as raised:
+            source_tool.validate_manifest_data(manifest)
+        self.assertEqual(source_tool.EXIT_SCHEMA, raised.exception.exit_code)
 
     def test_rejects_case_insensitive_archive_collision(self) -> None:
         manifest = valid_manifest()
@@ -250,12 +270,40 @@ class SourceManifestTest(unittest.TestCase):
             self.assertEqual(CONTENT, archive.read_bytes())
             self.assertEqual(before, archive.stat().st_mtime_ns)
 
+    def test_open_verified_archive_yields_stable_snapshot(self) -> None:
+        source = source_tool.validate_manifest_data(valid_manifest())[0]
+        with tempfile.TemporaryDirectory() as directory:
+            archive = Path(directory) / "example.tar.gz"
+            archive.write_bytes(CONTENT)
+            with source_tool.open_verified_archive(source, archive) as snapshot:
+                archive.write_bytes(b"x" * len(CONTENT))
+                self.assertEqual(CONTENT, snapshot.read())
+            self.assertEqual(b"x" * len(CONTENT), archive.read_bytes())
+
     def test_fetch_uses_atomic_part_and_verifies_result(self) -> None:
         sources = source_tool.validate_manifest_data(valid_manifest())
         with tempfile.TemporaryDirectory() as directory, patch(
             "source_tool._open_https", return_value=FakeResponse(CONTENT)
         ):
             cache = Path(directory)
+            source_tool.fetch_sources(sources, cache, timeout=1.0)
+            self.assertEqual(CONTENT, (cache / "example.tar.gz").read_bytes())
+            self.assertEqual([], partial_files(cache))
+
+    def test_fetch_does_not_replace_concurrent_valid_winner(self) -> None:
+        sources = source_tool.validate_manifest_data(valid_manifest())
+        with tempfile.TemporaryDirectory() as directory, patch(
+            "source_tool._open_https", return_value=FakeResponse(CONTENT)
+        ), patch("source_tool._publish_download_no_replace") as publish:
+            cache = Path(directory)
+
+            def concurrent_winner(
+                part: Path, archive: Path, expected_identity: tuple[int, int]
+            ) -> bool:
+                archive.write_bytes(CONTENT)
+                return False
+
+            publish.side_effect = concurrent_winner
             source_tool.fetch_sources(sources, cache, timeout=1.0)
             self.assertEqual(CONTENT, (cache / "example.tar.gz").read_bytes())
             self.assertEqual([], partial_files(cache))

@@ -52,10 +52,14 @@ and system-integration APIs.
 M7 native supply-chain work has started. A 23-input source manifest now locks
 the complete reviewed mpv-android 2026-08-11 source closure by immutable
 revision, byte count, SHA-256, license, and linkage role. Its standard-library
-Python tool can explicitly fetch the ignored local cache and later verify it
-fully offline. This is a source-provenance milestone only: the Linux container,
-source-built wrapper and libraries, ELF audit, SBOM, notices, corresponding
-source bundle, and bootstrap-AAR retirement gate are still pending.
+Python tools can explicitly fetch the ignored local cache, verify it fully
+offline, and materialize the complete upstream workspace through a pre-scanned
+staging tree without following archive paths or fetching Git submodules. The
+Windows inspection receipt is deliberately distinct from the canonical Linux
+symlink-preserving form. This is still a source-provenance milestone: the
+locked Linux container, source-built wrapper and libraries, ELF audit, SBOM,
+notices, corresponding source bundle, and bootstrap-AAR retirement gate remain
+pending.
 
 ## Baseline
 
@@ -88,8 +92,23 @@ The native source manifest has a separate explicit cache gate:
 python native/tools/source_tool.py validate
 python native/tools/source_tool.py fetch
 python native/tools/source_tool.py verify-cache
+# Windows archive/placement inspection only; never a native release input.
+python native/tools/materialize_sources.py `
+  --workspace native/out/workspace-windows `
+  --link-mode portable-copy
+python native/tools/materialize_sources.py `
+  --workspace native/out/workspace-windows `
+  --verify-workspace `
+  --allow-portable-copy
 python -m unittest discover -s native/tests -v
 ```
+
+The Linux native builder must instead use the default symlink-preserving mode
+and run `--verify-workspace` without the portable-copy exception. Verification
+rehashes the locked cache and complete tree, compares every ordinary source
+file with its locked archive bytes, and rejects missing or extra entries. The
+receipt is an integrity record, not a signature or a substitute for a fresh
+trusted build.
 
 See [`native/README.md`](native/README.md) and
 [`ADR 0010`](docs/adr/0010-source-built-libmpv-and-native-provenance.md). The
