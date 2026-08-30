@@ -1,6 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="player_title">ZivPlayer</string>
-    <string name="player_bootstrap_description">Android 播放器应用壳已就绪，下一阶段接入 libmpv。</string>
-    <string name="player_open_media">打开媒体</string>
+    <string name="player_open_media">打开</string>
+    <string name="player_no_media_title">尚未选择媒体</string>
+    <string name="player_status_connecting">正在连接播放服务…</string>
+    <string name="player_status_reconnecting">播放服务已断开，正在重连…</string>
+    <string name="player_status_empty">打开一个音频或视频文档即可开始播放。</string>
+    <string name="player_status_loading">正在加载…</string>
+    <string name="player_status_playing">正在播放</string>
+    <string name="player_status_paused">已暂停</string>
+    <string name="player_status_stopped">已停止</string>
+    <string name="player_status_buffering">正在缓冲…</string>
+    <string name="player_status_ended">播放已结束</string>
+    <string name="player_status_error">播放无法继续，请重新打开该媒体再试。</string>
+    <string name="player_time_unknown">--:--</string>
+    <string name="player_timeline_description">%1$s / %2$s</string>
+    <string name="player_play">播放</string>
+    <string name="player_pause">暂停</string>
+    <string name="player_replay">重播</string>
+    <string name="player_stop">停止</string>
+    <string name="player_speed">速度 %1$s</string>
+    <string name="player_repeat_off">单曲循环关</string>
+    <string name="player_repeat_one">单曲循环开</string>
+    <string name="player_volume">音量</string>
+    <string name="player_volume_description">音量 %1$d%%</string>
+    <string name="player_recent_title">最近打开</string>
+    <string name="player_recent_empty">已获得持久访问权限的文档会显示在这里。</string>
+    <string name="player_recent_completed">已播完，将从头播放</string>
+    <string name="player_recent_resume">从 %1$s 继续</string>
+    <string name="player_recent_open">打开</string>
+    <string name="player_recent_forget">移除记录</string>
 </resources>

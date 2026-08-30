@@ -6,12 +6,24 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import top.yukonga.miuix.kmp.basic.Button
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
+import top.yukonga.miuix.kmp.basic.LinearProgressIndicator
 import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.Slider
 import top.yukonga.miuix.kmp.basic.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.Text
 
@@ -29,7 +41,8 @@ fun ZivScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 20.dp, vertical = 16.dp),
+                .padding(horizontal = 20.dp, vertical = 16.dp)
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             content = content,
         )
@@ -41,13 +54,69 @@ fun ZivPrimaryButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     Button(
         onClick = onClick,
-        modifier = modifier,
+        modifier = modifier.heightIn(min = 48.dp),
+        enabled = enabled,
     ) {
         Text(text)
     }
+}
+
+@Composable
+fun ZivCard(
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        onClick = onClick,
+        content = content,
+    )
+}
+
+@Composable
+fun ZivSlider(
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    valueRange: ClosedFloatingPointRange<Float> = 0f..1f,
+    onValueChangeFinished: (() -> Unit)? = null,
+    stateDescription: String? = null,
+) {
+    val describedModifier = stateDescription?.let { description ->
+        modifier.semantics { this.stateDescription = description }
+    } ?: modifier
+    Slider(
+        value = value.coerceIn(valueRange),
+        onValueChange = onValueChange,
+        modifier = describedModifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp),
+        enabled = enabled,
+        valueRange = valueRange,
+        onValueChangeFinished = onValueChangeFinished,
+    )
+}
+
+@Composable
+fun ZivLinearProgress(
+    progress: Float,
+    modifier: Modifier = Modifier,
+) {
+    LinearProgressIndicator(
+        modifier = modifier.fillMaxWidth(),
+        progress = progress.coerceIn(0f, 1f),
+    )
+}
+
+@Composable
+fun ZivLoadingIndicator(modifier: Modifier = Modifier) {
+    CircularProgressIndicator(modifier = modifier)
 }
 
 @Composable
@@ -58,5 +127,16 @@ fun ZivText(
     Text(
         text = text,
         modifier = modifier,
+    )
+}
+
+@Composable
+fun ZivStatusText(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    Text(
+        text = text,
+        modifier = modifier.semantics { liveRegion = LiveRegionMode.Polite },
     )
 }

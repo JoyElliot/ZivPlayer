@@ -1,6 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="player_title">ZivPlayer</string>
-    <string name="player_bootstrap_description">The Android player shell is ready. libmpv integration is the next milestone.</string>
-    <string name="player_open_media">Open media</string>
+    <string name="player_open_media">Open</string>
+    <string name="player_no_media_title">No media selected</string>
+    <string name="player_status_connecting">Connecting to playback service…</string>
+    <string name="player_status_reconnecting">Playback service disconnected. Reconnecting…</string>
+    <string name="player_status_empty">Open an audio or video document to begin.</string>
+    <string name="player_status_loading">Loading…</string>
+    <string name="player_status_playing">Playing</string>
+    <string name="player_status_paused">Paused</string>
+    <string name="player_status_stopped">Stopped</string>
+    <string name="player_status_buffering">Buffering…</string>
+    <string name="player_status_ended">Playback finished</string>
+    <string name="player_status_error">Playback could not continue. Open the media again to retry.</string>
+    <string name="player_time_unknown">--:--</string>
+    <string name="player_timeline_description">%1$s of %2$s</string>
+    <string name="player_play">Play</string>
+    <string name="player_pause">Pause</string>
+    <string name="player_replay">Replay</string>
+    <string name="player_stop">Stop</string>
+    <string name="player_speed">Speed %1$s</string>
+    <string name="player_repeat_off">Loop off</string>
+    <string name="player_repeat_one">Loop one</string>
+    <string name="player_volume">Volume</string>
+    <string name="player_volume_description">Volume %1$d percent</string>
+    <string name="player_recent_title">Recently opened</string>
+    <string name="player_recent_empty">Durable documents you open will appear here.</string>
+    <string name="player_recent_completed">Finished — opens from the beginning</string>
+    <string name="player_recent_resume">Resume at %1$s</string>
+    <string name="player_recent_open">Open</string>
+    <string name="player_recent_forget">Forget</string>
 </resources>
