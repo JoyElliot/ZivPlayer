@@ -1,0 +1,461 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Canonical byte-level lock for the native source closure selected from
+# mpv-android 2026-08-11. Keep source entries sorted by id. Tags and version
+# labels are descriptive; revision plus archive size/SHA-256 is authoritative.
+
+schemaVersion = 1
+
+[project]
+name = "ZivPlayer"
+upstreamRelease = "2026-08-11"
+upstreamRevision = "ad98fc97ff1d25e217389e7238a1abda8c13a6c4"
+minimumAndroidApi = 26
+nativeApi = 26
+abis = ["arm64-v8a", "x86_64"]
+pageSizeBytes = 16384
+licenseProfile = "gpl-v3-compatible-full"
+
+[toolchain]
+hostOs = "linux"
+ndkVersion = "29.0.14206865"
+sdkPlatform = 36
+sdkBuildTools = "36.0.0"
+jdkMajor = 17
+pythonMinimum = "3.11"
+mesonMinimum = "1.11.0"
+ninjaMinimum = "1.8.2"
+gnuMakeMinimum = "3.82"
+buildSystems = ["autoconf", "automake", "libtool", "make", "meson", "ndk-build", "ninja", "pkg-config"]
+cmake = "not-used"
+environmentStatus = "source-locked-container-pending"
+
+[[source]]
+id = "curl"
+version = "8.21.0"
+kind = "release-archive"
+url = "https://curl.se/download/curl-8.21.0.tar.gz"
+archive = "curl-8.21.0.tar.gz"
+size = 4298225
+sha256 = "d9b327997999045a24cda50f3983e69e51c516bd8be6ef9842fc7f99135e33bb"
+revision = "curl-8.21.0"
+license = "curl"
+licenseFiles = ["COPYING"]
+role = "TLS-backed network transport for libmpv"
+linkage = "static"
+buildSystem = "autoconf+make"
+dependencies = ["mbedtls"]
+requiredForBuild = true
+
+[[source]]
+id = "dav1d"
+version = "1.5.4"
+kind = "git-snapshot"
+url = "https://codeload.github.com/videolan/dav1d/tar.gz/54706fc6bc0cdecab7e9593974a4039cc038fca7"
+archive = "dav1d-54706fc6bc0cdecab7e9593974a4039cc038fca7.tar.gz"
+size = 1751896
+sha256 = "9edb11a2108b375cc58370354e705feebc93430bb780130363815c1e1ac0c250"
+revision = "54706fc6bc0cdecab7e9593974a4039cc038fca7"
+license = "BSD-2-Clause"
+licenseFiles = ["COPYING"]
+role = "AV1 decoder used by FFmpeg"
+linkage = "static"
+buildSystem = "meson+ninja"
+dependencies = []
+requiredForBuild = true
+
+[[source]]
+id = "dlg"
+version = "git-395ccad2"
+kind = "git-snapshot"
+url = "https://codeload.github.com/nyorain/dlg/tar.gz/395ccad2c1e0daae535c4d20bb0a3f2424648e17"
+archive = "dlg-395ccad2c1e0daae535c4d20bb0a3f2424648e17.tar.gz"
+size = 837072
+sha256 = "263a4a3777d9839e34cd41db988310659e0c00eab37beb7aedd30511a460133b"
+revision = "395ccad2c1e0daae535c4d20bb0a3f2424648e17"
+license = "BSL-1.0"
+licenseFiles = ["LICENSE"]
+role = "Freetype upstream submodule retained for source closure"
+linkage = "unused-upstream-submodule"
+buildSystem = "not-built"
+dependencies = []
+requiredForBuild = false
+parent = "freetype"
+destination = "subprojects/dlg"
+notes = "The selected Freetype Android build does not reference this submodule."
+
+[[source]]
+id = "fast-float"
+version = "git-97b54ca9"
+kind = "git-snapshot"
+url = "https://codeload.github.com/fastfloat/fast_float/tar.gz/97b54ca9e75f5303507699d27c6b4f4efe4641a1"
+archive = "fast_float-97b54ca9e75f5303507699d27c6b4f4efe4641a1.tar.gz"
+size = 120200
+sha256 = "2b132274539286e41f37857cac22aa8441d21bd86d55de825a3342b149f66801"
+revision = "97b54ca9e75f5303507699d27c6b4f4efe4641a1"
+license = "Apache-2.0 OR MIT OR BSL-1.0"
+licenseFiles = ["LICENSE-APACHE", "LICENSE-BOOST", "LICENSE-MIT"]
+role = "libplacebo numeric parsing submodule"
+linkage = "source-only"
+buildSystem = "meson-subproject"
+dependencies = []
+requiredForBuild = true
+parent = "libplacebo"
+destination = "3rdparty/fast_float"
+
+[[source]]
+id = "ffmpeg"
+version = "9.0"
+kind = "git-snapshot"
+url = "https://codeload.github.com/FFmpeg/FFmpeg/tar.gz/d32b387f2b0a484599d4587d651891f0c63c4238"
+archive = "FFmpeg-d32b387f2b0a484599d4587d651891f0c63c4238.tar.gz"
+size = 17322287
+sha256 = "8a830a34bfaf98514b5d45cf6c01b1fe78b38d5e4c10eab0de2531b783c15f90"
+revision = "d32b387f2b0a484599d4587d651891f0c63c4238"
+license = "GPL-2.0-or-later AND LGPL-2.1-or-later"
+licenseFiles = ["COPYING.GPLv2", "COPYING.GPLv3", "COPYING.LGPLv2.1", "COPYING.LGPLv3", "LICENSE.md"]
+selectedBuildLicense = "GPL-3.0-or-later"
+role = "Demuxing, codec, and Android MediaCodec libraries"
+linkage = "shared"
+buildSystem = "configure+make"
+dependencies = ["dav1d", "gas-preprocessor", "libxml2", "mbedtls"]
+requiredForBuild = true
+notes = "The selected build enables both GPL and version3; nonfree is prohibited."
+
+[[source]]
+id = "fontconfig"
+version = "2.18.2"
+kind = "git-snapshot"
+url = "https://gitlab.freedesktop.org/fontconfig/fontconfig/-/archive/2.18.2/fontconfig-2.18.2.tar.gz"
+archive = "fontconfig-2.18.2.tar.gz"
+size = 654441
+sha256 = "a84d41b57cfb015783d7973b398c26d8763a64b803f97f31fa126fd2aa5eaaca"
+revision = "a4e25ec391d417e4bca052fbfa5cd7ce5f7fd39e"
+license = "MIT AND HPND"
+licenseFiles = ["COPYING", "src/fcconffile.c", "src/fcgenericalias.c"]
+role = "Font discovery used by libass"
+linkage = "static"
+buildSystem = "meson+ninja"
+dependencies = ["freetype", "libxml2"]
+requiredForBuild = true
+notes = "This is the archive form of the exact peeled 2.18.2 tag used by the upstream clone. The selected static source set includes HPND-licensed configuration and generic-alias sources."
+
+[[source]]
+id = "freetype"
+version = "2.14.3"
+kind = "git-snapshot"
+url = "https://gitlab.freedesktop.org/freetype/freetype/-/archive/VER-2-14-3/freetype-VER-2-14-3.tar.gz"
+archive = "freetype-VER-2-14-3.tar.gz"
+size = 2515533
+sha256 = "dc49de6b01a266eef4876a4dd34d9842c475d3e28ff2eff63bd2fb760ab56261"
+revision = "0a0221a1347e2f1e07c395263540026e9a0aa7c7"
+license = "FTL OR GPL-2.0-or-later"
+licenseFiles = ["LICENSE.TXT", "docs/FTL.TXT", "docs/GPLv2.TXT"]
+role = "Font rasterization used by fontconfig and libass"
+linkage = "static"
+buildSystem = "meson+ninja"
+dependencies = []
+requiredForBuild = true
+notes = "This is the archive form of the exact peeled VER-2-14-3 tag used by the upstream clone."
+
+[[source]]
+id = "fribidi"
+version = "1.0.16"
+kind = "release-archive"
+url = "https://github.com/fribidi/fribidi/releases/download/v1.0.16/fribidi-1.0.16.tar.xz"
+archive = "fribidi-1.0.16.tar.xz"
+size = 1098260
+sha256 = "1b1cde5b235d40479e91be2f0e88a309e3214c8ab470ec8a2744d82a5a9ea05c"
+revision = "v1.0.16"
+license = "LGPL-2.1-or-later"
+licenseFiles = ["COPYING"]
+role = "Bidirectional text handling used by libass"
+linkage = "static"
+buildSystem = "meson+ninja"
+dependencies = []
+requiredForBuild = true
+
+[[source]]
+id = "gas-preprocessor"
+version = "git-ac183630"
+kind = "git-snapshot"
+url = "https://raw.githubusercontent.com/FFmpeg/gas-preprocessor/ac1836309c2e77023c228b7184485597286289d3/gas-preprocessor.pl"
+archive = "gas-preprocessor-ac1836309c2e77023c228b7184485597286289d3.pl"
+size = 45788
+sha256 = "7124d70cdecba7c5612f9a71fbf3f28514dd9c2ca3022f58ad793f88bb925fcf"
+revision = "ac1836309c2e77023c228b7184485597286289d3"
+license = "GPL-2.0-or-later"
+licenseFiles = ["gas-preprocessor.pl"]
+role = "Pinned assembly preprocessing helper used by FFmpeg"
+linkage = "build-tool"
+buildSystem = "perl-script"
+dependencies = []
+requiredForBuild = true
+notes = "Upstream provisioning fetched master without a revision; ZivPlayer replaces that floating input with this explicit pin. Build logs must still show whether the helper is executed."
+
+[[source]]
+id = "glad"
+version = "git-73db193f"
+kind = "git-snapshot"
+url = "https://codeload.github.com/Dav1dde/glad/tar.gz/73db193f853e2ee079bf3ca8a64aa2eaf6459043"
+archive = "glad-73db193f853e2ee079bf3ca8a64aa2eaf6459043.tar.gz"
+size = 645779
+sha256 = "33dbeae44d8315ece57e14eba4b1b4a02ac5406d1c4f49cd20048c91522a6b9a"
+revision = "73db193f853e2ee079bf3ca8a64aa2eaf6459043"
+license = "MIT AND Apache-2.0"
+licenseFiles = ["LICENSE"]
+role = "libplacebo OpenGL loader submodule"
+linkage = "static"
+buildSystem = "meson-subproject"
+dependencies = []
+requiredForBuild = true
+parent = "libplacebo"
+destination = "3rdparty/glad"
+
+[[source]]
+id = "harfbuzz"
+version = "14.2.1"
+kind = "release-archive"
+url = "https://github.com/harfbuzz/harfbuzz/releases/download/14.2.1/harfbuzz-14.2.1.tar.xz"
+archive = "harfbuzz-14.2.1.tar.xz"
+size = 19559952
+sha256 = "a54a5d8e9380a41fbb762ce367bcbf7704792dfca0d93f1bbca86c5a57902e0e"
+revision = "14.2.1"
+license = "MIT"
+licenseFiles = ["COPYING"]
+role = "Text shaping used by libass"
+linkage = "static"
+buildSystem = "meson+ninja"
+dependencies = []
+requiredForBuild = true
+
+[[source]]
+id = "jinja"
+version = "git-15206881"
+kind = "git-snapshot"
+url = "https://codeload.github.com/pallets/jinja/tar.gz/15206881c006c79667fe5154fe80c01c65410679"
+archive = "jinja-15206881c006c79667fe5154fe80c01c65410679.tar.gz"
+size = 276954
+sha256 = "b88a20dcc2e34072fcf4159325bc6c34cd4b29a81a8b83d15d2f28ba561da296"
+revision = "15206881c006c79667fe5154fe80c01c65410679"
+license = "BSD-3-Clause"
+licenseFiles = ["LICENSE.txt"]
+role = "libplacebo build-time template engine submodule"
+linkage = "build-tool"
+buildSystem = "python-module"
+dependencies = ["markupsafe"]
+requiredForBuild = true
+parent = "libplacebo"
+destination = "3rdparty/jinja"
+
+[[source]]
+id = "libass"
+version = "0.17.5"
+kind = "git-snapshot"
+url = "https://codeload.github.com/libass/libass/tar.gz/3087d2b2ffda76602a17f9b09d25cb8addc8d313"
+archive = "libass-3087d2b2ffda76602a17f9b09d25cb8addc8d313.tar.gz"
+size = 351912
+sha256 = "4f1c2b181f1acd59e68c69e2b2b201d4cd6fe85f2f52e9eb357f27e1959bb296"
+revision = "3087d2b2ffda76602a17f9b09d25cb8addc8d313"
+license = "ISC AND Unlicense"
+licenseFiles = ["COPYING", "libass/wyhash.h"]
+role = "ASS and SSA subtitle renderer"
+linkage = "static"
+buildSystem = "autoconf+make"
+dependencies = ["fontconfig", "freetype", "fribidi", "harfbuzz", "libunibreak"]
+requiredForBuild = true
+notes = "The selected static library compiles the Unlicense wyhash implementation in addition to ISC-licensed libass code."
+
+[[source]]
+id = "libplacebo"
+version = "git-4d82c689"
+kind = "git-snapshot"
+url = "https://codeload.github.com/haasn/libplacebo/tar.gz/4d82c6898551068d4ae6a6b5538efcddc2c7cf64"
+archive = "libplacebo-4d82c6898551068d4ae6a6b5538efcddc2c7cf64.tar.gz"
+size = 874662
+sha256 = "58f860b319aea972851f8a1571c70a1532d98304e1abad61e105822ddf717c00"
+revision = "4d82c6898551068d4ae6a6b5538efcddc2c7cf64"
+license = "LGPL-2.1-or-later"
+licenseFiles = ["LICENSE"]
+role = "GPU rendering and color-management library"
+linkage = "static"
+buildSystem = "meson+ninja"
+dependencies = ["fast-float", "glad", "jinja", "markupsafe"]
+requiredForBuild = true
+notes = "Vulkan and demos are disabled in the selected Android build."
+
+[[source]]
+id = "libunibreak"
+version = "7.0"
+kind = "release-archive"
+url = "https://github.com/adah1972/libunibreak/releases/download/libunibreak_7_0/libunibreak-7.0.tar.gz"
+archive = "libunibreak-7.0.tar.gz"
+size = 885859
+sha256 = "8c9a6e121736cd0d5c890ae3ae96f3f4010a19aa040f1dbded833a62a87717d3"
+revision = "libunibreak_7_0"
+license = "Zlib"
+licenseFiles = ["LICENCE"]
+role = "Unicode line breaking used by libass"
+linkage = "static"
+buildSystem = "autoconf+make"
+dependencies = []
+requiredForBuild = true
+
+[[source]]
+id = "libxml2"
+version = "2.15.3"
+kind = "git-snapshot"
+url = "https://gitlab.gnome.org/GNOME/libxml2/-/archive/v2.15.3/libxml2-v2.15.3.tar.gz"
+archive = "libxml2-v2.15.3.tar.gz"
+size = 2964045
+sha256 = "0da50c1415f4ec0364569d2119b1436ba837b31df44af28569d234272c23cf1f"
+revision = "c94eb0210183b9d7cb43f8e7fddc6be55843ef49"
+license = "MIT"
+licenseFiles = ["Copyright"]
+role = "XML support used by FFmpeg and fontconfig"
+linkage = "static"
+buildSystem = "meson+ninja"
+dependencies = []
+requiredForBuild = true
+
+[[source]]
+id = "lua"
+version = "5.2.4"
+kind = "release-archive"
+url = "https://www.lua.org/ftp/lua-5.2.4.tar.gz"
+archive = "lua-5.2.4.tar.gz"
+size = 252651
+sha256 = "b9e2e4aad6789b3b63a056d442f7b39f0ecfca3ae0f1fc0ae4e9614401b69f4b"
+revision = "lua-5.2.4"
+license = "MIT"
+licenseFiles = ["doc/readme.html"]
+role = "Lua scripting support compiled into libmpv"
+linkage = "static"
+buildSystem = "make"
+dependencies = []
+requiredForBuild = true
+
+[[source]]
+id = "markupsafe"
+version = "git-297fc8e3"
+kind = "git-snapshot"
+url = "https://codeload.github.com/pallets/markupsafe/tar.gz/297fc8e356e6836a62087949245d09a28e9f1b13"
+archive = "markupsafe-297fc8e356e6836a62087949245d09a28e9f1b13.tar.gz"
+size = 83817
+sha256 = "da7c010c9c81a66ac73036558c1fcb6212b50482f43211cd1254035b94f82414"
+revision = "297fc8e356e6836a62087949245d09a28e9f1b13"
+license = "BSD-3-Clause"
+licenseFiles = ["LICENSE.txt"]
+role = "Jinja escaping helper retained as a libplacebo submodule"
+linkage = "build-tool"
+buildSystem = "python-module"
+dependencies = []
+requiredForBuild = true
+parent = "libplacebo"
+destination = "3rdparty/markupsafe"
+
+[[source]]
+id = "mbedtls"
+version = "3.6.7"
+kind = "release-archive"
+url = "https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-3.6.7/mbedtls-3.6.7.tar.bz2"
+archive = "mbedtls-3.6.7.tar.bz2"
+size = 5473689
+sha256 = "a7e8bcbec0e6f761b4af24f25677626b35f762f68eef79c08677a363212d11f6"
+revision = "mbedtls-3.6.7"
+license = "Apache-2.0 OR GPL-2.0-or-later"
+licenseFiles = ["LICENSE"]
+role = "TLS implementation used by curl and FFmpeg"
+linkage = "static"
+buildSystem = "make"
+dependencies = []
+requiredForBuild = true
+
+[[source]]
+id = "mpv"
+version = "0.41.0-UNKNOWN"
+kind = "git-snapshot"
+url = "https://codeload.github.com/mpv-player/mpv/tar.gz/f4d13e1c2c91f3a56e589aef9cb44cbc02e26e47"
+archive = "mpv-f4d13e1c2c91f3a56e589aef9cb44cbc02e26e47.tar.gz"
+size = 7403282
+sha256 = "ce0635d2f31740d6a116c5bca7f6798f09cc6a95f03752e845ce7da02070aff3"
+revision = "f4d13e1c2c91f3a56e589aef9cb44cbc02e26e47"
+license = "GPL-2.0-or-later AND LGPL-2.1-or-later"
+licenseFiles = ["Copyright", "LICENSE.GPL", "LICENSE.LGPL"]
+selectedBuildLicense = "GPL-2.0-or-later"
+role = "libmpv playback engine"
+linkage = "shared"
+buildSystem = "meson+ninja"
+dependencies = ["curl", "ffmpeg", "libass", "libplacebo", "lua"]
+requiredForBuild = true
+notes = "This is the exact upstream release commit, not a stable mpv tag or master. The archive contains both GPL and LGPL paths; the selected ZivPlayer libmpv configuration uses mpv's GPL-2.0-or-later profile. The distributed native stack must still be evaluated under GPL-3.0-or-later because the selected FFmpeg shared libraries use that profile."
+
+[[source]]
+id = "mpv-android"
+version = "2026-08-11"
+kind = "git-snapshot"
+url = "https://codeload.github.com/mpv-android/mpv-android/tar.gz/ad98fc97ff1d25e217389e7238a1abda8c13a6c4"
+archive = "mpv-android-ad98fc97ff1d25e217389e7238a1abda8c13a6c4.tar.gz"
+size = 2113064
+sha256 = "16cfe7c29fcad1c6a4b6c06fe51e542191c484e215d64447d3464a05a331727b"
+revision = "ad98fc97ff1d25e217389e7238a1abda8c13a6c4"
+license = "MIT AND MPL-2.0 AND LGPL-3.0-or-later AND Apache-2.0"
+licenseFiles = [
+    "LICENSE",
+    "app/src/main/assets/cacert.pem",
+    "app/src/main/java/is/xyz/filepicker/AbstractFilePickerFragment.java",
+    "app/src/main/java/is/xyz/filepicker/FileItemAdapter.java",
+    "app/src/main/java/is/xyz/filepicker/FilePickerFragment.java",
+    "app/src/main/java/is/xyz/filepicker/LogicHandler.java",
+    "app/src/main/res/layout/nnf_filepicker_listitem_checkable.xml",
+    "app/src/main/res/layout/nnf_filepicker_listitem_dir.xml",
+    "app/src/main/res/layout/nnf_fragment_filepicker.xml",
+    "gradlew",
+]
+selectedBuildLicense = "MIT"
+role = "Reference Android Kotlin and JNI wrapper source"
+linkage = "jni-shared"
+buildSystem = "ndk-build"
+dependencies = ["mpv"]
+requiredForBuild = true
+notes = "The intended MPVLib and JNI wrapper subset is MIT. The complete locked application archive also contains MPL-2.0 and LGPL-3.0-or-later file-picker sources, Apache-2.0 Gradle bootstrap code, and a Mozilla-derived CA bundle; it is not MIT-only. The CA bundle provenance is recorded, but its redistribution notice/license remains an explicit release-compliance gate."
+
+[[source]]
+id = "nuklear"
+version = "git-242f35ef"
+kind = "git-snapshot"
+url = "https://codeload.github.com/Immediate-Mode-UI/Nuklear/tar.gz/242f35efa067a46c595645eeda7b1771ea1f83b1"
+archive = "Nuklear-242f35efa067a46c595645eeda7b1771ea1f83b1.tar.gz"
+size = 2339403
+sha256 = "ac567995f917c10a722409e0141d226e737d06488b0a31166f6e4925da8e58f0"
+revision = "242f35efa067a46c595645eeda7b1771ea1f83b1"
+license = "MIT OR Unlicense"
+licenseFiles = ["LICENSE"]
+role = "libplacebo demo submodule retained for source closure"
+linkage = "unused-upstream-submodule"
+buildSystem = "not-built"
+dependencies = []
+requiredForBuild = false
+parent = "libplacebo"
+destination = "demos/3rdparty/nuklear"
+notes = "Demos are disabled in the selected libplacebo build."
+
+[[source]]
+id = "vulkan-headers"
+version = "git-74d8a6cb"
+kind = "git-snapshot"
+url = "https://codeload.github.com/KhronosGroup/Vulkan-Headers/tar.gz/74d8a6cb930c68ef617b202c3ff3c59d919e086b"
+archive = "Vulkan-Headers-74d8a6cb930c68ef617b202c3ff3c59d919e086b.tar.gz"
+size = 3029927
+sha256 = "75967a8288ff16044a86d1af462b96d2e75c435937efb75f2bb4102ab0382f29"
+revision = "74d8a6cb930c68ef617b202c3ff3c59d919e086b"
+license = "Apache-2.0 OR MIT"
+licenseFiles = ["LICENSE.md"]
+role = "libplacebo Vulkan submodule retained for source closure"
+linkage = "unused-upstream-submodule"
+buildSystem = "not-built"
+dependencies = []
+requiredForBuild = false
+parent = "libplacebo"
+destination = "3rdparty/Vulkan-Headers"
+notes = "Vulkan is disabled in the selected libplacebo build."

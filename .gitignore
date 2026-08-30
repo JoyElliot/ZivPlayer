@@ -46,3 +46,5 @@ native/cache/
 # Test and coverage output
 coverage/
 test-results/
+__pycache__/
+*.py[cod]
