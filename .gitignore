@@ -1,12 +1,18 @@
 # Gradle files
 .gradle/
+.kotlin/
 build/
+**/build/
 
 # Local configuration file (sdk path, etc)
 local.properties
+keystore.properties
+secrets.properties
 
 # Log/OS Files
 *.log
+.DS_Store
+Thumbs.db
 
 # Android Studio generated files and folders
 captures/
@@ -32,3 +38,11 @@ google-services.json
 
 # Android Profiling
 *.hprof
+
+# Native build artifacts
+native/out/
+native/cache/
+
+# Test and coverage output
+coverage/
+test-results/
