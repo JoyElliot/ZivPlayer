@@ -11,6 +11,13 @@ archive bytes, revisions, licenses, linkage roles, and upstream submodules, but
 does not replace the release SBOM, generated notices, or corresponding-source
 bundle.
 
+The builder-root and Ubuntu package closure is separately locked in
+[`native/toolchain-manifest.toml`](native/toolchain-manifest.toml), including
+the signed resolver indexes and exact `.deb` bytes. That supply-chain lock is
+not a license inventory for the installed build environment and does not make
+the pending Android license files, system notices, retention bundle, release
+SBOM, or corresponding-source package complete.
+
 | Component | Intended use | Upstream license | Distribution note |
 | --- | --- | --- | --- |
 | AndroidX and Jetpack Compose | Android application and UI runtime | Apache-2.0 | Preserve notices required by resolved artifacts. |

@@ -49,17 +49,21 @@ The application is written in Kotlin with Jetpack Compose and MIUIX. libmpv is
 the only playback engine; AndroidX Media3 is reserved for Android media-session
 and system-integration APIs.
 
-M7 native supply-chain work has started. A 23-input source manifest now locks
-the complete reviewed mpv-android 2026-08-11 source closure by immutable
-revision, byte count, SHA-256, license, and linkage role. Its standard-library
-Python tools can explicitly fetch the ignored local cache, verify it fully
-offline, and materialize the complete upstream workspace through a pre-scanned
-staging tree without following archive paths or fetching Git submodules. The
-Windows inspection receipt is deliberately distinct from the canonical Linux
-symlink-preserving form. This is still a source-provenance milestone: the
-locked Linux container, source-built wrapper and libraries, ELF audit, SBOM,
-notices, corresponding source bundle, and bootstrap-AAR retirement gate remain
-pending.
+M7 native supply-chain work has started. A 23-input source manifest locks the
+complete reviewed mpv-android 2026-08-11 source closure by immutable revision,
+byte count, SHA-256, license, and linkage role. A second byte-level manifest now
+locks the Linux/amd64 builder roots: a digest-qualified Ubuntu OCI graph, five
+Android/Python tool archives, the 2026-08-11 Ubuntu snapshot, 92 base-image dpkg
+identities, 22 requested packages, nine signed resolver indexes, and the exact
+101-package transitive `.deb` closure. The offline verifier rechecks the OCI
+graph and rootfs `diff_id`, Ubuntu signatures, package/index bytes, solver
+selection, and all 521 `Pre-Depends`/`Depends` clauses.
+
+The ignored cache has been prepared and independently verified in WSL, but WSL
+is evidence for the input lock rather than accepted release provenance. The
+installed Linux container, canonical Linux source materialization, source-built
+wrapper and libraries, ELF audit, Android license evidence, SBOM, notices,
+corresponding-source bundle, and bootstrap-AAR retirement gate remain pending.
 
 ## Baseline
 
@@ -109,6 +113,28 @@ rehashes the locked cache and complete tree, compares every ordinary source
 file with its locked archive bytes, and rejects missing or extra entries. The
 receipt is an integrity record, not a signature or a substitute for a fresh
 trusted build.
+
+The separate native toolchain lock is validated and cached explicitly. `fetch`
+downloads only the locked artifact/OCI roots; APT preparation is a distinct
+networked pre-build step on the pinned Ubuntu preparation environment. The
+actual native build must remain offline.
+
+```sh
+python3 native/tools/toolchain_tool.py validate
+python3 native/tools/toolchain_tool.py fetch
+python3 native/tools/toolchain_tool.py verify-roots
+sudo /bin/sh native/toolchain/prepare-apt-cache.sh
+python3 native/tools/toolchain_tool.py verify-cache
+python3 native/tools/toolchain_tool.py check-lock
+```
+
+The preparation script refuses to replace an existing ignored APT cache. Move
+or remove that cache deliberately before regenerating it. `check-lock` is the
+fail-closed release-input gate and currently exits with code 3 after byte
+verification because the installed container and compliance bundles are still
+pending. `verify-apt-cache`, `verify-cache`, and `check-lock` require Linux's
+canonical `/usr/bin/gpgv` and `/usr/bin/dpkg-deb`; run them inside the
+controlled Linux builder or WSL for inspection, not as native Windows commands.
 
 See [`native/README.md`](native/README.md) and
 [`ADR 0010`](docs/adr/0010-source-built-libmpv-and-native-provenance.md). The

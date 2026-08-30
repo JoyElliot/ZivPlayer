@@ -1,0 +1,6 @@
+Types: deb
+URIs: https://snapshot.ubuntu.com/ubuntu/20260811T000000Z
+Suites: noble noble-updates noble-security
+Components: main universe
+Architectures: amd64
+Signed-By: @UBUNTU_ARCHIVE_KEYRING@

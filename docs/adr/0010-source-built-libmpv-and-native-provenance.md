@@ -116,13 +116,37 @@ baseline.
 The source manifest records project-selected minimum tool versions. Where an
 upstream component declares a floor, the selected minimum meets the highest
 one in the source closure; Python 3.11 also satisfies this repository's TOML
-source tool. Exact installed versions are not yet implied, and the environment
-status remains `source-locked-container-pending`. Before accepting native binaries,
-the build must additionally lock a Linux container/base-image digest, exact
-system package revisions, Python, Meson, Ninja, JDK patch, and Android command
-line tools. A successful build on an arbitrary workstation or floating hosted
-runner is not release provenance. Windows and the currently configured WSL
-environment are not accepted native release builders.
+source tool.
+
+`native/toolchain-manifest.toml` now locks the next boundary by bytes. It binds
+the source-manifest digest and Android tuple to a four-object linux/amd64 Ubuntu
+OCI graph, five Android/Python tool archives, Ubuntu snapshot
+`20260811T000000Z`, the 92-package base dpkg projection, 22 APT roots, nine
+signed resolver indexes, and 101 exact transitive `.deb` files. The descriptive
+Ubuntu tag is not build authority; the linux/amd64 manifest digest in
+`baseImage.buildReference` is. The manifest also makes the native build's
+network, repository, package-index, floating-reference, and nonfree
+prohibitions explicit.
+
+`native/tools/toolchain_tool.py` independently checks root bytes, OCI
+descriptors and rootfs `diff_id`, the base status/keyring projection, signed
+InRelease bytes and locked signer, exact Packages/`.deb` sets, each archive's
+internal Debian control identity, solver identity set, Debian versioned
+dependency semantics, and reachability from the declared roots.
+`native/toolchain/prepare-apt-cache.sh` is an explicit networked
+preparation operation on the pinned Ubuntu apt/dpkg/gpgv tuple. It stages and
+verifies a new ignored cache and refuses replacement; it is not permitted in
+the offline build phase.
+
+This closes builder-root selection and APT-closure ambiguity, not the installed
+container. The environment status therefore remains
+`roots-and-apt-locked-container-pending`: the roots must still be installed in
+a fresh controlled Linux filesystem without network access, followed by a
+recorded final filesystem/tool projection and accepted Android license and
+redistribution inputs. A successful build on an arbitrary workstation or
+floating hosted runner is not release provenance. Windows and the currently
+configured WSL environment are evidence/inspection environments, not accepted
+native release builders.
 
 This decision supersedes only ADR 0003's CMake 4.1.2 placeholder for the libmpv
 pipeline. It does not change the main Android build tuple recorded there.
@@ -162,9 +186,12 @@ artifact is blocked until all of the following are true:
 
 ## Consequences
 
-ZivPlayer now has an independently verifiable native source baseline and a
-complete local offline cache can be prepared without trusting mutable Git
-branches. This closes source-selection ambiguity but not binary
-reproducibility, JNI correctness, device playback, or license-package gates.
-The current public-release decision therefore remains No-Go until the remaining
-native and device milestones pass.
+ZivPlayer now has independently verifiable native source and builder-input
+baselines. Complete local source and toolchain/APT caches can be prepared
+without trusting mutable Git branches, floating container tags, or moving APT
+repositories, and the release-input gate fails closed while the installed
+container and compliance evidence are absent. This closes source, root-object,
+and package-closure selection ambiguity but not binary reproducibility, JNI
+correctness, device playback, or license-package gates. The current
+public-release decision therefore remains No-Go until the remaining native and
+device milestones pass.

@@ -1,0 +1,165 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Byte-level lock for the native builder roots selected alongside mpv-android
+# 2026-08-11. The OCI object graph, APT resolver inputs, base dpkg projection,
+# and selected .deb bytes are locked here, but the installed container, accepted
+# Android license files, and redistributed notice bundle remain release blockers.
+
+schemaVersion = 1
+
+[project]
+name = "ZivPlayer"
+sourceManifest = "native/source-manifest.toml"
+sourceManifestSha256 = "7fc9ae22f2c11b7deb3dcbc32fc132ed79581ad87bc5bbe326f99690def42a44"
+hostPlatform = "linux/amd64"
+nativeApi = 26
+abis = ["arm64-v8a", "x86_64"]
+pageSizeBytes = 16384
+environmentStatus = "roots-and-apt-locked-container-pending"
+
+[policy]
+networkAtBuild = "none"
+allowFloatingBuildReferences = false
+allowSdkManagerAtBuild = false
+allowAptRepositoriesAtBuild = false
+allowPipIndexAtBuild = false
+allowNonfree = false
+
+[baseImage]
+reference = "docker.io/library/ubuntu:noble-20260810"
+buildReference = "docker.io/library/ubuntu@sha256:1e0a86e57d247923571b75e0aaf48a1449cf8c543d51fb3e07a4a7d7bfa79316"
+repository = "library/ubuntu"
+platform = "linux/amd64"
+indexDigest = "sha256:33ceb71981b602c1a7443a53469e4dba065f7503eab3078a2d7a57a2ab987517"
+manifestDigest = "sha256:1e0a86e57d247923571b75e0aaf48a1449cf8c543d51fb3e07a4a7d7bfa79316"
+objectClosureStatus = "complete"
+
+[apt]
+snapshot = "20260811T000000Z"
+architecture = "amd64"
+suites = ["noble", "noble-updates", "noble-security"]
+components = ["main", "universe"]
+installMode = "offline-deb"
+noRecommends = true
+preparationAptVersion = "2.8.3"
+preparationDpkgVersion = "1.22.6ubuntu6.6"
+preparationGpgvVersion = "2.4.4-2ubuntu17.4"
+rootsFile = "native/toolchain/apt-roots.txt"
+rootsCount = 22
+rootsFileSize = 191
+rootsFileSha256 = "28b225bed576b40fe7195b557dccb4e30e548fd0a2712711d64a026e8ee2549f"
+sourcesTemplate = "native/toolchain/ubuntu.sources.in"
+sourcesTemplateSize = 195
+sourcesTemplateSha256 = "58d823a08ee0649fa9a9f75d6f4f761cd0ecf5fa39b59bd0a15fb2c17326a6d8"
+baseStatusMember = "var/lib/dpkg/status"
+baseStatusSize = 87191
+baseStatusSha256 = "e198b5ed0a64a090abce7b39481dd402ed0dc89d6c1ba96c448f4ba6ea75b6ed"
+archiveKeyringMember = "usr/share/keyrings/ubuntu-archive-keyring.gpg"
+archiveKeyringSize = 3607
+archiveKeyringSha256 = "80a36b0a6de2f69f49d2df75ef473ccde121e9e190b9ea01d20a4f63778d5c31"
+archiveSignerFingerprint = "f6ecb3762474eda9d21b7022871920d1991bc93c"
+baseDpkgLock = "native/toolchain/base-dpkg.tsv"
+baseDpkgPackageCount = 92
+baseDpkgLockSize = 3153
+baseDpkgLockSha256 = "df4845568742906f0657545b34dfd8aab314d1343690311b7e473c8e12126826"
+indexLock = "native/toolchain/apt-indices.tsv"
+indexCount = 9
+indexLockSize = 1802
+indexLockSha256 = "677b0300e0a6437d38da6aceba60070f86118b3b33e724ff70c7dfade6809406"
+packageLock = "native/toolchain/apt-packages.tsv"
+packageCount = 101
+packageLockSize = 30005
+packageLockSha256 = "b2b893d31b154313fde3ede707f8fb75d7f336716d30be747dde009188171e85"
+closureStatus = "complete"
+baseDpkgSnapshotStatus = "complete"
+
+[compliance]
+androidLicenseFilesStatus = "pending"
+systemNoticesStatus = "pending"
+retentionBundleStatus = "pending"
+
+[[artifact]]
+id = "android-build-tools"
+kind = "android-archive"
+version = "36.0.0"
+url = "https://dl.google.com/android/repository/build-tools_r36_linux.zip"
+archive = "build-tools_r36_linux.zip"
+size = 63737259
+sha256 = "5d9ac77fb6ff43d9da518a337b4fcf8f9097113df531d99ccefe80ef7ce8250b"
+publishedSha1 = "b0b6376977657e8ad9b969bacf4093601da2c6fb"
+installPath = "android-sdk/build-tools/36.0.0"
+
+[[artifact]]
+id = "android-cmdline-tools"
+kind = "android-archive"
+version = "12.0"
+url = "https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip"
+archive = "commandlinetools-linux-11076708_latest.zip"
+size = 153607504
+sha256 = "2d2d50857e4eb553af5a6dc3ad507a17adf43d115264b1afc116f95c92e5e258"
+publishedSha1 = "d313adb7aedccf6cf0cfca51ec180f0059f5f8f8"
+installPath = "android-sdk/cmdline-tools/12.0"
+
+[[artifact]]
+id = "android-ndk"
+kind = "android-archive"
+version = "29.0.14206865"
+url = "https://dl.google.com/android/repository/android-ndk-r29-linux.zip"
+archive = "android-ndk-r29-linux.zip"
+size = 783549481
+sha256 = "4abbbcdc842f3d4879206e9695d52709603e52dd68d3c1fff04b3b5e7a308ecf"
+publishedSha1 = "87e2bb7e9be5d6a1c6cdf5ec40dd4e0c6d07c30b"
+installPath = "android-sdk/ndk/29.0.14206865"
+
+[[artifact]]
+id = "android-platform"
+kind = "android-archive"
+version = "36-r02"
+url = "https://dl.google.com/android/repository/platform-36_r02.zip"
+archive = "platform-36_r02.zip"
+size = 65878410
+sha256 = "37607369a28c5b640b3a7998868d45898ebcb777565a0e85f9acf36f29631d2e"
+publishedSha1 = "2c1a80dd4d9f7d0e6dd336ec603d9b5c55a6f576"
+installPath = "android-sdk/platforms/android-36"
+
+[[artifact]]
+id = "meson-wheel"
+kind = "python-wheel"
+version = "1.11.0"
+url = "https://files.pythonhosted.org/packages/08/84/1ae2022a3562ac011c80c090e387a07e189d077b01fe58a266759b8fc2ff/meson-1.11.0-py3-none-any.whl"
+archive = "meson-1.11.0-py3-none-any.whl"
+size = 1078425
+sha256 = "9774eb62bbf2cb8043aa3feb771c09b510d112c0c382221e29aea7453ecce753"
+installPath = "python-wheels/meson-1.11.0-py3-none-any.whl"
+
+[[ociObject]]
+id = "ubuntu-config-amd64"
+kind = "config"
+mediaType = "application/vnd.oci.image.config.v1+json"
+digest = "sha256:a6f81fb630d51837271b89f8193810a5fc493fa4f30a55d7ebcdb3a66f3cc63a"
+size = 2052
+archive = "ubuntu-noble-20260810-amd64-config.json"
+
+[[ociObject]]
+id = "ubuntu-index"
+kind = "index"
+mediaType = "application/vnd.oci.image.index.v1+json"
+digest = "sha256:33ceb71981b602c1a7443a53469e4dba065f7503eab3078a2d7a57a2ab987517"
+size = 6688
+archive = "ubuntu-noble-20260810-index.json"
+
+[[ociObject]]
+id = "ubuntu-layer-amd64"
+kind = "layer"
+mediaType = "application/vnd.oci.image.layer.v1.tar+gzip"
+digest = "sha256:0926a8eb0e608a5c6888d1cd5594184bdf3ed3aa311dba5b42a547caefdc6f2e"
+size = 29752807
+archive = "ubuntu-noble-20260810-amd64-rootfs.tar.gz"
+
+[[ociObject]]
+id = "ubuntu-manifest-amd64"
+kind = "manifest"
+mediaType = "application/vnd.oci.image.manifest.v1+json"
+digest = "sha256:1e0a86e57d247923571b75e0aaf48a1449cf8c543d51fb3e07a4a7d7bfa79316"
+size = 424
+archive = "ubuntu-noble-20260810-amd64-manifest.json"

@@ -158,6 +158,85 @@ materialized tree entry against the locked ordinary-file proofs. It still is
 not an authentication signature over a hostile same-user rewrite of the tool,
 manifest, cache, tree, and receipt together.
 
+## Locked toolchain and APT closure
+
+`toolchain-manifest.toml` is the byte-level lock for the selected Linux/amd64
+builder roots. It binds the source manifest digest and Android tuple to:
+
+- Ubuntu `noble-20260810`'s linux/amd64 OCI index, manifest, config, and rootfs
+  layer, with the digest-qualified manifest reference as build authority (the
+  human-readable tag is descriptive only);
+- Android NDK `29.0.14206865`, Platform 36 revision 02, Build Tools 36.0.0,
+  command-line tools 12.0, and the Meson 1.11.0 wheel by size and SHA-256;
+- the Ubuntu snapshot `20260811T000000Z`, its base dpkg status projection and
+  archive keyring, 22 direct package roots, nine resolver-required InRelease/
+  Packages indexes, and 101 exact `.deb` files; and
+- a no-network build policy that prohibits floating references, `sdkmanager`,
+  APT repositories, a pip index, and nonfree output during the actual build.
+
+The Python verifier has no third-party Python dependency and uses the same
+stable exit-code meanings as the source tool. It validates the bound manifests
+without writes, verifies root bytes independently from APT, or verifies the
+complete root-plus-APT closure:
+
+```sh
+python3 native/tools/toolchain_tool.py validate
+python3 native/tools/toolchain_tool.py verify-roots
+python3 native/tools/toolchain_tool.py verify-apt-cache
+python3 native/tools/toolchain_tool.py verify-cache
+```
+
+`verify-roots` checks all five artifact archives, the four-object OCI graph,
+and the config's uncompressed rootfs `diff_id`. APT verification extracts the
+locked dpkg status and keyring from that verified layer, rechecks all three
+InRelease signatures against fingerprint
+`f6ecb3762474eda9d21b7022871920d1991bc93c`, verifies the exact index and
+package sets plus the canonical receipt, checks every `.deb` control identity
+from the stable verified byte snapshot, and proves 92 base packages plus 101
+cached packages satisfy 521 dependency clauses. The solver transcript is
+checked semantically for the exact install/configure set; cache directory
+metadata and timestamps are not release identities.
+
+The locked snapshot InRelease files do not carry `Valid-Until`. Reproducibility
+therefore rests on the explicit snapshot timestamp, exact signed bytes, locked
+signer, and local hashes rather than a claim that a moving mirror is currently
+fresh.
+
+Missing root bytes may be downloaded explicitly:
+
+```sh
+python3 native/tools/toolchain_tool.py fetch
+```
+
+`fetch` does not prepare APT. On the pinned Ubuntu 24.04 preparation
+environment, with exact apt 2.8.3, dpkg 1.22.6ubuntu6.6, and gpgv
+2.4.4-2ubuntu17.4, prepare the ignored APT cache separately:
+
+```sh
+sudo /bin/sh native/toolchain/prepare-apt-cache.sh
+```
+
+This is an explicit networked preparation step, not a native build. It starts
+under a sanitized environment, snapshots and hashes its locked inputs, verifies
+Ubuntu signatures, writes only a new ignored `native/cache/toolchain/apt`
+directory, verifies that staged cache before publication, and refuses to
+replace an existing cache. The final build consumes these bytes with networking
+disabled. APT verification intentionally requires canonical `/usr/bin/gpgv`
+and `/usr/bin/dpkg-deb`; Windows should invoke it through the controlled Linux
+environment. The current WSL run is useful independent lock evidence but is
+not an accepted release builder.
+
+The final fail-closed gate is:
+
+```sh
+python3 native/tools/toolchain_tool.py check-lock
+```
+
+It currently verifies all locked bytes and then exits 3: the installed
+container, accepted Android license files, system notices, retention bundle,
+and corresponding source-manifest container status remain pending. Do not
+change those status fields to `complete` without the named evidence.
+
 ## Locked build baseline
 
 - Linux host only for native artifact provenance.
@@ -175,10 +254,13 @@ manifest, cache, tree, and receipt together.
 - Full GPL-compatible feature profile. FFmpeg uses GPL and version-3 features;
   `--enable-nonfree` is prohibited.
 
-The source byte lock is complete, but the build environment is not yet a
-release-grade reproducible container. Exact Linux base image digest, apt
-package revisions, Python/Meson/Ninja versions, JDK patch, and Android command
-line tools still have to be locked before native artifacts can be accepted.
+The source bytes, Linux base-image object graph, Android/Python tool archives,
+base dpkg projection, and APT package/index closure are locked. This is not yet
+a release-grade installed container: the toolchain roots still have to be
+materialized into a fresh controlled Linux filesystem, installed without
+network access, recorded as a final filesystem/tool-version projection, and
+paired with accepted Android license files and redistribution evidence before
+native artifacts can be accepted.
 
 ## Remaining native gates
 
@@ -186,8 +268,9 @@ Traversal-safe offline materialization is now implemented and has been run
 against the complete locked cache in inspection mode. The next native
 milestones must:
 
-1. run the canonical `preserve` materialization inside the locked Linux build
-   environment;
+1. materialize the locked toolchain roots and APT closure into the controlled
+   Linux build environment, then run canonical `preserve` source
+   materialization there;
 2. adapt and harden the Kotlin/JNI wrapper inside `platform:libmpv-android`;
 3. build both selected ABIs at native API 26 in that environment;
 4. record every build option and patch hash;
