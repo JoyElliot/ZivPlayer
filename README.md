@@ -5,7 +5,7 @@ high-quality rendering, and advanced subtitles.
 
 ## Project status
 
-The host-side M0-M5 foundation is complete: architecture and licensing decisions are
+The host-side M0-M6 foundation is complete: architecture and licensing decisions are
 recorded, the Gradle dependency supply chain is locked and verified, the
 Android application builds with a MIUIX-backed Compose shell, and a pure
 Kotlin player contract now drives a serialized runtime with core generation
@@ -19,6 +19,14 @@ access is confirmed, and stays distinct from its queue-occurrence identity.
 The playback service owns a serialized progress recorder that samples active
 position and flushes pause, stop, completion, transition, reset, and shutdown
 checkpoints without using transient file-descriptor paths as durable data.
+
+The MIUIX-backed player screen now observes immutable state from a
+generation-fenced, reconnecting MediaController. It exposes the single-item
+playback commands currently implemented by the adapter: open, play/pause,
+replay, stop, seek, speed, volume, and repeat-one. Restart-safe recent documents
+can be reopened only after their current SAF grant is checked, incomplete
+checkpoints resume at their recorded position, completed media starts at zero,
+and forgetting history reports an orphaned grant instead of hiding it.
 
 The reviewed bootstrap libmpv AAR is now packaged behind the Android adapter
 module and connected to the application APK. JVM and Android build checks
@@ -66,7 +74,7 @@ point.
 Dependency versions, locks, and verification metadata are committed so that
 the same source revision resolves the same reviewed dependency set.
 
-The local M0-M5 quality gate is:
+The local M0-M6 quality gate is:
 
 ```powershell
 .\gradlew.bat -p build-logic build
@@ -79,6 +87,10 @@ The local M0-M5 quality gate is:
   :data:media-android:assembleRelease `
   :data:media-android:testDebugUnitTest `
   :data:media-android:lintDebug `
+  :feature:player:assembleDebug `
+  :feature:player:assembleRelease `
+  :feature:player:testDebugUnitTest `
+  :feature:player:lintDebug `
   :platform:libmpv-android:assembleDebug `
   :platform:libmpv-android:assembleRelease `
   :platform:libmpv-android:testDebugUnitTest `
@@ -87,6 +99,9 @@ The local M0-M5 quality gate is:
   :platform:playback-android:assembleRelease `
   :platform:playback-android:testDebugUnitTest `
   :platform:playback-android:lintDebug `
+  :ui:design-system-miuix:assembleDebug `
+  :ui:design-system-miuix:assembleRelease `
+  :ui:design-system-miuix:lintDebug `
   :apps:android:assembleDebug `
   :apps:android:assembleRelease `
   :apps:android:compileDebugAndroidTestKotlin `
@@ -94,9 +109,10 @@ The local M0-M5 quality gate is:
   :apps:android:lintDebug
 ```
 
-Running the instrumented smoke test itself requires a connected Android device
-or configured emulator. Dependency lock and checksum regeneration is an
-explicit dependency-review operation, not part of an ordinary build.
+Running the instrumented Compose and document-contract tests themselves requires
+a connected Android device or configured emulator. Dependency lock and checksum
+regeneration is an explicit dependency-review operation, not part of an ordinary
+build.
 
 ## License
 

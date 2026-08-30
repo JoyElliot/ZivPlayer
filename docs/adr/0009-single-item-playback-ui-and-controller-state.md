@@ -27,14 +27,20 @@ honestly while keeping Media3 and MIUIX out of feature logic.
   application looper. A lightweight ticker samples position while connected
   because Media3 has no continuous position callback.
 - Controller connection failure and disconnection are visible UI states. A
-  disconnected controller is terminal and is replaced through a bounded,
-  generation-fenced reconnect loop. Stale futures and listeners cannot publish
-  state after a newer connection wins.
+  disconnected controller is terminal and is replaced through a continuous,
+  generation-fenced reconnect loop with bounded exponential backoff. Stale
+  futures and listeners cannot publish state after a newer connection wins.
 - Every UI action checks the currently advertised Media3 command before
   calling the controller. The first screen exposes open, play/pause/replay,
   stop, seek, playback speed, volume, and repeat-off/repeat-one. Queue editing,
   next/previous, repeat-all presentation, shuffle, track selection, subtitles,
   chapters, fullscreen, picture-in-picture, and video tuning are deferred.
+- Each media-open operation carries a process-scoped monotonic sequence and a
+  unique dispatch token. The service rejects stale sequences before and after
+  slow document resolution, installs replacements with `playWhenReady=false`,
+  and accepts Play only after the latest request has finished installing.
+  Pause, Stop, a newer media operation, and shutdown invalidate unresolved
+  requests, so an older SAF operation cannot regain playback intent.
 - The direct `SurfaceView` path and service-owned Surface lease remain
   unchanged. Compose presents status and metadata around the surface but never
   owns a native player or treats a Surface as durable state.
@@ -59,9 +65,15 @@ Media3 controller to immutable Compose state. Activity recreation preserves
 the controller, while a real disconnect produces an explicit reconnecting
 state instead of leaving a one-shot listener suspended.
 
+The request fence prevents stale resolution and unintended auto-play. It does
+not roll back a replacement after the serialized core has already accepted its
+`SetQueue`; a concurrent Pause or Stop still runs next and wins playback intent,
+so the accepted item may remain current in a paused or stopped state.
+
 Host-side tests can cover formatting and UI-state policy, and existing Compose
 instrumentation dependencies can cover labels, enabled actions, and slider
 semantics. A device or configured emulator remains required to prove real
 Surface presentation, controller reconnection, SAF reopening and revocation,
 checkpoint resume after process death, foreground notification behavior, audio
-focus, and accessibility at large font scales.
+focus, external Media3 transport-command ordering, synchronous Surface IPC
+latency, and accessibility at large font scales.
