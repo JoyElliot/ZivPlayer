@@ -43,9 +43,26 @@ pretending that a complete media library already exists.
 - Playback progress is written by a single service-owned recorder, sampled
   while active and flushed on pause, explicit stop, completion, item
   transition, engine replacement, and service shutdown. Explicit stop follows
-  the core contract and persists position zero. Transient player events are not
-  the sole progress source because position snapshots may be conflated and item
-  transitions can skip a standalone ended state.
+  the core contract and persists position zero. Conflated `StateFlow` snapshots
+  supply current positions; ordered `StateChanged` and `ItemTransition` events
+  advance structural queue state so skipped intermediate snapshots cannot erase
+  a transition source. Engine epochs, state revisions, and event sequences fence
+  stale observations after reset.
+- Checkpoint timestamps are strictly monotonic within a recorder and begin above
+  an existing stored timestamp after process recreation or wall-clock rollback.
+- Repository calls are time-bounded. A transient failure, timeout, or repository
+  cancellation is reported and retained for an ordered retry; an abnormal
+  recorder termination is propagated to service shutdown instead of being
+  acknowledged as a successful flush.
+- Engine detach and service close perform a bounded final drain of in-flight
+  state and transition observations. This prevents ordinary collector
+  interleaving from splitting a transition while keeping shutdown bounded; it
+  is not a durable event journal or a transactional watermark. Extreme event
+  buffer overflow remains a known boundary until the core exposes an atomic
+  transition envelope or acknowledgement.
+- Forgetting a document removes its database row first, then releases only this
+  feature's persisted read grant. A release exception or a failed confirmation
+  query is reported as an orphaned grant rather than as successful cleanup.
 
 ## Consequences
 
@@ -54,7 +71,9 @@ Media3 receives a stable media ID and the service still resolves the original
 URI to a short-lived descriptor. Revoked permissions or deleted provider rows
 remain recoverable product states rather than database corruption.
 
-Host-side tests can prove validation, mapping, ID reuse, and progress ordering
-policy. A device or configured emulator is still required to prove Room DAO
-ordering, schema creation and migrations, persistable-grant behavior, provider
-deletion, process-death reopening, and service-owned descriptor lifetime.
+Host-side tests can prove validation, mapping, ID reuse, progress ordering,
+timestamp monotonicity, stop/completion policy, and stale-engine fencing. A
+device or configured emulator is still required to prove Room DAO ordering,
+schema creation and migrations, persisted and temporary grant lifetime,
+provider revocation/deletion, grant quota behavior, process-death reopening,
+and service-owned descriptor lifetime.

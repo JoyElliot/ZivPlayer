@@ -5,7 +5,7 @@ high-quality rendering, and advanced subtitles.
 
 ## Project status
 
-The host-side M0-M4 foundation is complete: architecture and licensing decisions are
+The host-side M0-M5 foundation is complete: architecture and licensing decisions are
 recorded, the Gradle dependency supply chain is locked and verified, the
 Android application builds with a MIUIX-backed Compose shell, and a pure
 Kotlin player contract now drives a serialized runtime with core generation
@@ -13,12 +13,20 @@ filtering. A Media3 `MediaSessionService` owns that runtime and the single
 libmpv backend; the activity connects only through a `MediaController` and
 hands short-lived video `Surface` instances to the service.
 
+Media opened through Android's document picker now receives a stable media
+identity, is stored in a versioned Room database only when restart-safe URI
+access is confirmed, and stays distinct from its queue-occurrence identity.
+The playback service owns a serialized progress recorder that samples active
+position and flushes pause, stop, completion, transition, reset, and shutdown
+checkpoints without using transient file-descriptor paths as durable data.
+
 The reviewed bootstrap libmpv AAR is now packaged behind the Android adapter
 module and connected to the application APK. JVM and Android build checks
 cover state projection, command policy, reset recovery, Surface lease ordering,
 and service manifest composition. A physical device or configured emulator is
 still required to prove actual media output, foreground notification behavior,
-Surface recreation, audio focus, and native shutdown.
+Surface recreation, audio focus, native shutdown, Room behavior, document
+provider permission persistence, and process-death reopening.
 
 The bootstrap adapter fences callbacks only under a single-instance,
 serialized stop/load policy. Its reviewed AAR discards event payloads and
@@ -58,14 +66,19 @@ point.
 Dependency versions, locks, and verification metadata are committed so that
 the same source revision resolves the same reviewed dependency set.
 
-The local M0-M4 quality gate is:
+The local M0-M5 quality gate is:
 
 ```powershell
 .\gradlew.bat -p build-logic build
 
 .\gradlew.bat :core:model:test `
+  :core:media-api:test `
   :core:player-api:test `
   :core:player-runtime:test `
+  :data:media-android:assembleDebug `
+  :data:media-android:assembleRelease `
+  :data:media-android:testDebugUnitTest `
+  :data:media-android:lintDebug `
   :platform:libmpv-android:assembleDebug `
   :platform:libmpv-android:assembleRelease `
   :platform:libmpv-android:testDebugUnitTest `
