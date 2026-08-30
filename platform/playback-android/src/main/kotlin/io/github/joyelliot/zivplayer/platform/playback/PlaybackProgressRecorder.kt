@@ -215,7 +215,7 @@ internal class PlaybackProgressRecorder(
                             drainFinalObservations(state)
                             state.finishFinalFlush()
                         } else {
-                            state.discardSession()
+                            state.flushPendingAndDiscardSession()
                         }
                         shouldClose = true
                     }
@@ -446,6 +446,11 @@ internal class PlaybackProgressRecorder(
         fun discardSession() {
             activeEpoch = null
             clearSessionState()
+        }
+
+        suspend fun flushPendingAndDiscardSession() {
+            retryPendingWrites()
+            discardSession()
         }
 
         private fun clearSessionState() {

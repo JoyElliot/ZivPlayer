@@ -957,6 +957,23 @@ class PlaybackProgressRecorderTest {
         awaitRecorder { recorder.closeAndFlush(EPOCH_ONE, playing) }
     }
 
+    @Test
+    fun `epoch mismatch close retries writes left by a failed detach`() = runTest {
+        val repository = FakeRecentMediaRepository(failuresBeforeSuccess = 3)
+        val failures = mutableListOf<Throwable>()
+        val recorder = recorder(repository, failureReporter = failures::add)
+        val playing = snapshot(PlayerStatus.PLAYING, positionMs = 35L, durationMs = 100L)
+
+        recorder.bind(EPOCH_ONE, playing)
+        awaitRecorder { recorder.sampleNow() }
+        awaitRecorder { recorder.flushAndDetach(EPOCH_ONE, playing) }
+        assertEquals(3, failures.size)
+        assertTrue(repository.checkpoints.isEmpty())
+
+        awaitRecorder { recorder.closeAndFlush(EPOCH_ONE, playing) }
+        assertEquals(Milliseconds(35L), repository.checkpoints.single().position)
+    }
+
     private fun TestScope.recorder(
         repository: FakeRecentMediaRepository,
         clock: () -> Long = { 1_000L },
