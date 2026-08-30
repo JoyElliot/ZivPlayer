@@ -47,6 +47,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.android.asCoroutineDispatcher
 import kotlinx.coroutines.cancelAndJoin
@@ -80,6 +81,7 @@ internal class MpvSessionPlayer(
     applicationLooper: Looper,
     private val context: Context,
     private val queueItemIdGenerator: QueueItemIdGenerator = QueueItemIdGenerator(),
+    private val progressRecorder: PlaybackProgressRecorder,
     private val engineFactory: () -> PlaybackEngine,
 ) : SimpleBasePlayer(applicationLooper) {
     private val scope = CoroutineScope(
@@ -90,6 +92,7 @@ internal class MpvSessionPlayer(
     private val operationGate = Mutex()
 
     private var engine = engineFactory()
+    private var engineEpoch = 0L
 
     @Volatile
     private var snapshot: PlaybackSnapshot = engine.session.snapshot.value
@@ -98,7 +101,14 @@ internal class MpvSessionPlayer(
     private var surfaceLease: LibmpvSurfaceLease? = null
     private var activeDescriptor: ParcelFileDescriptor? = null
     private var activeMediaItem: Media3MediaItem? = null
-    private var snapshotCollector: Job = startSnapshotCollector(engine)
+    private var snapshotCollector: Job
+    private var eventCollector: Job
+
+    init {
+        progressRecorder.bind(engineEpoch, snapshot)
+        snapshotCollector = startSnapshotCollector(engine, engineEpoch)
+        eventCollector = startEventCollector(engine, engineEpoch)
+    }
 
     override fun getState(): State {
         val snapshot = snapshot
@@ -139,12 +149,22 @@ internal class MpvSessionPlayer(
         return builder.build()
     }
 
-    override fun handleSetPlayWhenReady(playWhenReady: Boolean): ListenableFuture<*> =
-        dispatch(if (playWhenReady) PlayerCommand.Play else PlayerCommand.Pause)
+    override fun handleSetPlayWhenReady(playWhenReady: Boolean): ListenableFuture<*> = launchFuture {
+        dispatchOrThrow(if (playWhenReady) PlayerCommand.Play else PlayerCommand.Pause)
+        if (!playWhenReady) {
+            progressRecorder.flushPause(engineEpoch, engine.session.snapshot.value)
+        }
+    }
 
     override fun handlePrepare(): ListenableFuture<*> = Futures.immediateVoidFuture()
 
-    override fun handleStop(): ListenableFuture<*> = dispatch(PlayerCommand.Stop)
+    override fun handleStop(): ListenableFuture<*> = launchFuture {
+        val beforeStop = engine.session.snapshot.value
+        dispatchOrThrow(PlayerCommand.Stop)
+        if (beforeStop.queue.currentItem != null && beforeStop.status != PlayerStatus.IDLE) {
+            progressRecorder.flushStop(engineEpoch, engine.session.snapshot.value)
+        }
+    }
 
     override fun handleRelease(): ListenableFuture<*> = shutdownAsync()
 
@@ -294,11 +314,22 @@ internal class MpvSessionPlayer(
         surfaceLease = null
         val engineToClose = engine
         try {
+            runCatching {
+                withContext(NonCancellable) {
+                    progressRecorder.closeAndFlush(
+                        epoch = engineEpoch,
+                        snapshot = engineToClose.session.snapshot.value,
+                    )
+                }
+            }.exceptionOrNull()?.let { shutdownFailure = it }
             withContext(Dispatchers.IO) {
                 leaseToDetach?.let { lease ->
                     runCatching { engineToClose.surfacePort.detachSurface(lease) }
                         .exceptionOrNull()
-                        ?.let { shutdownFailure = it }
+                        ?.let { failure ->
+                            shutdownFailure?.addSuppressed(failure)
+                                ?: run { shutdownFailure = failure }
+                        }
                 }
                 try {
                     engineToClose.session.close()
@@ -310,6 +341,7 @@ internal class MpvSessionPlayer(
             shutdownFailure?.addSuppressed(failure) ?: run { shutdownFailure = failure }
         } finally {
             snapshotCollector.cancel()
+            eventCollector.cancel()
             runCatching { activeDescriptor?.close() }
                 .exceptionOrNull()
                 ?.let { failure ->
@@ -324,13 +356,27 @@ internal class MpvSessionPlayer(
         shutdownFailure?.let { throw it }
     }
 
-    private fun startSnapshotCollector(observedEngine: PlaybackEngine): Job =
+    private fun startSnapshotCollector(observedEngine: PlaybackEngine, observedEpoch: Long): Job =
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
             observedEngine.session.snapshot.collect { next ->
-                if (engine === observedEngine) {
+                if (engine === observedEngine && engineEpoch == observedEpoch) {
                     snapshot = next
+                    progressRecorder.observeSnapshot(observedEpoch, next)
                     invalidateState()
                 }
+            }
+        }
+
+    private fun startEventCollector(observedEngine: PlaybackEngine, observedEpoch: Long): Job =
+        scope.launch(
+            context = Dispatchers.Unconfined,
+            start = CoroutineStart.UNDISPATCHED,
+        ) {
+            observedEngine.session.events.collect { event ->
+                // DefaultPlayerSession emits from one serialized actor. Inline forwarding keeps
+                // StateChanged + ItemTransition ordered ahead of command completion; the epoch
+                // fence makes late events from a detached engine harmless.
+                progressRecorder.observeEvent(observedEpoch, event)
             }
         }
 
@@ -342,7 +388,10 @@ internal class MpvSessionPlayer(
         snapshot = authoritativeSnapshot
 
         val previousEngine = engine
+        val previousEpoch = engineEpoch
+        progressRecorder.flushAndDetach(previousEpoch, authoritativeSnapshot)
         snapshotCollector.cancelAndJoin()
+        eventCollector.cancelAndJoin()
         withContext(Dispatchers.IO) {
             previousEngine.session.close()
         }
@@ -353,8 +402,11 @@ internal class MpvSessionPlayer(
 
         val replacement = engineFactory()
         engine = replacement
+        engineEpoch = previousEpoch + 1L
         snapshot = replacement.session.snapshot.value
-        snapshotCollector = startSnapshotCollector(replacement)
+        progressRecorder.bind(engineEpoch, snapshot)
+        snapshotCollector = startSnapshotCollector(replacement, engineEpoch)
+        eventCollector = startEventCollector(replacement, engineEpoch)
         val surface = videoOutput as? Surface
         if (surface?.isValid == true) {
             surfaceLease = replacement.surfacePort.attachSurface(surface)

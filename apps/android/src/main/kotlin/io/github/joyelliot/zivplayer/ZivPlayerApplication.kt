@@ -6,9 +6,12 @@ import android.app.Application
 import io.github.joyelliot.zivplayer.core.media.RecentMediaRepository
 import io.github.joyelliot.zivplayer.data.media.MediaDocumentRegistrar
 import io.github.joyelliot.zivplayer.data.media.RoomRecentMediaRepository
+import io.github.joyelliot.zivplayer.platform.playback.PlaybackHistoryProvider
 
-class ZivPlayerApplication : Application() {
-    val recentMediaRepository: RecentMediaRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+class ZivPlayerApplication : Application(), PlaybackHistoryProvider {
+    override val recentMediaRepository: RecentMediaRepository by lazy(
+        LazyThreadSafetyMode.SYNCHRONIZED,
+    ) {
         RoomRecentMediaRepository.create(this)
     }
 

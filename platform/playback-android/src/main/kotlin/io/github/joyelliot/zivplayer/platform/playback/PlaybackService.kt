@@ -28,7 +28,19 @@ class PlaybackService : MediaSessionService() {
         var createdPlayer: MpvSessionPlayer? = null
         var createdSession: MediaSession? = null
         try {
-            createdPlayer = MpvSessionPlayer(mainLooper, this) {
+            val historyProvider = application as? PlaybackHistoryProvider
+                ?: error("The application must provide playback history dependencies.")
+            val progressRecorder = PlaybackProgressRecorder(
+                repository = historyProvider.recentMediaRepository,
+                failureReporter = { failure ->
+                    Log.w(LOG_TAG, "Playback progress could not be persisted.", failure)
+                },
+            )
+            createdPlayer = MpvSessionPlayer(
+                applicationLooper = mainLooper,
+                context = this,
+                progressRecorder = progressRecorder,
+            ) {
                 val backend = LibmpvBackend(this)
                 PlaybackEngine(
                     session = DefaultPlayerSession(backend),
