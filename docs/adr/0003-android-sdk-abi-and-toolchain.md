@@ -27,9 +27,11 @@ internally by AGP 9.2.1. It remains a project-owned compatibility decision and
 must pass repository builds; an upstream build file is not evidence that the
 complete ZivPlayer dependency set is compatible.
 
-The bootstrap libmpv AAR can be consumed without installing a local NDK. The
-reproducible native pipeline will separately pin NDK 29 and CMake 4.1.2 in its
-Linux build environment.
+The bootstrap libmpv AAR can be consumed without installing a local NDK. ADR
+0010 now defines the inspected source-built libmpv pipeline: Linux, NDK 29,
+Meson/Ninja, Autoconf/Automake/libtool/Make, `pkg-config`, and `ndk-build`. It
+supersedes this ADR's earlier CMake 4.1.2 placeholder for that pipeline because
+the selected upstream build does not use CMake.
 
 ## Consequences
 

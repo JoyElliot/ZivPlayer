@@ -49,6 +49,14 @@ The application is written in Kotlin with Jetpack Compose and MIUIX. libmpv is
 the only playback engine; AndroidX Media3 is reserved for Android media-session
 and system-integration APIs.
 
+M7 native supply-chain work has started. A 23-input source manifest now locks
+the complete reviewed mpv-android 2026-08-11 source closure by immutable
+revision, byte count, SHA-256, license, and linkage role. Its standard-library
+Python tool can explicitly fetch the ignored local cache and later verify it
+fully offline. This is a source-provenance milestone only: the Linux container,
+source-built wrapper and libraries, ELF audit, SBOM, notices, corresponding
+source bundle, and bootstrap-AAR retirement gate are still pending.
+
 ## Baseline
 
 - Namespace: `io.github.joyelliot.zivplayer`
@@ -73,6 +81,20 @@ point.
 
 Dependency versions, locks, and verification metadata are committed so that
 the same source revision resolves the same reviewed dependency set.
+
+The native source manifest has a separate explicit cache gate:
+
+```powershell
+python native/tools/source_tool.py validate
+python native/tools/source_tool.py fetch
+python native/tools/source_tool.py verify-cache
+python -m unittest discover -s native/tests -v
+```
+
+See [`native/README.md`](native/README.md) and
+[`ADR 0010`](docs/adr/0010-source-built-libmpv-and-native-provenance.md). The
+native cache is ignored; source identity remains reviewable in the committed
+manifest.
 
 The local M0-M6 quality gate is:
 
