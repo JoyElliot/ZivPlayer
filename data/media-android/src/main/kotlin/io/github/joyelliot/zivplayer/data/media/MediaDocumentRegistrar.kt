@@ -5,6 +5,7 @@ package io.github.joyelliot.zivplayer.data.media
 import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
+import android.content.UriPermission
 import android.net.Uri
 import android.provider.OpenableColumns
 import io.github.joyelliot.zivplayer.core.media.DurableMediaUri
@@ -228,20 +229,20 @@ private class AndroidDocumentAccess(
 
     override fun releasePersistedReadGrant(sourceUri: String): Boolean {
         val uri = Uri.parse(sourceUri)
-        val permission = persistedPermission(uri) ?: return true
-        val modeFlags =
-            (if (permission.isReadPermission) Intent.FLAG_GRANT_READ_URI_PERMISSION else 0) or
-                (if (permission.isWritePermission) Intent.FLAG_GRANT_WRITE_URI_PERMISSION else 0)
-        if (modeFlags == 0) {
+        val permissions = persistedPermissions(uri).getOrElse { return false }
+        if (permissions.none(UriPermission::isReadPermission)) {
             return true
         }
-        runCatching {
+        if (runCatching {
             contentResolver.releasePersistableUriPermission(
                 uri,
-                modeFlags,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION,
             )
+        }.isFailure) {
+            return false
         }
-        return persistedPermission(uri) == null
+        return persistedPermissions(uri).getOrElse { return false }
+            .none(UriPermission::isReadPermission)
     }
 
     override fun readDetails(sourceUri: String): MediaDocumentDetails {
@@ -271,13 +272,13 @@ private class AndroidDocumentAccess(
         )
     }
 
-    private fun hasPersistedReadGrant(uri: Uri): Boolean = runCatching {
-        persistedPermission(uri)?.isReadPermission == true
-    }.getOrDefault(false)
+    private fun hasPersistedReadGrant(uri: Uri): Boolean = persistedPermissions(uri)
+        .getOrElse { return false }
+        .any(UriPermission::isReadPermission)
 
-    private fun persistedPermission(uri: Uri) = runCatching {
-        contentResolver.persistedUriPermissions.firstOrNull { permission ->
+    private fun persistedPermissions(uri: Uri): Result<List<UriPermission>> = runCatching {
+        contentResolver.persistedUriPermissions.filter { permission ->
             permission.uri == uri
         }
-    }.getOrNull()
+    }
 }
