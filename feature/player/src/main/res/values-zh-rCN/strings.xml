@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="player_title">ZivPlayer</string>
+    <string name="player_bootstrap_description">Android 播放器应用壳已就绪，下一阶段接入 libmpv。</string>
+    <string name="player_open_media">打开媒体</string>
+</resources>
