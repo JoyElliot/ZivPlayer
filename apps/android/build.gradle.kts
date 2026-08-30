@@ -59,13 +59,18 @@ kotlin {
 
 dependencies {
     implementation(project(":feature:player"))
+    implementation(project(":platform:playback-android"))
     implementation(project(":ui:design-system-miuix"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.android)
+    implementation(libs.androidx.media3.common)
+    implementation(libs.androidx.media3.session)
 
     implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.runtime)
     implementation(libs.androidx.compose.ui)
     debugImplementation(libs.androidx.compose.ui.tooling)

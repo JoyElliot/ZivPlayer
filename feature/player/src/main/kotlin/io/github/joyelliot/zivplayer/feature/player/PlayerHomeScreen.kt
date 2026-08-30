@@ -11,8 +11,12 @@ import io.github.joyelliot.zivplayer.designsystem.ZivScreen
 import io.github.joyelliot.zivplayer.designsystem.ZivText
 
 @Composable
-fun PlayerHomeScreen(onOpenMedia: () -> Unit = {}) {
+fun PlayerHomeScreen(
+    onOpenMedia: () -> Unit = {},
+    videoContent: @Composable () -> Unit = {},
+) {
     ZivScreen(title = stringResource(R.string.player_title)) {
+        videoContent()
         ZivText(text = stringResource(R.string.player_bootstrap_description))
         ZivPrimaryButton(
             text = stringResource(R.string.player_open_media),
