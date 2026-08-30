@@ -6,6 +6,10 @@ plugins {
 
 group = "io.github.joyelliot.zivplayer.buildlogic"
 
+dependencyLocking {
+    lockAllConfigurations()
+}
+
 gradlePlugin {
     plugins {
         register("dependencyLocking") {

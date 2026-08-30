@@ -12,6 +12,8 @@
 - Centralize approved coordinates in `gradle/libs.versions.toml`.
 - Prohibit dynamic versions, snapshots, changing modules, and JitPack.
 - Commit Gradle dependency lockfiles and dependency-verification metadata.
+- Give each independent included build its own lockfile and verification
+  metadata; the root build's files do not substitute for that boundary.
 - Treat the initial third-party libmpv AAR as a bootstrap implementation behind
   a ZivPlayer-owned adapter, not as a permanent unexamined binary.
 - Before public distribution, build libmpv and its native dependency stack from
