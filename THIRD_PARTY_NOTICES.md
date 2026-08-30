@@ -9,6 +9,7 @@ SBOM before distribution.
 | --- | --- | --- | --- |
 | AndroidX and Jetpack Compose | Android application and UI runtime | Apache-2.0 | Preserve notices required by resolved artifacts. |
 | Kotlin and kotlinx.coroutines | Language tooling and asynchronous runtime | Apache-2.0 | Compiler tooling is build-time; runtime artifacts remain inventoried. |
+| Kotlin Symbol Processing (KSP) | Build-time Room code generation | Apache-2.0 | Build-time only; pin and verify the Gradle plugin and processor artifacts. |
 | compose-miuix-ui | MIUIX-inspired Compose design system | Apache-2.0 | Community project, not an official Xiaomi SDK. APIs are experimental. |
 | libmpv Android wrapper | JNI and Android integration bootstrap | MIT | The wrapper license does not cover the embedded native dependency stack. |
 | mpv/libmpv | Playback engine | GPL-2.0-or-later in the selected full-feature build | Corresponding source and build configuration must accompany distributions. |
