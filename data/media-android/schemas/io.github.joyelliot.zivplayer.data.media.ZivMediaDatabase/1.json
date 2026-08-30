@@ -1,0 +1,105 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "79f23771e78ec3ae1cf283bac8d20f44",
+    "entities": [
+      {
+        "tableName": "recent_media",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`media_id` TEXT NOT NULL, `source_uri` TEXT NOT NULL, `mime_type` TEXT, `title` TEXT, `artist` TEXT, `album` TEXT, `artwork_uri` TEXT, `added_at_epoch_ms` INTEGER NOT NULL, `last_opened_at_epoch_ms` INTEGER NOT NULL, `checkpoint_position_ms` INTEGER, `checkpoint_duration_ms` INTEGER, `checkpoint_completed` INTEGER, `checkpoint_updated_at_epoch_ms` INTEGER, PRIMARY KEY(`media_id`))",
+        "fields": [
+          {
+            "fieldPath": "mediaId",
+            "columnName": "media_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceUri",
+            "columnName": "source_uri",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mimeType",
+            "columnName": "mime_type",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "artist",
+            "columnName": "artist",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "album",
+            "columnName": "album",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "artworkUri",
+            "columnName": "artwork_uri",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "addedAtEpochMs",
+            "columnName": "added_at_epoch_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastOpenedAtEpochMs",
+            "columnName": "last_opened_at_epoch_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "checkpointPositionMs",
+            "columnName": "checkpoint_position_ms",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "checkpointDurationMs",
+            "columnName": "checkpoint_duration_ms",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "checkpointCompleted",
+            "columnName": "checkpoint_completed",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "checkpointUpdatedAtEpochMs",
+            "columnName": "checkpoint_updated_at_epoch_ms",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "media_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_recent_media_source_uri",
+            "unique": true,
+            "columnNames": [
+              "source_uri"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_recent_media_source_uri` ON `${TABLE_NAME}` (`source_uri`)"
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '79f23771e78ec3ae1cf283bac8d20f44')"
+    ]
+  }
+}

@@ -1,6 +1,7 @@
 [versions]
 agp = "9.3.2"
 kotlin = "2.4.0"
+ksp = "2.3.11"
 compose-bom = "2026.08.00"
 activity = "1.13.0"
 androidx-core = "1.19.0"
@@ -63,3 +64,5 @@ android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+room = { id = "androidx.room", version.ref = "room" }
