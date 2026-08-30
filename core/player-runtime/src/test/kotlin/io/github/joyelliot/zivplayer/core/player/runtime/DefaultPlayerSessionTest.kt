@@ -613,6 +613,25 @@ class DefaultPlayerSessionTest {
     }
 
     @Test
+    fun loadFailureMakesTheBackendNonReusable() = runTest {
+        val backend = FakeBackend().apply {
+            loadFailure = IllegalStateException("native load failed")
+        }
+        val session = newSession(backend)
+        runCurrent()
+
+        val load = dispatch(session, PlayerCommand.SetQueue(items()))
+
+        assertTrue(load is CommandResult.Failed)
+        assertEquals(PlayerStatus.ERROR, session.snapshot.value.status)
+        assertEquals(ErrorRecovery.RESET, session.snapshot.value.error?.recovery)
+        val retry = dispatch(session, PlayerCommand.SetQueue(items(), startIndex = 1))
+        assertTrue(retry is CommandResult.Rejected)
+        assertEquals(1, backend.loads.size)
+        close(session)
+    }
+
+    @Test
     fun stopTimeoutMakesTheBackendNonReusable() = runTest {
         val backend = FakeBackend()
         val session = newSession(backend, backendOperationTimeoutMillis = 1_000L)
@@ -882,6 +901,7 @@ class DefaultPlayerSessionTest {
         var loadGate: CompletableDeferred<Unit>? = null
         var stopGate: CompletableDeferred<Unit>? = null
         var closeGate: CompletableDeferred<Unit>? = null
+        var loadFailure: Throwable? = null
         var playFailure: Throwable? = null
         var stopFailure: Throwable? = null
 
@@ -892,6 +912,7 @@ class DefaultPlayerSessionTest {
         override suspend fun load(request: BackendLoadRequest) {
             callOrder += "load"
             loads += request
+            loadFailure?.let { throw it }
             loadGate?.await()
         }
 

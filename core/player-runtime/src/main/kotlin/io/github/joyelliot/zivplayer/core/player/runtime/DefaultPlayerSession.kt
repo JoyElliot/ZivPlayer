@@ -1146,7 +1146,7 @@ class DefaultPlayerSession(
         } catch (_: TimeoutCancellationException) {
             loadOperationTimeoutError()
         } catch (_: Throwable) {
-            backendOperationError("load media")
+            backendOperationError("load media", ErrorRecovery.RESET)
         }
     }
 
