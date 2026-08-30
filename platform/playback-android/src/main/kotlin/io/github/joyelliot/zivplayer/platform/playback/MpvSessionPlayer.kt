@@ -57,6 +57,8 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.util.concurrent.CancellationException
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
+import java.util.UUID
 import kotlin.math.roundToInt
 
 private const val MILLIS_TO_MICROS = 1_000L
@@ -66,9 +68,18 @@ internal data class PlaybackEngine(
     val surfacePort: LibmpvSurfacePort,
 )
 
+internal class QueueItemIdGenerator(
+    private val instanceId: String = UUID.randomUUID().toString(),
+) {
+    private val sequence = AtomicLong(0L)
+
+    fun next(): QueueItemId = QueueItemId("queue:$instanceId:${sequence.getAndIncrement()}")
+}
+
 internal class MpvSessionPlayer(
     applicationLooper: Looper,
     private val context: Context,
+    private val queueItemIdGenerator: QueueItemIdGenerator = QueueItemIdGenerator(),
     private val engineFactory: () -> PlaybackEngine,
 ) : SimpleBasePlayer(applicationLooper) {
     private val scope = CoroutineScope(
@@ -225,6 +236,7 @@ internal class MpvSessionPlayer(
                 runCatching { activeDescriptor?.close() }
                 activeDescriptor = resolved.descriptor
                 activeMediaItem = resolved.mediaItem
+                invalidateState()
             } catch (failure: Throwable) {
                 runCatching { resolved.descriptor?.close() }
                     .exceptionOrNull()
@@ -369,13 +381,14 @@ internal class MpvSessionPlayer(
         }
         try {
             val locator = descriptor?.let { "$FILE_DESCRIPTOR_PATH_PREFIX${it.fd}" } ?: uri.toString()
-            val id = mediaItem.mediaId.ifBlank { uri.toString() }
-            val normalizedItem = mediaItem.buildUpon().setMediaId(id).build()
+            val queueItemId = queueItemIdGenerator.next()
+            val mediaId = mediaItem.mediaId.ifBlank { "session:${queueItemId.value}" }
+            val normalizedItem = mediaItem.buildUpon().setMediaId(mediaId).build()
             return ResolvedMediaItem(
                 queueItem = QueueItem(
-                    id = QueueItemId(id),
+                    id = queueItemId,
                     media = MediaItem(
-                        id = MediaId(id),
+                        id = MediaId(mediaId),
                         source = MediaSource(locator, configuration.mimeType),
                         metadata = MediaMetadata(
                             title = mediaItem.mediaMetadata.title?.toString(),
@@ -533,7 +546,7 @@ private fun PlaybackSnapshot.toMedia3Playlist(
 ): List<SimpleBasePlayer.MediaItemData> = queue.items.mapIndexed { index, item ->
     val isCurrent = index == queue.currentIndex
     val mediaItem = retainedMediaItem
-        ?.takeIf { it.mediaId == item.id.value }
+        ?.takeIf { it.mediaId == item.media.id.value }
         ?: item.toMedia3MediaItem()
     SimpleBasePlayer.MediaItemData.Builder(item.id.value)
         .setMediaItem(mediaItem)
@@ -553,7 +566,7 @@ private fun PlaybackSnapshot.toMedia3Playlist(
 }
 
 private fun QueueItem.toMedia3MediaItem(): Media3MediaItem = Media3MediaItem.Builder()
-    .setMediaId(id.value)
+    .setMediaId(media.id.value)
     .setUri(media.source.locator)
     .apply { media.source.mimeType?.let(::setMimeType) }
     .setMediaMetadata(media.metadata.toMedia3Metadata())

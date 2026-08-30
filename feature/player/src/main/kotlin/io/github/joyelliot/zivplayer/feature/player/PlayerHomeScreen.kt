@@ -12,12 +12,14 @@ import io.github.joyelliot.zivplayer.designsystem.ZivText
 
 @Composable
 fun PlayerHomeScreen(
+    statusMessage: String? = null,
     onOpenMedia: () -> Unit = {},
     videoContent: @Composable () -> Unit = {},
 ) {
     ZivScreen(title = stringResource(R.string.player_title)) {
         videoContent()
         ZivText(text = stringResource(R.string.player_bootstrap_description))
+        statusMessage?.let { ZivText(text = it) }
         ZivPrimaryButton(
             text = stringResource(R.string.player_open_media),
             onClick = onOpenMedia,

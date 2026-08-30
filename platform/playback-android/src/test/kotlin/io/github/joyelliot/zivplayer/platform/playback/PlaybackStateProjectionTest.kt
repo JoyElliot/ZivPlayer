@@ -23,6 +23,29 @@ import org.junit.Test
 
 class PlaybackStateProjectionTest {
     @Test
+    fun `queue occurrence IDs are deterministic and distinct from stable media IDs`() {
+        val generator = QueueItemIdGenerator(instanceId = "test")
+
+        assertEquals(QueueItemId("queue:test:0"), generator.next())
+        assertEquals(QueueItemId("queue:test:1"), generator.next())
+        assertFalse(generator.next().value == ITEM.media.id.value)
+    }
+
+    @Test
+    fun `one stable media ID may have multiple queue occurrences`() {
+        val generator = QueueItemIdGenerator(instanceId = "repeat")
+        val repeated = listOf(
+            ITEM.copy(id = generator.next()),
+            ITEM.copy(id = generator.next()),
+        )
+
+        val queue = PlaybackQueue.of(repeated, currentIndex = 0)
+
+        assertEquals(2, queue.items.map(QueueItem::id).distinct().size)
+        assertEquals(1, queue.items.map { it.media.id }.distinct().size)
+    }
+
+    @Test
     fun `every core status maps to a valid Media3 state tuple`() {
         val expectations = listOf(
             Expectation(PlayerStatus.IDLE, Player.STATE_IDLE),

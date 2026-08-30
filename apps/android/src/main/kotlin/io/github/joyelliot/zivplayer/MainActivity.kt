@@ -10,12 +10,21 @@ import androidx.activity.viewModels
 
 class MainActivity : ComponentActivity() {
     private val playbackController by viewModels<PlaybackControllerViewModel>()
+    private val mediaSelection by viewModels<MediaSelectionViewModel>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            ZivPlayerApp(controller = playbackController.controller.value)
+            ZivPlayerApp(
+                controller = playbackController.controller.value,
+                pendingPlayback = mediaSelection.pendingPlayback.value,
+                persistenceNotice = mediaSelection.persistenceNotice.value,
+                selectionFailed = mediaSelection.selectionFailed.value,
+                onDocumentSelected = mediaSelection::onDocumentSelected,
+                onPlaybackConsumed = mediaSelection::onPlaybackConsumed,
+                onPlaybackFailed = mediaSelection::onPlaybackFailed,
+            )
         }
     }
 }

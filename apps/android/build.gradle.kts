@@ -58,6 +58,7 @@ kotlin {
 }
 
 dependencies {
+    implementation(project(":data:media-android"))
     implementation(project(":feature:player"))
     implementation(project(":platform:playback-android"))
     implementation(project(":ui:design-system-miuix"))

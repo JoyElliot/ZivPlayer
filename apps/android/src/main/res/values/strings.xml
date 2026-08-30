@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">ZivPlayer</string>
+    <string name="media_session_only_permission">This media can play now, but its provider did not grant restart-safe access.</string>
+    <string name="media_session_only_history">This media can play now, but it could not be added to local history.</string>
+    <string name="media_open_failed">The selected media could not be opened. Choose it again to retry.</string>
 </resources>
