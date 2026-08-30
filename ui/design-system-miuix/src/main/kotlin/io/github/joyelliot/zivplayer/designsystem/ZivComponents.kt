@@ -14,6 +14,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
@@ -88,9 +89,12 @@ fun ZivSlider(
     onValueChangeFinished: (() -> Unit)? = null,
     stateDescription: String? = null,
 ) {
-    val describedModifier = stateDescription?.let { description ->
-        modifier.semantics { this.stateDescription = description }
-    } ?: modifier
+    val describedModifier = modifier.semantics {
+        stateDescription?.let { this.stateDescription = it }
+        if (!enabled) {
+            disabled()
+        }
+    }
     Slider(
         value = value.coerceIn(valueRange),
         onValueChange = onValueChange,

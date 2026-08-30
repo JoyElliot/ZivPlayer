@@ -46,6 +46,7 @@ data class PlayerUiState(
     val canSetSpeed: Boolean = false,
     val canSetVolume: Boolean = false,
     val canSetRepeat: Boolean = false,
+    val canRenderVideo: Boolean = false,
     val errorMessage: String? = null,
 ) {
     val hasMedia: Boolean

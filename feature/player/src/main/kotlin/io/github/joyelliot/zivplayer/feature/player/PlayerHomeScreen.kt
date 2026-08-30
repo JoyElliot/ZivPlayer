@@ -68,6 +68,7 @@ fun PlayerHomeScreen(
         )
         RecentMediaSection(
             recentMedia = recentMedia,
+            currentMediaId = state.mediaId,
             onOpenRecent = onOpenRecent,
             onForgetRecent = onForgetRecent,
         )
@@ -272,6 +273,7 @@ private fun PlayerSecondaryControls(
 @Composable
 private fun RecentMediaSection(
     recentMedia: List<RecentMediaUiItem>,
+    currentMediaId: String?,
     onOpenRecent: (String) -> Unit,
     onForgetRecent: (String) -> Unit,
 ) {
@@ -289,17 +291,18 @@ private fun RecentMediaSection(
             ) {
                 ZivText(text = item.title)
                 item.supportingText?.let { ZivText(text = it) }
-                item.progress?.let { progress ->
-                    ZivLinearProgress(progress = progress)
-                    val resumeText = if (item.completed) {
-                        stringResource(R.string.player_recent_completed)
-                    } else {
-                        stringResource(
+                item.progress?.let { progress -> ZivLinearProgress(progress = progress) }
+                when {
+                    item.completed -> ZivText(
+                        text = stringResource(R.string.player_recent_completed),
+                    )
+
+                    item.positionMs != null -> ZivText(
+                        text = stringResource(
                             R.string.player_recent_resume,
-                            formatPlaybackTime(item.positionMs ?: 0L),
-                        )
-                    }
-                    ZivText(text = resumeText)
+                            formatPlaybackTime(item.positionMs),
+                        ),
+                    )
                 }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -309,6 +312,7 @@ private fun RecentMediaSection(
                         text = stringResource(R.string.player_recent_open),
                         onClick = { onOpenRecent(item.mediaId) },
                         modifier = Modifier.weight(1f),
+                        enabled = item.mediaId != currentMediaId,
                     )
                     ZivPrimaryButton(
                         text = stringResource(R.string.player_recent_forget),

@@ -77,10 +77,60 @@ internal class QueueItemIdGenerator(
     fun next(): QueueItemId = QueueItemId("queue:$instanceId:${sequence.getAndIncrement()}")
 }
 
+internal class SetMediaRequestFence(
+    private val nextSequence: () -> Long = PlaybackRequestSequencer::next,
+    private val currentSequence: () -> Long = PlaybackRequestSequencer::current,
+    private val invalidateSequence: () -> Unit = { PlaybackRequestSequencer.invalidate() },
+) {
+    private val generation = AtomicLong(0L)
+    private val pendingGeneration = AtomicLong(NO_PENDING_GENERATION)
+    private val pendingSequence = AtomicLong(NO_PENDING_SEQUENCE)
+
+    fun begin(requestSequence: Long?): Ticket {
+        val sequence = requestSequence ?: nextSequence()
+        if (sequence != currentSequence()) return Ticket(sequence, STALE_GENERATION)
+        val ticket = Ticket(sequence, generation.incrementAndGet())
+        pendingSequence.set(ticket.sequence)
+        pendingGeneration.set(ticket.generation)
+        return ticket
+    }
+
+    fun invalidate() {
+        invalidateSequence()
+        generation.incrementAndGet()
+        pendingGeneration.set(NO_PENDING_GENERATION)
+        pendingSequence.set(NO_PENDING_SEQUENCE)
+    }
+
+    fun isCurrent(ticket: Ticket): Boolean =
+        ticket.generation == generation.get() && ticket.sequence == currentSequence()
+
+    fun hasPendingRequest(): Boolean =
+        pendingGeneration.get() == generation.get() && pendingSequence.get() == currentSequence()
+
+    fun finish(ticket: Ticket) {
+        if (pendingGeneration.compareAndSet(ticket.generation, NO_PENDING_GENERATION)) {
+            pendingSequence.compareAndSet(ticket.sequence, NO_PENDING_SEQUENCE)
+        }
+    }
+
+    data class Ticket(
+        val sequence: Long,
+        val generation: Long,
+    )
+
+    private companion object {
+        const val STALE_GENERATION = Long.MIN_VALUE
+        const val NO_PENDING_GENERATION = Long.MIN_VALUE
+        const val NO_PENDING_SEQUENCE = Long.MIN_VALUE
+    }
+}
+
 internal class MpvSessionPlayer(
     applicationLooper: Looper,
     private val context: Context,
     private val queueItemIdGenerator: QueueItemIdGenerator = QueueItemIdGenerator(),
+    private val setMediaRequestFence: SetMediaRequestFence = SetMediaRequestFence(),
     private val progressRecorder: PlaybackProgressRecorder,
     private val engineFactory: () -> PlaybackEngine,
 ) : SimpleBasePlayer(applicationLooper) {
@@ -149,20 +199,31 @@ internal class MpvSessionPlayer(
         return builder.build()
     }
 
-    override fun handleSetPlayWhenReady(playWhenReady: Boolean): ListenableFuture<*> = launchFuture {
-        dispatchOrThrow(if (playWhenReady) PlayerCommand.Play else PlayerCommand.Pause)
-        if (!playWhenReady) {
-            progressRecorder.flushPause(engineEpoch, engine.session.snapshot.value)
+    override fun handleSetPlayWhenReady(playWhenReady: Boolean): ListenableFuture<*> {
+        // The request-owned Play sent after installation must not cancel a newer media
+        // request that may already be resolving. Pause remains an explicit cancellation.
+        if (!playWhenReady) setMediaRequestFence.invalidate()
+        if (playWhenReady && setMediaRequestFence.hasPendingRequest()) {
+            return Futures.immediateVoidFuture()
+        }
+        return launchFuture {
+            dispatchOrThrow(if (playWhenReady) PlayerCommand.Play else PlayerCommand.Pause)
+            if (!playWhenReady) {
+                progressRecorder.flushPause(engineEpoch, engine.session.snapshot.value)
+            }
         }
     }
 
     override fun handlePrepare(): ListenableFuture<*> = Futures.immediateVoidFuture()
 
-    override fun handleStop(): ListenableFuture<*> = launchFuture {
-        val beforeStop = engine.session.snapshot.value
-        dispatchOrThrow(PlayerCommand.Stop)
-        if (beforeStop.queue.currentItem != null && beforeStop.status != PlayerStatus.IDLE) {
-            progressRecorder.flushStop(engineEpoch, engine.session.snapshot.value)
+    override fun handleStop(): ListenableFuture<*> {
+        setMediaRequestFence.invalidate()
+        return launchFuture {
+            val beforeStop = engine.session.snapshot.value
+            dispatchOrThrow(PlayerCommand.Stop)
+            if (beforeStop.queue.currentItem != null && beforeStop.status != PlayerStatus.IDLE) {
+                progressRecorder.flushStop(engineEpoch, engine.session.snapshot.value)
+            }
         }
     }
 
@@ -240,28 +301,51 @@ internal class MpvSessionPlayer(
         if (normalizedIndex != 0 || normalizedPosition < 0L) {
             return failedFuture("The requested media start position is invalid.")
         }
+        val requestTicket = setMediaRequestFence.begin(
+            mediaItems.single().mediaMetadata.extras
+                ?.takeIf { it.containsKey(PlaybackRequestMetadata.SEQUENCE_EXTRA) }
+                ?.getLong(PlaybackRequestMetadata.SEQUENCE_EXTRA),
+        )
 
         return launchFuture {
-            rebuildEngineIfRequired()
-            val resolved = resolveMediaItem(mediaItems.single())
             try {
-                dispatchOrThrow(
-                    PlayerCommand.SetQueue(
-                        items = listOf(resolved.queueItem),
-                        startIndex = normalizedIndex,
-                        startPosition = Milliseconds(normalizedPosition),
-                        playWhenReady = snapshot.playWhenReady,
-                    ),
-                )
-                runCatching { activeDescriptor?.close() }
-                activeDescriptor = resolved.descriptor
-                activeMediaItem = resolved.mediaItem
-                invalidateState()
-            } catch (failure: Throwable) {
-                runCatching { resolved.descriptor?.close() }
-                    .exceptionOrNull()
-                    ?.let(failure::addSuppressed)
-                throw failure
+                if (!setMediaRequestFence.isCurrent(requestTicket)) return@launchFuture
+                rebuildEngineIfRequired()
+                if (!setMediaRequestFence.isCurrent(requestTicket)) return@launchFuture
+                val resolved = try {
+                    resolveMediaItem(mediaItems.single())
+                } catch (failure: Throwable) {
+                    if (!setMediaRequestFence.isCurrent(requestTicket)) return@launchFuture
+                    throw failure
+                }
+                if (!setMediaRequestFence.isCurrent(requestTicket)) {
+                    runCatching { resolved.descriptor?.close() }
+                    return@launchFuture
+                }
+                try {
+                    dispatchOrThrow(
+                        PlayerCommand.SetQueue(
+                            items = listOf(resolved.queueItem),
+                            startIndex = normalizedIndex,
+                            startPosition = Milliseconds(normalizedPosition),
+                            // Installing a replacement never inherits playback intent. The client
+                            // issues Play only after the same request token is observed as current,
+                            // so a superseded slow SAF request cannot start by itself.
+                            playWhenReady = false,
+                        ),
+                    )
+                    runCatching { activeDescriptor?.close() }
+                    activeDescriptor = resolved.descriptor
+                    activeMediaItem = resolved.mediaItem
+                    invalidateState()
+                } catch (failure: Throwable) {
+                    runCatching { resolved.descriptor?.close() }
+                        .exceptionOrNull()
+                        ?.let(failure::addSuppressed)
+                    throw failure
+                }
+            } finally {
+                setMediaRequestFence.finish(requestTicket)
             }
         }
     }
@@ -299,8 +383,11 @@ internal class MpvSessionPlayer(
         }
     }
 
-    internal fun shutdownAsync(): ListenableFuture<*> = launchFuture(allowAfterShutdown = true) {
-        shutdown()
+    internal fun shutdownAsync(): ListenableFuture<*> {
+        setMediaRequestFence.invalidate()
+        return launchFuture(allowAfterShutdown = true) {
+            shutdown()
+        }
     }
 
     private suspend fun shutdown() {

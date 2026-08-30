@@ -18,12 +18,39 @@ class MainActivity : ComponentActivity() {
         setContent {
             ZivPlayerApp(
                 controller = playbackController.controller.value,
+                playerState = playbackController.playerState.value,
                 pendingPlayback = mediaSelection.pendingPlayback.value,
-                persistenceNotice = mediaSelection.persistenceNotice.value,
-                selectionFailed = mediaSelection.selectionFailed.value,
-                onDocumentSelected = mediaSelection::onDocumentSelected,
+                recentMedia = mediaSelection.recentMedia.value,
+                selectionNotice = mediaSelection.notice.value,
+                historyUnavailable = mediaSelection.historyUnavailable.value,
+                onDocumentSelected = { selection ->
+                    mediaSelection.onDocumentSelected(
+                        selection = selection,
+                        hasObservedCompletion = playbackController::hasObservedCompletion,
+                    )
+                },
                 onPlaybackConsumed = mediaSelection::onPlaybackConsumed,
                 onPlaybackFailed = mediaSelection::onPlaybackFailed,
+                isPlaybackPending = mediaSelection::isPlaybackPending,
+                onPlayPause = {
+                    mediaSelection.cancelPendingPlayback()
+                    playbackController.togglePlayPause()
+                },
+                onStop = {
+                    mediaSelection.cancelPendingPlayback()
+                    playbackController.stop()
+                },
+                onSeekTo = playbackController::seekTo,
+                onPlaybackSpeedChange = playbackController::setPlaybackSpeed,
+                onVolumeChange = playbackController::setVolume,
+                onRepeatModeChange = playbackController::setRepeatMode,
+                onOpenRecent = { mediaId ->
+                    mediaSelection.onRecentSelected(
+                        mediaId = mediaId,
+                        startFromBeginning = playbackController.hasObservedCompletion(mediaId),
+                    )
+                },
+                onForgetRecent = mediaSelection::forgetRecent,
             )
         }
     }

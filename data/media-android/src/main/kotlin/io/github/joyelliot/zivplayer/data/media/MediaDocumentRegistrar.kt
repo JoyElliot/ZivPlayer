@@ -17,6 +17,9 @@ import io.github.joyelliot.zivplayer.core.model.MediaMetadata
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.util.UUID
 
@@ -53,16 +56,26 @@ class MediaDocumentRegistrar private constructor(
     private val coordinator: MediaDocumentRegistrationCoordinator,
     private val ioDispatcher: CoroutineDispatcher,
 ) {
+    private val operationMutex = Mutex()
+
     suspend fun open(
         uri: Uri,
         persistableReadOffered: Boolean,
     ): OpenedMediaDocument = withContext(ioDispatcher) {
-        coordinator.open(uri.toString(), persistableReadOffered)
+        operationMutex.withLock {
+            withContext(NonCancellable) {
+                coordinator.open(uri.toString(), persistableReadOffered)
+            }
+        }
     }
 
     /** Removes local history and reports whether its persisted provider grant was also released. */
     suspend fun forget(mediaId: MediaId): MediaDocumentForgetResult = withContext(ioDispatcher) {
-        coordinator.forget(mediaId)
+        operationMutex.withLock {
+            withContext(NonCancellable) {
+                coordinator.forget(mediaId)
+            }
+        }
     }
 
     companion object {

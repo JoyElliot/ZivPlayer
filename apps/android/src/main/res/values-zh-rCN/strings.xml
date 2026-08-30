@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ZivPlayer</string>
+    <string name="media_session_only_permission">该媒体现在可以播放，但文档提供方未授予可在重启后继续使用的访问权限。</string>
+    <string name="media_session_only_history">该媒体现在可以播放，但未能写入本地历史。</string>
+    <string name="media_open_failed">无法打开所选媒体，请重新选择后再试。</string>
+    <string name="media_recent_access_lost">已无法访问这个最近文档。请重新打开以恢复权限，或移除该记录。</string>
+    <string name="media_history_unavailable">最近媒体历史暂时不可用。</string>
+    <string name="media_history_forgotten">已移除最近媒体记录及其持久访问权限。</string>
+    <string name="media_history_forgotten_orphaned_grant">历史记录已移除，但 Android 未能确认已释放其持久访问权限。</string>
+    <string name="media_history_forget_failed">无法移除最近媒体记录。</string>
+</resources>

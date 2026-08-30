@@ -4,4 +4,9 @@
     <string name="media_session_only_permission">This media can play now, but its provider did not grant restart-safe access.</string>
     <string name="media_session_only_history">This media can play now, but it could not be added to local history.</string>
     <string name="media_open_failed">The selected media could not be opened. Choose it again to retry.</string>
+    <string name="media_recent_access_lost">This recent document is no longer available. Open it again to restore access, or remove the record.</string>
+    <string name="media_history_unavailable">Recent media history is temporarily unavailable.</string>
+    <string name="media_history_forgotten">The recent media record and its stored access were removed.</string>
+    <string name="media_history_forgotten_orphaned_grant">The history record was removed, but Android could not confirm release of its stored access.</string>
+    <string name="media_history_forget_failed">The recent media record could not be removed.</string>
 </resources>
