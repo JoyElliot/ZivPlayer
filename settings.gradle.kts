@@ -19,5 +19,9 @@ dependencyResolutionManagement {
 rootProject.name = "ZivPlayer"
 
 include(":apps:android")
+include(":core:model")
+include(":core:player-api")
+include(":core:player-runtime")
 include(":feature:player")
+include(":platform:libmpv-android")
 include(":ui:design-system-miuix")
