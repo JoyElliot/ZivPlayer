@@ -232,6 +232,43 @@ and `/usr/bin/dpkg-deb`; Windows should invoke it through the controlled Linux
 environment. The current WSL run is useful independent lock evidence but is
 not an accepted release builder.
 
+## Locked OCI base materialization
+
+`rootfs_tool.py` safely turns the one locked Ubuntu OCI layer into a fresh base
+directory without Docker or Podman. `preflight` verifies the complete toolchain
+cache and plans every layer entry without writing an output:
+
+```sh
+python3 native/tools/rootfs_tool.py preflight
+```
+
+Canonical materialization and verification require Linux root, canonical
+`/usr/bin/findmnt`, and an ext4 destination. The output parent must already
+exist, be root-owned, and be either private or sticky. The destination itself
+must not exist and must stay outside the toolchain cache:
+
+```sh
+sudo python3 native/tools/rootfs_tool.py materialize-base \
+  --output /var/tmp/zivplayer-toolchain-base
+sudo python3 native/tools/rootfs_tool.py verify-base \
+  --rootfs /var/tmp/zivplayer-toolchain-base
+```
+
+The materializer verifies all locked cache bytes before writing, rejects
+whiteouts, special entries, traversal, unsafe links, sparse/PAX metadata,
+case/Unicode collisions, excessive paths, entries, bytes, or TAR padding, and
+publishes only by an atomic no-replace rename. Because the base layer contains
+setuid/setgid programs, staging and the final root remain `0700 root:root`.
+Files, links, owners, modes, normalized timestamps, and bytes are rechecked
+against the locked layer; `ziv-toolchain-base.json` binds the stable manifest
+snapshot, OCI identity, and canonical tree digest.
+
+This command creates only the verified Ubuntu base. It does not install the
+locked APT closure, extract Android archives, accept Android licenses, or make
+the result a release-grade container. Those operations must remain offline and
+produce their own installed-state evidence in the next M7C steps. The current
+WSL materialization is inspection evidence only.
+
 The final fail-closed gate is:
 
 ```sh

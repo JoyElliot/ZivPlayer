@@ -60,11 +60,14 @@ graph and rootfs `diff_id`, Ubuntu signatures, package/index bytes, solver
 selection and its locked install order, and all 523 `Pre-Depends`/`Depends`
 clauses.
 
-The ignored cache has been prepared and independently verified in WSL, but WSL
-is evidence for the input lock rather than accepted release provenance. The
-installed Linux container, canonical Linux source materialization, source-built
-wrapper and libraries, ELF audit, Android license evidence, SBOM, notices,
-corresponding-source bundle, and bootstrap-AAR retirement gate remain pending.
+The ignored cache has been prepared and independently verified in WSL. The
+locked single-layer OCI base can now be materialized without Docker or Podman
+into a fresh ext4 root-only directory and verified against a canonical tree
+digest and receipt. That WSL run is inspection evidence rather than accepted
+release provenance: offline APT installation, Android tool extraction, the
+final installed-container projection, canonical Linux source materialization,
+source-built wrapper and libraries, ELF audit, Android license evidence, SBOM,
+notices, corresponding source, and bootstrap-AAR retirement remain pending.
 
 ## Baseline
 
@@ -126,6 +129,9 @@ python3 native/tools/toolchain_tool.py fetch
 python3 native/tools/toolchain_tool.py verify-roots
 sudo /bin/sh native/toolchain/prepare-apt-cache.sh
 python3 native/tools/toolchain_tool.py verify-cache
+python3 native/tools/rootfs_tool.py preflight
+sudo python3 native/tools/rootfs_tool.py materialize-base
+sudo python3 native/tools/rootfs_tool.py verify-base
 python3 native/tools/toolchain_tool.py check-lock
 ```
 
@@ -136,6 +142,9 @@ verification because the installed container and compliance bundles are still
 pending. `verify-apt-cache`, `verify-cache`, and `check-lock` require Linux's
 canonical `/usr/bin/gpgv` and `/usr/bin/dpkg-deb`; run them inside the
 controlled Linux builder or WSL for inspection, not as native Windows commands.
+The rootfs commands require an ext4 output and never replace an existing
+destination; they currently materialize and verify only the locked Ubuntu base
+layer, not an installed build container.
 
 See [`native/README.md`](native/README.md) and
 [`ADR 0010`](docs/adr/0010-source-built-libmpv-and-native-provenance.md). The

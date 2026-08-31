@@ -145,8 +145,20 @@ preparation operation on the pinned Ubuntu apt/dpkg/gpgv tuple. It stages and
 verifies a new ignored cache and refuses replacement; it is not permitted in
 the offline build phase.
 
+`native/tools/rootfs_tool.py` is the offline bridge from the locked OCI base
+layer to a filesystem tree. It supports only the selected single-layer image,
+requires Linux root and ext4, rejects whiteouts and non-regular filesystem
+objects, normalizes locked metadata, keeps staging and the published root
+`0700 root:root`, and publishes only to an absent destination by an atomic
+no-replace rename. Its canonical receipt binds the exact manifest byte
+snapshot, OCI layer identity, and a tree digest over paths, entry types,
+permissions, owners, sizes, file hashes, and link text. This deliberately does
+not invoke Docker/Podman, install APT packages, extract Android tools, or claim
+an installed-container projection.
+
 This closes builder-root selection and APT-closure ambiguity, not the installed
-container. The environment status therefore remains
+container. The implemented base-rootfs step is necessary but insufficient; the
+environment status therefore remains
 `roots-and-apt-locked-container-pending`: the roots must still be installed in
 a fresh controlled Linux filesystem without network access, followed by a
 recorded final filesystem/tool projection and accepted Android license and

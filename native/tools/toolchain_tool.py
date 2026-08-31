@@ -1159,7 +1159,7 @@ def _validate_source_binding_tuple(
         )
 
 
-def load_manifest(
+def load_manifest_snapshot(
     path: Path,
     *,
     source_manifest_path: Path | None = None,
@@ -1168,6 +1168,7 @@ def load_manifest(
     list[dict[str, object]],
     list[dict[str, object]],
     dict[str, object],
+    str,
 ]:
     raw = _read_stable_bytes(
         path,
@@ -1189,6 +1190,23 @@ def load_manifest(
         str(project["sourceManifestSha256"]),
     )
     _validate_source_binding_tuple(project, artifacts, source_data)
+    return data, artifacts, oci_objects, source_data, hashlib.sha256(raw).hexdigest()
+
+
+def load_manifest(
+    path: Path,
+    *,
+    source_manifest_path: Path | None = None,
+) -> tuple[
+    dict[str, object],
+    list[dict[str, object]],
+    list[dict[str, object]],
+    dict[str, object],
+]:
+    data, artifacts, oci_objects, source_data, _digest = load_manifest_snapshot(
+        path,
+        source_manifest_path=source_manifest_path,
+    )
     return data, artifacts, oci_objects, source_data
 
 
