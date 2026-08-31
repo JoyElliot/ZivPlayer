@@ -329,11 +329,13 @@ python3 native/tools/toolchain_tool.py check-lock
 ```
 
 It currently verifies all locked bytes and then exits 3. Android/Python tools
-now have a canonical standalone projection, but that projection is not yet
-bound to the installed APT environment; accepted Android license files, system
-notices, retention bundle, and corresponding source-manifest container status
-also remain pending. Do not change those status fields to `complete` without
-the named evidence.
+have a canonical standalone projection, and a separate composition receipt now
+proves its fixed ephemeral binding to the installed APT environment. The SDK
+receipt itself intentionally remains standalone with
+`aptEnvironmentBound=false`. Accepted Android license files, system notices,
+the retention bundle, canonical source build, and corresponding source-manifest
+container status remain pending. Do not change those status fields to
+`complete` without the named evidence.
 
 The standalone SDK projection is prepared and verified with:
 
@@ -356,11 +358,51 @@ verification and filesystem synchronization. The receipt explicitly says
 Its toolchain legal inventory covers projected builder tools only; it is not
 the generated product notices bundle.
 
+The fixed read-only composition is prepared and verified with:
+
+```sh
+sudo python3 native/tools/composition_tool.py preflight
+sudo python3 native/tools/composition_tool.py compose-and-smoke \
+  --receipt /var/tmp/zivplayer-toolchain-composition.json
+sudo python3 native/tools/composition_tool.py verify \
+  --receipt /var/tmp/zivplayer-toolchain-composition.json
+```
+
+`composition_tool.py` independently re-verifies and pins both root directories
+and their receipts, pins every executed helper by stable file descriptor, and
+publishes a root-owned canonical JSON receipt with `renameat2(NOREPLACE)`
+relative to a pinned parent directory. Its fixed namespace pivots onto the APT
+root, mounts that root and the SDK projection read-only, permits writable tmpfs
+only at the declared transient paths, exposes loopback with no routes, and
+requires the combined zero-capability, `no_new_privs`, locked-seccomp, resource-
+limit, and cgroup boundary. The smoke then verifies Python 3.12.3, Meson 1.11.0,
+Ninja 1.11.1, pkg-config 1.8.1, JDK 17, Build Tools 36.0.0, Platform 36, NDK 29,
+and both API-26 NDK compiler targets. It builds one temporary shared object per
+ABI and rejects an ELF LOAD alignment other than `0x4000`.
+
 Two fresh complete-cache inspection materializations produced identical
 25,286-entry trees (2,913,084,578 file bytes) and byte-identical receipts. The
 tree SHA-256 is `dac18763...1c5a4`, the projection SHA-256 is
 `d5becfde...6ef3c`, and the receipt SHA-256 is `7f9bf9d6...6e544`. These are WSL
 inspection results, not accepted release provenance.
+
+Two final WSL composition runs used fresh namespaces/cgroups and produced
+byte-identical 9,562-byte receipts. The receipt SHA-256 is
+`e9b88860b8e6d043a80a7f3d6aa7e3e641574e7da4c66a0541db129a4e081989`,
+the composition digest is
+`11173e513a3fc0348d5780b60def6a340d140980d4b40bd0bf74fdfd9b5cd51a`,
+and the canonical smoke transcript SHA-256 is
+`c491134a712d88a1d0d76e96eb39494a623cb61fb818ad962e286a112d19e60c`.
+The receipt binds the current APT receipt/tree SHA-256 values
+`6a4929a97403cf8058a3b02c36dc5ba5d30e262f44472520b3b8061ede9b5cae` /
+`5ed7511bcb6f9d9cc5a2a966f54495b243135a2f9de469e1e7a4c5850406f7e0`
+and the SDK receipt/tree/projection values
+`7f9bf9d66185c63d60a41e451146717be2794f95dc73a675618da7c09fd6e544` /
+`dac187631c910c5e7bb10c20573d8c7b8accc1051077d22a6d11a5707c11c5a4` /
+`d5becfde012c856be4ed5eb04215e233a8a6e8ff3d860198c45c9f197fd6ef3c`.
+It explicitly retains `ready=false` and `releaseInput=false`. These measurements
+assume an exclusive trusted root-controlled host; they do not claim protection
+from a concurrent hostile root process and remain WSL inspection evidence only.
 
 ## Locked build baseline
 
@@ -382,21 +424,22 @@ inspection results, not accepted release provenance.
 The source bytes, Linux base-image object graph, Android/Python tool archives,
 base dpkg projection, and APT package/index closure are locked. The base-plus-
 APT stage and standalone Android/Python projection now have reproducible
-offline materializers. This is not yet a release-grade installed container:
-the two verified trees still have to be composed under an isolated mount
-policy, runtime-smoked, and paired with accepted Android license files and
-redistribution evidence before native artifacts can be accepted.
+offline materializers, and their exact read-only composition has passed the
+fixed isolated smoke profile in inspection mode. This is not yet a release-
+grade installed container: accepted Android license files, redistribution
+evidence, canonical preserve-mode sources, the actual native build, and its
+artifact audits are still required before native artifacts can be accepted.
 
 ## Remaining native gates
 
-Traversal-safe offline materialization is now implemented and has been run
-against the complete locked cache in inspection mode. The next native
-milestones must:
+Traversal-safe offline materialization and fixed toolchain composition are now
+implemented and have been run against the complete locked cache in inspection
+mode. The next native milestones must:
 
-1. bind the verified standalone Android/Python projection at
-   `/opt/zivplayer/toolchain` inside the verified base-plus-APT environment,
-   record and smoke that exact composition, then run canonical `preserve`
-   source materialization there;
+1. create a canonical Linux `preserve` source workspace, wire the upstream
+   build scripts to `/opt/zivplayer/toolchain`, replace their API-23/path
+   assumptions with the locked API-26 boundary, and close the offline Gradle
+   artifact set before any Android wrapper build;
 2. adapt and harden the Kotlin/JNI wrapper inside `platform:libmpv-android`;
 3. build both selected ABIs at native API 26 in that environment;
 4. record every build option and patch hash;

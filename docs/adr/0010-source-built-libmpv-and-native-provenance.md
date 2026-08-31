@@ -211,13 +211,50 @@ projection digest proves the installed paths. Its legal inventory is only the
 projected builder-tool subset. It neither generates `package.xml` nor proves
 Android license acceptance or product redistribution obligations.
 
+`native/tools/composition_tool.py` provides a separate ephemeral binding rather
+than modifying either standalone receipt. It re-verifies and pins both trees,
+their receipt bytes, and every executed helper; creates fresh private mount,
+network, PID, UTS, and IPC namespaces; pivots onto the read-only APT root; and
+binds the SDK projection read-only at `/opt/zivplayer/toolchain`. Its exact mount
+inventory permits writable tmpfs only for declared transient paths. The fixed
+profile requires loopback with no routes, PID 1, zero capabilities,
+`no_new_privs`, the pinned seccomp program, hard resource limits, and a bounded
+cgroup whose descendants are drained before success. The nested-namespace
+denial is defense-in-depth evidence from the combined no-capability and seccomp
+boundary, not an attribution to either mechanism alone.
+
+The runtime profile checks Python/Meson/Ninja/pkg-config, JDK and Android package
+identities, then compiles temporary API-26 `arm64` and `x86_64` shared objects
+with the NDK 29 compilers and rejects any ELF LOAD alignment other than 16 KiB.
+It emits a canonical, no-replace receipt through a pinned parent-directory file
+descriptor. The receipt explicitly remains `ready=false` and
+`releaseInput=false` because this is a toolchain smoke, not a libmpv build.
+
+Two final WSL inspection runs produced byte-identical 9,562-byte receipts with
+SHA-256
+`e9b88860b8e6d043a80a7f3d6aa7e3e641574e7da4c66a0541db129a4e081989`.
+The composition digest was
+`11173e513a3fc0348d5780b60def6a340d140980d4b40bd0bf74fdfd9b5cd51a` and the
+canonical smoke transcript SHA-256 was
+`c491134a712d88a1d0d76e96eb39494a623cb61fb818ad962e286a112d19e60c`.
+The receipt binds APT receipt/tree hashes
+`6a4929a97403cf8058a3b02c36dc5ba5d30e262f44472520b3b8061ede9b5cae` /
+`5ed7511bcb6f9d9cc5a2a966f54495b243135a2f9de469e1e7a4c5850406f7e0`
+and SDK receipt/tree/projection hashes
+`7f9bf9d66185c63d60a41e451146717be2794f95dc73a675618da7c09fd6e544` /
+`dac187631c910c5e7bb10c20573d8c7b8accc1051077d22a6d11a5707c11c5a4` /
+`d5becfde012c856be4ed5eb04215e233a8a6e8ff3d860198c45c9f197fd6ef3c`.
+These results assume the ADR's exclusive trusted root-controlled builder
+boundary; they do not claim safety against a concurrent hostile root process,
+and WSL remains an inspection rather than release-provenance environment.
+
 The environment status therefore remains
-`roots-and-apt-locked-container-pending`: isolated composition of the two trees,
-runtime smoke evidence, accepted Android license files, and redistribution
-inputs are still required. A successful build on an arbitrary workstation or
-floating hosted runner is not release provenance. Windows and the currently
-configured WSL environment are evidence/inspection environments, not accepted
-native release builders.
+`roots-and-apt-locked-container-pending`: accepted Android license files,
+redistribution inputs, canonical preserve-mode source materialization, and the
+actual native build/audits are still required. A successful build on an
+arbitrary workstation or floating hosted runner is not release provenance.
+Windows and the currently configured WSL environment are evidence/inspection
+environments, not accepted native release builders.
 
 This decision supersedes only ADR 0003's CMake 4.1.2 placeholder for the libmpv
 pipeline. It does not change the main Android build tuple recorded there.
@@ -259,13 +296,15 @@ artifact is blocked until all of the following are true:
 
 ZivPlayer now has independently verifiable native source and builder-input
 baselines, a reproducible offline base-plus-APT materialization stage, and a
-separate reproducible Android/Python tool projection.
+separate reproducible Android/Python tool projection whose fixed read-only
+composition has passed an isolated inspection smoke.
 Complete local source and toolchain/APT caches can be prepared without trusting
 mutable Git branches, floating container tags, or moving APT repositories, and
-the release-input gate fails closed while environment composition and
-compliance evidence are absent. This closes source, root-object, package-
-closure, offline APT installed-state, and standalone SDK projection ambiguity
-under the trusted builder boundary, but not binary reproducibility, JNI
-correctness, device playback, or license-package gates. The current
+the release-input gate fails closed while compliance, canonical native-build,
+and redistribution evidence are absent. This closes source, root-object, package-
+closure, offline APT installed-state, standalone SDK projection, and fixed
+toolchain-composition ambiguity under the trusted builder boundary, but not
+binary reproducibility, JNI correctness, device playback, or license-package
+gates. The current
 public-release decision therefore remains No-Go until the remaining native and
 device milestones pass.

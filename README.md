@@ -158,6 +158,9 @@ sudo python3 native/tools/sdk_tool.py materialize \
   --output /var/tmp/zivplayer-sdk-projection
 sudo python3 native/tools/sdk_tool.py verify \
   --root /var/tmp/zivplayer-sdk-projection
+sudo python3 native/tools/composition_tool.py preflight
+sudo python3 native/tools/composition_tool.py compose-and-smoke
+sudo python3 native/tools/composition_tool.py verify
 python3 native/tools/toolchain_tool.py check-lock
 ```
 
@@ -173,9 +176,23 @@ destination. `rootfs_tool.py` handles the locked Ubuntu base layer;
 `environment_tool.py` builds and verifies the offline installed APT stage. The
 latter is Linux-root-only and also requires the locked cgroup-v2 controllers.
 `sdk_tool.py` creates a separate root-only projection for the fixed
-`/opt/zivplayer/toolchain` mount point. It does not mutate or claim a binding to
-the APT tree, generate `package.xml`, accept Android licenses, or complete the
-product notices/retention gates, so `check-lock` intentionally remains closed.
+`/opt/zivplayer/toolchain` mount point. `composition_tool.py` leaves both trees
+standalone and immutable, but binds them read-only in an ephemeral private
+namespace for a fixed runtime profile. That profile checks the exact mount set,
+loopback-only networking, zero capabilities, `no_new_privs`, the locked seccomp
+filter and cgroup cleanup, then compiles API-26 `arm64` and `x86_64` shared
+objects and verifies 16 KiB ELF LOAD alignment. Its no-replace receipt remains
+`ready=false` and `releaseInput=false`: it does not generate `package.xml`,
+accept Android licenses, complete notices/retention, build libmpv, or prove a
+device release. Consequently `check-lock` intentionally remains closed.
+
+Two final WSL inspection runs of the fixed composition profile produced
+byte-identical receipts with SHA-256
+`e9b88860b8e6d043a80a7f3d6aa7e3e641574e7da4c66a0541db129a4e081989`.
+The smoke transcript SHA-256 was
+`c491134a712d88a1d0d76e96eb39494a623cb61fb818ad962e286a112d19e60c`.
+These are inspection results under an exclusive root-controlled host boundary,
+not accepted release provenance.
 
 See [`native/README.md`](native/README.md) and
 [`ADR 0010`](docs/adr/0010-source-built-libmpv-and-native-provenance.md). The

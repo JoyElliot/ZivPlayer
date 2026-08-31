@@ -32,6 +32,13 @@ acceptance evidence and is not the product notices bundle. Official package
 metadata, real operator acceptance evidence, the source manifest's declared
 license files, and the actual linked product graph remain separate gates.
 
+The isolated composition receipt binds the builder root and tool projection for
+a fixed runtime smoke only. It introduces no new distributed dependency and
+does not change the standalone SDK receipt, accept a license, or complete any
+notice/retention obligation. Its successful WSL inspection therefore leaves the
+release SBOM, corresponding source, Android license evidence, and generated
+product notices as explicit pending gates.
+
 | Component | Intended use | Upstream license | Distribution note |
 | --- | --- | --- | --- |
 | AndroidX and Jetpack Compose | Android application and UI runtime | Apache-2.0 | Preserve notices required by resolved artifacts. |
