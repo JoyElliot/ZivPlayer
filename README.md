@@ -79,11 +79,22 @@ inspection runs produced byte-identical receipts (SHA-256
 `7f9bf9d6...6e544`) and the same 25,286-entry, 2,913,084,578-byte tree
 (`dac18763...1c5a4`; projection digest `d5becfde...6ef3c`).
 
+The locked source closure has also been materialized twice in symlink-preserving
+mode on fresh WSL ext4 directories. Both runs produced the same 30,436-entry
+tree (29,238 files, 1,196 directories, and two symlinks), tree SHA-256
+`05a19a0f...46ee6`, and byte-identical receipt SHA-256
+`e2ea14b6...23c04`. `native/native-build-profile.toml` now binds that source
+manifest and the composed toolchain to an API-26, `arm64-v8a`/`x86_64`,
+16-KiB libmpv-stack profile. Its two reviewed overlays remove ambient SDK/NDK
+selection and accept only the two fixed `mpv` commands. The profile preflight
+passed against the retained preserve-mode source tree and locked composition.
+It did not apply the overlays or compile native code.
+
 These WSL runs are inspection evidence rather than accepted release
 provenance. The SDK tree is deliberately marked as a standalone mountable
 projection, not a release input: binding it to the verified APT environment,
-accepted Android license evidence, canonical Linux source materialization,
-source-built wrapper and libraries, ELF audit, SBOM, system notices, retention/
+accepted Android license evidence, an accepted release-builder source/build
+run, source-built wrapper and libraries, ELF audit, SBOM, system notices, retention/
 corresponding-source bundles, and bootstrap-AAR retirement remain pending.
 
 ## Baseline
@@ -161,6 +172,8 @@ sudo python3 native/tools/sdk_tool.py verify \
 sudo python3 native/tools/composition_tool.py preflight
 sudo python3 native/tools/composition_tool.py compose-and-smoke
 sudo python3 native/tools/composition_tool.py verify
+python3 native/tools/native_build_tool.py validate
+sudo python3 native/tools/native_build_tool.py preflight
 python3 native/tools/toolchain_tool.py check-lock
 ```
 
@@ -185,6 +198,15 @@ objects and verifies 16 KiB ELF LOAD alignment. Its no-replace receipt remains
 `ready=false` and `releaseInput=false`: it does not generate `package.xml`,
 accept Android licenses, complete notices/retention, build libmpv, or prove a
 device release. Consequently `check-lock` intentionally remains closed.
+
+`native_build_tool.py validate` checks the immutable profile/manifests and
+overlay replacement bytes. Its Linux-root-only `preflight` additionally
+requires a verified preserve-mode ext4 source workspace, checks the untouched
+upstream overlay origins, rehashes the two exact NDK `libc++_shared.so` runtime
+inputs, and re-verifies the composition receipt. It currently has no build,
+artifact-staging, ELF-audit, JNI-wrapper, Gradle, or release-receipt command.
+Success therefore means only that the locked inputs are ready for the next
+M7E implementation slice.
 
 Two final WSL inspection runs of the fixed composition profile produced
 byte-identical receipts with SHA-256

@@ -248,9 +248,67 @@ These results assume the ADR's exclusive trusted root-controlled builder
 boundary; they do not claim safety against a concurrent hostile root process,
 and WSL remains an inspection rather than release-provenance environment.
 
+### Native build profile and inspection preflight
+
+`native/native-build-profile.toml` now locks the first libmpv-stack execution
+contract without claiming that the stack has been built. It binds the source
+and toolchain manifest byte digests, upstream revision, API 26, the two selected
+ABIs, 16 KiB page-size policy, fixed tool versions and logical mounts, two exact
+command vectors, the output allowlist, the NDK runtime-library bytes, and the
+original/replacement hashes and applied modes of two reviewed upstream-script
+overlays.
+
+The canonical preserve-mode source is an immutable input. Each attempted build
+must use a fresh writable copy at `/build/source`, a fresh output at
+`/build/output`, an isolated HOME at `/build/home`, and a separate temporary
+tree at `/build/tmp`. All four paths are disjoint. This is not merely defensive:
+the selected upstream scripts generate Libass Autotools files and build or
+reconfigure Lua and mbedTLS inside their source directories. Binding the
+canonical materialization read-only as the build CWD would therefore contradict
+the reviewed pipeline.
+
+The `buildall.sh` overlay accepts only the exact `--arch arm64 mpv` and
+`--arch x86_64 mpv` invocations, selects the API-26 NDK tools, retains the
+16 KiB linker maximum-page-size flag, and refuses reuse of an ABI prefix. The
+`path.sh` overlay removes ambient SDK/NDK discovery, fixes the composed
+toolchain paths, verifies the pinned `gas-preprocessor.pl`, and fixes HOME,
+temporary/XDG paths, locale, time, source epoch, parallelism, and relevant
+wrapper/configuration variables. The future namespace executor must still
+enforce the profile's empty inherited environment and no-network policy; the
+scripts alone are not a sandbox.
+
+The first output contract contains eight source-built libraries per ABI
+(`libavcodec.so`, `libavdevice.so`, `libavfilter.so`, `libavformat.so`,
+`libavutil.so`, `libmpv.so`, `libswresample.so`, and `libswscale.so`) plus the
+byte-locked NDK `libc++_shared.so`. It intentionally excludes `libplayer.so`.
+The existing bootstrap API is handle-based under `dev.jdtech.mpv`, while the
+locked upstream JNI wrapper uses a different `is.xyz.mpv` global/static
+contract; that wrapper cannot be relabeled or silently accepted as the release
+bridge.
+
+`native/tools/native_build_tool.py validate` checks the profile, both bound
+manifests, and overlay replacement bytes without executing a build. Its
+Linux-root-only `preflight` additionally re-verifies the preserve-mode source
+workspace on ext4, the untouched upstream bytes/modes at both overlay
+destinations, the exact per-ABI NDK `libc++_shared.so` inputs, and the existing
+toolchain-composition receipt. It does not yet copy or mutate source, apply the
+overlays, execute compilation, stage outputs, audit ELF/JNI, integrate Gradle,
+or publish a native-build receipt.
+
+Two fresh WSL ext4 preserve-mode source materializations produced identical
+30,436-entry trees (29,238 files, 1,196 directories, and two symlinks), tree
+SHA-256
+`05a19a0fc8d11c88903c663783ebca00c0201f656fa54b580ab47a75fa746ee6`,
+and byte-identical receipt SHA-256
+`e2ea14b6eea0c2f692a321853473f04dad2f1f3199d017bfffc733a858523c04`.
+The retained tree passed the above preflight with profile SHA-256
+`538fe37887840c4e23acdb189d3464878dd006dfc42f6e4c4565490f88252413`.
+These are inspection results only. No native library was built, and WSL remains
+outside accepted release provenance.
+
 The environment status therefore remains
 `roots-and-apt-locked-container-pending`: accepted Android license files,
-redistribution inputs, canonical preserve-mode source materialization, and the
+redistribution inputs, an accepted release-builder materialization/run, and the
 actual native build/audits are still required. A successful build on an
 arbitrary workstation or floating hosted runner is not release provenance.
 Windows and the currently configured WSL environment are evidence/inspection
@@ -297,7 +355,9 @@ artifact is blocked until all of the following are true:
 ZivPlayer now has independently verifiable native source and builder-input
 baselines, a reproducible offline base-plus-APT materialization stage, and a
 separate reproducible Android/Python tool projection whose fixed read-only
-composition has passed an isolated inspection smoke.
+composition has passed an isolated inspection smoke. A byte-locked API-26
+libmpv-stack profile and preserve-source preflight now make the next execution
+boundary explicit without treating it as a build result.
 Complete local source and toolchain/APT caches can be prepared without trusting
 mutable Git branches, floating container tags, or moving APT repositories, and
 the release-input gate fails closed while compliance, canonical native-build,

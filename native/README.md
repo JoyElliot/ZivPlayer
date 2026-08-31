@@ -404,6 +404,72 @@ It explicitly retains `ready=false` and `releaseInput=false`. These measurements
 assume an exclusive trusted root-controlled host; they do not claim protection
 from a concurrent hostile root process and remain WSL inspection evidence only.
 
+## Locked libmpv-stack profile and preflight
+
+`native-build-profile.toml` is the fail-closed input contract for the first
+source-built libmpv-stack slice. It binds the source and toolchain manifest byte
+digests, upstream revision, API 26, the two selected ABIs, 16 KiB page-size
+policy, fixed tool versions, logical mounts, exact command argv, output
+allowlist, NDK runtime-library bytes, and both original/replacement overlay
+hashes. The desired applied overlay mode is explicitly `0755`; it is not
+inferred from Git file-mode behavior on Windows.
+
+The profile keeps the verified preserve-mode source tree read-only and requires
+each build to receive a fresh writable source copy plus disjoint fresh output,
+HOME, and temporary directories. This distinction is required because the
+reviewed upstream dependency scripts generate Autotools files and build Lua and
+mbedTLS in their source directories. The eventual executor must start from an
+empty environment and apply only the declared variables; the profile forbids
+network, Gradle, `sdkmanager`, APT repositories, a pip index, floating
+references, and nonfree output during this stack-only phase.
+
+The two byte-locked overlays are intentionally narrow:
+
+- `buildscripts/buildall.sh` accepts only
+  `--arch arm64 mpv` or `--arch x86_64 mpv`, selects the API-26 NDK compilers,
+  and refuses an existing per-ABI prefix;
+- `buildscripts/include/path.sh` fixes the composed SDK/NDK/JDK/tool paths,
+  helper digest, four-job parallelism, locale/time/reproducibility variables,
+  and isolated HOME/TMP/XDG paths.
+
+The fixed output allowlist for each ABI is eight source-built libraries
+(`libavcodec.so`, `libavdevice.so`, `libavfilter.so`, `libavformat.so`,
+`libavutil.so`, `libmpv.so`, `libswresample.so`, and `libswscale.so`) plus the
+exact NDK `libc++_shared.so`. `libplayer.so` is deliberately absent: the
+release-grade ZivPlayer JNI wrapper remains a separate pending source and
+contract gate.
+
+Validate the profile without building:
+
+```sh
+python3 native/tools/native_build_tool.py validate
+```
+
+On Linux as root, the current preflight additionally verifies the complete
+preserve-mode source workspace on ext4, the untouched upstream bytes/modes at
+both overlay destinations, both locked NDK runtime libraries, and the existing
+toolchain-composition receipt:
+
+```sh
+sudo python3 native/tools/native_build_tool.py preflight \
+  --source-workspace /var/tmp/zivplayer-native-source
+```
+
+Two fresh WSL preserve-mode materializations produced byte-identical receipts
+with SHA-256
+`e2ea14b6eea0c2f692a321853473f04dad2f1f3199d017bfffc733a858523c04`
+and the same 30,436-entry tree. That tree contains 29,238 regular files, 1,196
+directories, and two symlinks; its SHA-256 is
+`05a19a0fc8d11c88903c663783ebca00c0201f656fa54b580ab47a75fa746ee6`.
+The retained tree then passed the locked preflight with profile SHA-256
+`538fe37887840c4e23acdb189d3464878dd006dfc42f6e4c4565490f88252413`.
+These remain WSL inspection results, not accepted release provenance.
+
+There is still no native build executor, overlay application, output staging,
+ELF/JNI audit, canonical build receipt, offline Gradle/AAR integration, or
+compliance bundle. No libmpv library was produced by this preflight, and its
+success must not be reported as an M7E build.
+
 ## Locked build baseline
 
 - Linux host only for native artifact provenance.
@@ -427,8 +493,9 @@ APT stage and standalone Android/Python projection now have reproducible
 offline materializers, and their exact read-only composition has passed the
 fixed isolated smoke profile in inspection mode. This is not yet a release-
 grade installed container: accepted Android license files, redistribution
-evidence, canonical preserve-mode sources, the actual native build, and its
-artifact audits are still required before native artifacts can be accepted.
+evidence, an accepted release-builder materialization/run, the actual native
+build, and its artifact audits are still required before native artifacts can
+be accepted.
 
 ## Remaining native gates
 
@@ -436,18 +503,20 @@ Traversal-safe offline materialization and fixed toolchain composition are now
 implemented and have been run against the complete locked cache in inspection
 mode. The next native milestones must:
 
-1. create a canonical Linux `preserve` source workspace, wire the upstream
-   build scripts to `/opt/zivplayer/toolchain`, replace their API-23/path
-   assumptions with the locked API-26 boundary, and close the offline Gradle
-   artifact set before any Android wrapper build;
-2. adapt and harden the Kotlin/JNI wrapper inside `platform:libmpv-android`;
-3. build both selected ABIs at native API 26 in that environment;
-4. record every build option and patch hash;
-5. audit ELF class, machine, SONAME/NEEDED, 16 KiB LOAD alignment, and exported
+1. implement the Linux namespace executor that verifies the preserve source,
+   creates fresh writable source/output/HOME/TMP trees, applies the two locked
+   overlays at mode `0755`, runs the exact commands offline, and publishes a
+   no-replace canonical receipt;
+2. close the portable offline Gradle artifact set before any Android wrapper
+   build;
+3. adapt and harden the Kotlin/JNI wrapper inside `platform:libmpv-android`;
+4. build both selected ABIs at native API 26 in that environment;
+5. record every build option and patch hash;
+6. audit ELF class, machine, SONAME/NEEDED, 16 KiB LOAD alignment, and exported
    JNI symbols;
-6. produce per-artifact hashes, SBOM, notices, and complete corresponding
+7. produce per-artifact hashes, SBOM, notices, and complete corresponding
    source; and
-7. prove the release APK contains no `dev.jdtech.mpv:libmpv:1.0.0` bootstrap
+8. prove the release APK contains no `dev.jdtech.mpv:libmpv:1.0.0` bootstrap
    artifact.
 
 Until those gates pass, the Maven bootstrap AAR remains development-only and
