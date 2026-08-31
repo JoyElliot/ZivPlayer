@@ -18,6 +18,12 @@ not a license inventory for the installed build environment and does not make
 the pending Android license files, system notices, retention bundle, release
 SBOM, or corresponding-source package complete.
 
+The exact base-plus-APT stage is now reproducibly materialized and records its
+194-package installed projection. This is build-environment provenance only:
+it does not promote build-time Ubuntu/OpenJDK components into distributed app
+dependencies, and it does not replace the still-pending generated system
+license/notices inventory for the controlled builder.
+
 | Component | Intended use | Upstream license | Distribution note |
 | --- | --- | --- | --- |
 | AndroidX and Jetpack Compose | Android application and UI runtime | Apache-2.0 | Preserve notices required by resolved artifacts. |

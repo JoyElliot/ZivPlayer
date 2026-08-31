@@ -263,11 +263,64 @@ Files, links, owners, modes, normalized timestamps, and bytes are rechecked
 against the locked layer; `ziv-toolchain-base.json` binds the stable manifest
 snapshot, OCI identity, and canonical tree digest.
 
-This command creates only the verified Ubuntu base. It does not install the
-locked APT closure, extract Android archives, accept Android licenses, or make
-the result a release-grade container. Those operations must remain offline and
-produce their own installed-state evidence in the next M7C steps. The current
-WSL materialization is inspection evidence only.
+This command creates only the verified Ubuntu base. It does not itself install
+the locked APT closure, extract Android archives, accept Android licenses, or
+make the result a release-grade container.
+
+## Offline installed APT environment
+
+`environment_tool.py` consumes that base and the same verified cache to install
+the exact 102-package closure without network access. The destination must be
+absent, outside the cache, and below a trusted root-owned ext4 parent. The
+command never replaces an existing tree:
+
+```sh
+sudo python3 native/tools/environment_tool.py materialize-apt \
+  --output /var/tmp/zivplayer-toolchain-apt
+sudo python3 native/tools/environment_tool.py verify-apt \
+  --rootfs /var/tmp/zivplayer-toolchain-apt
+```
+
+The public entry point re-verifies the OCI, artifact, index, package, solver,
+and install-order locks before writing. Package installation runs with APT
+sources disabled inside private mount, network, PID, UTS, and IPC namespaces.
+Only loopback is visible; `/proc/keys` is replaced by an empty read-only mount;
+the input and `policy-rc.d` are immutable bind mounts; temporary filesystems
+have locked sizes and modes. Before the first package script, all Linux
+capability sets are empty, `no_new_privs` is active, and a locked x86_64 seccomp
+filter permits only AF_UNIX sockets while denying new namespaces, keyring/BPF/
+perf/userfaultfd/io_uring operations, and x32 syscalls. The parent also places
+the complete process tree in a dedicated cgroup-v2 domain with locked PID,
+memory/swap, CPU, and root-device I/O limits, plus hard `RLIMIT_NOFILE`,
+`RLIMIT_FSIZE`, and core-file limits. Any limit event, surviving descendant,
+mount leak, malformed security state, or cleanup failure fails closed.
+
+After installation, the tool proves the exact 194-package base-plus-APT dpkg
+projection, normalizes the generated Java JKS certificate timestamps while
+preserving aliases and DER bytes, removes only ldconfig's nondeterministic
+auxiliary cache, canonicalizes the two tzdata wall-clock transcript lines, and
+records the helper snapshots, generated-file policy, sandbox policy, stdout,
+stderr, and dpkg projection below
+`usr/share/zivplayer/toolchain-evidence/apt-stage`. Tree scanning binds file
+contents, owners, modes, hard links, safe user xattrs, normalized timestamps,
+and symlink targets with explicit entry/path/xattr/byte budgets. The receipt is
+written only after independent verification; file data and metadata are synced
+before the no-replace rename, and the output parent is synced before success is
+reported.
+
+The final frozen implementation was run twice from fresh roots in WSL
+Ubuntu-24.04. Both runs produced 12,449 entries, 709,614,000 physical file
+bytes, tree SHA-256
+`b584b9cfb5c497f865a7b40efac2b5db8c95f772438655298766bb3601f10426`,
+and byte-identical receipt SHA-256
+`4ece2c1c82ea421d1f41ad48e70a34a5d1ec00624816dd75e47960832b2aeb91`.
+The complete directories and evidence compared equal; normalized Java cacerts
+were `e8077b51dce7bd5435c56d160298bc5b0f44b1465111d51bb3fc5488d5a34c24`.
+These WSL runs are reproducibility inspection evidence, not accepted release
+provenance. The trusted boundary remains the exclusive host process,
+repository, cache, output parent, and cgroup hierarchy; a host hard kill may
+leave a precisely named empty cgroup that requires operator cleanup after its
+population is checked.
 
 The final fail-closed gate is:
 
@@ -275,10 +328,11 @@ The final fail-closed gate is:
 python3 native/tools/toolchain_tool.py check-lock
 ```
 
-It currently verifies all locked bytes and then exits 3: the installed
-container, accepted Android license files, system notices, retention bundle,
-and corresponding source-manifest container status remain pending. Do not
-change those status fields to `complete` without the named evidence.
+It currently verifies all locked bytes and then exits 3: Android/Python tools
+have not yet been extracted into the installed environment, and accepted
+Android license files, system notices, retention bundle, and corresponding
+source-manifest container status remain pending. Do not change those status
+fields to `complete` without the named evidence.
 
 ## Locked build baseline
 
@@ -298,12 +352,11 @@ change those status fields to `complete` without the named evidence.
   `--enable-nonfree` is prohibited.
 
 The source bytes, Linux base-image object graph, Android/Python tool archives,
-base dpkg projection, and APT package/index closure are locked. This is not yet
-a release-grade installed container: the toolchain roots still have to be
-materialized into a fresh controlled Linux filesystem, installed without
-network access, recorded as a final filesystem/tool-version projection, and
-paired with accepted Android license files and redistribution evidence before
-native artifacts can be accepted.
+base dpkg projection, and APT package/index closure are locked, and the base
+plus APT stage now has a reproducible offline materializer. This is not yet a
+release-grade installed container: the Android/Python tool roots still have to
+be extracted and projected, then paired with accepted Android license files and
+redistribution evidence before native artifacts can be accepted.
 
 ## Remaining native gates
 
@@ -311,9 +364,9 @@ Traversal-safe offline materialization is now implemented and has been run
 against the complete locked cache in inspection mode. The next native
 milestones must:
 
-1. materialize the locked toolchain roots and APT closure into the controlled
-   Linux build environment, then run canonical `preserve` source
-   materialization there;
+1. extract the locked Android/Python tool roots into the verified base-plus-APT
+   environment, record their final projection, then run canonical `preserve`
+   source materialization there;
 2. adapt and harden the Kotlin/JNI wrapper inside `platform:libmpv-android`;
 3. build both selected ABIs at native API 26 in that environment;
 4. record every build option and patch hash;

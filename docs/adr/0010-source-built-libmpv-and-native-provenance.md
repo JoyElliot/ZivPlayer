@@ -156,13 +156,36 @@ permissions, owners, sizes, file hashes, and link text. This deliberately does
 not invoke Docker/Podman, install APT packages, extract Android tools, or claim
 an installed-container projection.
 
-This closes builder-root selection and APT-closure ambiguity, not the installed
-container. The implemented base-rootfs step is necessary but insufficient; the
-environment status therefore remains
-`roots-and-apt-locked-container-pending`: the roots must still be installed in
-a fresh controlled Linux filesystem without network access, followed by a
-recorded final filesystem/tool projection and accepted Android license and
-redistribution inputs. A successful build on an arbitrary workstation or
+`native/tools/environment_tool.py` is the next offline bridge. It re-verifies
+all locks, materializes the base into fresh ext4 staging, and installs the exact
+102-package closure in locked order with APT sources disabled. Package scripts
+run in private mount/network/PID/UTS/IPC namespaces with an exact mount set,
+loopback-only networking, an empty read-only `/proc/keys`, immutable inputs,
+zero Linux capabilities, `no_new_privs`, and a locked seccomp filter. The
+complete installer process tree is bounded by a dedicated cgroup-v2 domain and
+hard process resource limits. Cleanup proves that the cgroup is empty and that
+no mounts remain before the tree can be published.
+
+The installed-stage receipt binds the exact 194-package dpkg projection,
+installer/helper snapshots, stdout/stderr, sandbox policy, deterministic
+generated-file policy, and a canonical tree digest. Java cacerts timestamps are
+normalized without changing aliases or DER certificates; ldconfig's auxiliary
+inode cache is removed while its runtime cache is retained; only the two
+tzdata wall-clock transcript lines are canonicalized. Paths, hard links,
+owners, modes, safe user xattrs, timestamps, file bytes, and symlink targets are
+rechecked under explicit resource budgets. Publication is a no-replace rename
+after filesystem synchronization, followed by output-parent synchronization.
+
+Two fresh WSL inspection runs of the frozen implementation produced identical
+12,449-entry trees containing 709,614,000 physical file bytes, with SHA-256
+`b584b9cfb5c497f865a7b40efac2b5db8c95f772438655298766bb3601f10426`
+and byte-identical receipts with SHA-256
+`4ece2c1c82ea421d1f41ad48e70a34a5d1ec00624816dd75e47960832b2aeb91`.
+This closes offline base-plus-APT installation ambiguity under the stated
+trusted-host boundary, but not the installed container. The environment status
+therefore remains `roots-and-apt-locked-container-pending`: Android/Python roots,
+their final tool projection, accepted Android license files, and redistribution
+inputs are still required. A successful build on an arbitrary workstation or
 floating hosted runner is not release provenance. Windows and the currently
 configured WSL environment are evidence/inspection environments, not accepted
 native release builders.
@@ -206,11 +229,12 @@ artifact is blocked until all of the following are true:
 ## Consequences
 
 ZivPlayer now has independently verifiable native source and builder-input
-baselines. Complete local source and toolchain/APT caches can be prepared
-without trusting mutable Git branches, floating container tags, or moving APT
-repositories, and the release-input gate fails closed while the installed
-container and compliance evidence are absent. This closes source, root-object,
-and package-closure selection ambiguity but not binary reproducibility, JNI
-correctness, device playback, or license-package gates. The current
-public-release decision therefore remains No-Go until the remaining native and
-device milestones pass.
+baselines plus a reproducible offline base-plus-APT materialization stage.
+Complete local source and toolchain/APT caches can be prepared without trusting
+mutable Git branches, floating container tags, or moving APT repositories, and
+the release-input gate fails closed while Android/Python installation and
+compliance evidence are absent. This closes source, root-object, package-
+closure, and offline APT installed-state ambiguity under the trusted builder
+boundary, but not binary reproducibility, JNI correctness, device playback, or
+license-package gates. The current public-release decision therefore remains
+No-Go until the remaining native and device milestones pass.
