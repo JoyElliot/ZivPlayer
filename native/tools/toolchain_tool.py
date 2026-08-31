@@ -118,6 +118,12 @@ APT_KEYS = {
     "packageCount",
     "packageLockSize",
     "packageLockSha256",
+    "installOrder",
+    "installOrderCount",
+    "installOrderSize",
+    "installOrderSha256",
+    "simulationSize",
+    "simulationSha256",
     "closureStatus",
     "baseDpkgSnapshotStatus",
 }
@@ -204,6 +210,14 @@ APT_PACKAGE_HEADER = (
     "components",
     "repositoryFilename",
     "publishedSha256",
+)
+APT_INSTALL_ORDER_HEADER = (
+    "sequence",
+    "package",
+    "architecture",
+    "version",
+    "archive",
+    "sha256",
 )
 
 
@@ -435,6 +449,7 @@ def _validate_apt(value: object) -> dict[str, object]:
         "baseDpkgLock": "native/toolchain/base-dpkg.tsv",
         "indexLock": "native/toolchain/apt-indices.tsv",
         "packageLock": "native/toolchain/apt-packages.tsv",
+        "installOrder": "native/toolchain/apt-install-order.tsv",
     }
     for key, expected in expected_paths.items():
         path = _expect_string(apt[key], f"apt.{key}")
@@ -458,6 +473,7 @@ def _validate_apt(value: object) -> dict[str, object]:
         "baseDpkgLock",
         "indexLock",
         "packageLock",
+        "installOrder",
     ):
         size = _expect_int(apt[f"{key}Size"], f"apt.{key}Size", minimum=1)
         if size > MAX_APT_LOCK_BYTES and key not in {"baseStatus"}:
@@ -471,10 +487,24 @@ def _validate_apt(value: object) -> dict[str, object]:
         "baseDpkgPackageCount": 92,
         "indexCount": 9,
         "packageCount": 102,
+        "installOrderCount": 102,
     }
     for key, expected in expected_counts.items():
         if _expect_int(apt[key], f"apt.{key}", minimum=1) != expected:
             _schema(f"apt.{key} must be {expected}")
+    if apt["installOrderCount"] != apt["packageCount"]:
+        _schema("apt.installOrderCount must match apt.packageCount")
+    simulation_size = _expect_int(
+        apt["simulationSize"],
+        "apt.simulationSize",
+        minimum=1,
+    )
+    if simulation_size > MAX_APT_LOCK_BYTES:
+        _schema(f"apt.simulationSize exceeds the {MAX_APT_LOCK_BYTES}-byte lock limit")
+    _check_sha256(
+        _expect_string(apt["simulationSha256"], "apt.simulationSha256"),
+        "apt.simulationSha256",
+    )
     signer = _expect_string(
         apt["archiveSignerFingerprint"],
         "apt.archiveSignerFingerprint",
@@ -1714,6 +1744,68 @@ def _load_apt_package_rows(
     return parsed
 
 
+def _load_apt_install_order(
+    apt: dict[str, object],
+    package_rows: list[dict[str, object]],
+    *,
+    repository_root: Path,
+) -> list[dict[str, object]]:
+    raw = _read_locked_repository_file(
+        apt,
+        "installOrder",
+        repository_root=repository_root,
+    )
+    rows = _parse_tsv(raw, APT_INSTALL_ORDER_HEADER, "APT install order")
+    if len(rows) != int(apt["installOrderCount"]):
+        _integrity("APT install order row count does not match the manifest")
+    packages = {
+        (
+            str(row["package"]),
+            str(row["architecture"]),
+            str(row["version"]),
+        ): row
+        for row in package_rows
+    }
+    parsed: list[dict[str, object]] = []
+    seen: set[tuple[str, str, str]] = set()
+    for index, values in enumerate(rows, start=1):
+        sequence_text, package, architecture, version, archive, sha256 = values
+        sequence = _parse_ascii_decimal(
+            sequence_text,
+            f"APT install order row {index}.sequence",
+        )
+        if sequence != index or sequence_text != str(index):
+            _integrity("APT install order sequence must be canonical and contiguous")
+        _validate_debian_identity(
+            package,
+            architecture,
+            version,
+            f"APT install order row {index}",
+        )
+        identity = (package, architecture, version)
+        locked = packages.get(identity)
+        if locked is None or identity in seen:
+            _integrity("APT install order repeats or invents a package identity")
+        if archive != locked["archive"] or sha256 != locked["sha256"]:
+            _integrity(
+                f"APT install order row {index} disagrees with the package lock"
+            )
+        seen.add(identity)
+        parsed.append(
+            {
+                "sequence": sequence,
+                "package": package,
+                "architecture": architecture,
+                "version": version,
+                "archive": archive,
+                "sha256": sha256,
+            }
+        )
+    if seen != set(packages):
+        _integrity("APT install order does not cover the exact package lock")
+    return parsed
+
+
 def _validate_real_directory(path: Path, label: str) -> None:
     try:
         value = path.lstat()
@@ -1906,6 +1998,7 @@ def _verify_apt_cache_bytes(
     apt_cache: Path,
     index_rows: list[dict[str, object]],
     package_rows: list[dict[str, object]],
+    install_order: list[dict[str, object]],
     keyring_raw: bytes,
 ) -> list[dict[str, str]]:
     _validate_real_directory(apt_cache, "APT cache")
@@ -2073,13 +2166,21 @@ def _verify_apt_cache_bytes(
         label="APT solver simulation",
         missing_exit=source_tool.EXIT_MISSING,
     )
+    if len(simulation) != int(apt["simulationSize"]):
+        _integrity("APT solver simulation size does not match the manifest")
+    if hashlib.sha256(simulation).hexdigest() != apt["simulationSha256"]:
+        _integrity("APT solver simulation SHA-256 does not match the manifest")
     if b"\r" in simulation:
         _integrity("APT solver simulation must use LF-only bytes")
     try:
         simulation_text = simulation.decode("utf-8")
     except UnicodeDecodeError as error:
         _integrity(f"cannot decode APT solver simulation: {error}")
-    observed: dict[str, set[tuple[str, str, str]]] = {"Inst": set(), "Conf": set()}
+    observed: dict[str, list[tuple[str, str, str]]] = {"Inst": [], "Conf": []}
+    observed_sets: dict[str, set[tuple[str, str, str]]] = {
+        "Inst": set(),
+        "Conf": set(),
+    }
     line_pattern = re.compile(
         r"^(Inst|Conf) ([a-z0-9][a-z0-9+.-]*) \((\S+).* \[(amd64|all)\]\)$"
     )
@@ -2088,15 +2189,18 @@ def _verify_apt_cache_bytes(
         if match is not None:
             action, package, version, architecture = match.groups()
             identity = (package, architecture, version)
-            if identity in observed[action]:
+            if identity in observed_sets[action]:
                 _integrity(f"APT solver simulation repeats {action} identity {identity}")
-            observed[action].add(identity)
-    expected_identities = {
+            observed_sets[action].add(identity)
+            observed[action].append(identity)
+    expected_order = [
         (str(row["package"]), str(row["architecture"]), str(row["version"]))
-        for row in package_rows
-    }
-    if observed["Inst"] != expected_identities or observed["Conf"] != expected_identities:
-        _integrity("APT solver simulation does not select/configure the exact package lock")
+        for row in install_order
+    ]
+    if observed["Inst"] != expected_order or observed["Conf"] != expected_order:
+        _integrity(
+            "APT solver simulation order does not match the locked install order"
+        )
     summary = f"0 upgraded, {len(package_rows)} newly installed, 0 to remove"
     if summary not in simulation_text:
         _integrity("APT solver simulation summary does not match the package lock")
@@ -2235,11 +2339,17 @@ def verify_apt_cache(
     )
     index_rows = _load_apt_index_rows(apt, repository_root=repository_root)
     package_rows = _load_apt_package_rows(apt, repository_root=repository_root)
+    install_order = _load_apt_install_order(
+        apt,
+        package_rows,
+        repository_root=repository_root,
+    )
     selected_records = _verify_apt_cache_bytes(
         apt,
         apt_cache,
         index_rows,
         package_rows,
+        install_order,
         keyring_raw,
     )
     clauses = _verify_dependency_closure(base_records, selected_records, roots)

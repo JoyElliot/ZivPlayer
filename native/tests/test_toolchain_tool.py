@@ -252,6 +252,45 @@ class ToolchainToolTest(unittest.TestCase):
                 )
         self.assertEqual(source_tool.EXIT_INTEGRITY, raised.exception.exit_code)
 
+    def test_install_order_is_byte_locked_and_matches_package_lock(self) -> None:
+        data = committed_data()
+        apt = data["apt"]
+        self.assertIsInstance(apt, dict)
+        package_rows = toolchain_tool._load_apt_package_rows(
+            apt,
+            repository_root=REPOSITORY_ROOT,
+        )
+        order = toolchain_tool._load_apt_install_order(
+            apt,
+            package_rows,
+            repository_root=REPOSITORY_ROOT,
+        )
+        self.assertEqual(102, len(order))
+        self.assertEqual("libpython3.12-minimal", order[0]["package"])
+        self.assertEqual("unzip", order[-1]["package"])
+
+        source = REPOSITORY_ROOT / str(apt["installOrder"])
+        lines = source.read_bytes().splitlines(keepends=True)
+        lines[1], lines[2] = lines[2], lines[1]
+        tampered = b"".join(lines)
+        with tempfile.TemporaryDirectory() as directory:
+            repository = Path(directory)
+            destination = repository / str(apt["installOrder"])
+            destination.parent.mkdir(parents=True)
+            destination.write_bytes(tampered)
+            apt["installOrderSize"] = len(tampered)
+            apt["installOrderSha256"] = hashlib.sha256(tampered).hexdigest()
+            with self.assertRaisesRegex(
+                source_tool.SourceToolError,
+                "sequence must be canonical",
+            ) as raised:
+                toolchain_tool._load_apt_install_order(
+                    apt,
+                    package_rows,
+                    repository_root=repository,
+                )
+        self.assertEqual(source_tool.EXIT_INTEGRITY, raised.exception.exit_code)
+
     def test_source_binding_rejects_tuple_divergence(self) -> None:
         data = committed_data()
         project, artifacts, _ = toolchain_tool.validate_manifest_data(data)

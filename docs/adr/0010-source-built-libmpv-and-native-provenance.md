@@ -137,6 +137,9 @@ descriptors and rootfs `diff_id`, the base status/keyring projection, signed
 InRelease bytes and locked signer, exact Packages/`.deb` sets, each archive's
 internal Debian control identity, solver identity set, Debian versioned
 dependency semantics, and reachability from the declared roots.
+The solver transcript bytes and their 102-entry install/configure order are
+also locked explicitly so a later offline installer cannot silently substitute
+a different action order while preserving only the final package set.
 `native/toolchain/prepare-apt-cache.sh` is an explicit networked
 preparation operation on the pinned Ubuntu apt/dpkg/gpgv tuple. It stages and
 verifies a new ignored cache and refuses replacement; it is not permitted in

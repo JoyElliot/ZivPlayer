@@ -194,8 +194,9 @@ InRelease signatures against fingerprint
 package sets plus the canonical receipt, checks every `.deb` control identity
 from the stable verified byte snapshot, and proves 92 base packages plus 102
 cached packages satisfy 523 dependency clauses. The solver transcript is
-checked semantically for the exact install/configure set; cache directory
-metadata and timestamps are not release identities.
+locked by size and SHA-256, and its 102 `Inst` and `Conf` records must match
+`toolchain/apt-install-order.tsv` exactly rather than only as an unordered set.
+Cache directory metadata and timestamps are not release identities.
 
 NASM `2.16.01-1build1` is an explicit direct root. FFmpeg's selected x86_64
 configuration probes a NASM-compatible assembler by default; relying on the

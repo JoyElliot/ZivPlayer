@@ -70,6 +70,12 @@ packageLock = "native/toolchain/apt-packages.tsv"
 packageCount = 102
 packageLockSize = 30267
 packageLockSha256 = "2627fc6180bc49c5c2e166cc37e7c1ee02e963a74c7d447df506855edca9e378"
+installOrder = "native/toolchain/apt-install-order.tsv"
+installOrderCount = 102
+installOrderSize = 14649
+installOrderSha256 = "06571d58c23a367fe72f0ac8268120e6fa3303e4ddab89e0b1b3db5c2fdf34a9"
+simulationSize = 20629
+simulationSha256 = "5271f216927e14c6548c38cd822e80008c8145c5246ce0285c8faf5750a3e410"
 closureStatus = "complete"
 baseDpkgSnapshotStatus = "complete"
 

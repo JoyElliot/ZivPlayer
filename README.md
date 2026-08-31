@@ -54,10 +54,11 @@ complete reviewed mpv-android 2026-08-11 source closure by immutable revision,
 byte count, SHA-256, license, and linkage role. A second byte-level manifest now
 locks the Linux/amd64 builder roots: a digest-qualified Ubuntu OCI graph, five
 Android/Python tool archives, the 2026-08-11 Ubuntu snapshot, 92 base-image dpkg
-identities, 22 requested packages, nine signed resolver indexes, and the exact
+identities, 23 requested packages, nine signed resolver indexes, and the exact
 102-package transitive `.deb` closure. The offline verifier rechecks the OCI
 graph and rootfs `diff_id`, Ubuntu signatures, package/index bytes, solver
-selection, and all 523 `Pre-Depends`/`Depends` clauses.
+selection and its locked install order, and all 523 `Pre-Depends`/`Depends`
+clauses.
 
 The ignored cache has been prepared and independently verified in WSL, but WSL
 is evidence for the input lock rather than accepted release provenance. The
