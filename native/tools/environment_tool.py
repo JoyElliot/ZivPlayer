@@ -640,7 +640,21 @@ def _entry_bytes(entry: ScannedEntry) -> bytes:
     return "\t".join(values).encode("utf-8")
 
 
-def _scan_tree(rootfs: Path) -> dict[str, object]:
+def _scan_tree(
+    rootfs: Path,
+    *,
+    receipt_name: str = RECEIPT_NAME,
+) -> dict[str, object]:
+    if (
+        not receipt_name
+        or receipt_name in {".", ".."}
+        or "/" in receipt_name
+        or "\\" in receipt_name
+        or unicodedata.normalize("NFKC", receipt_name) != receipt_name
+        or len(receipt_name.encode("utf-8")) > rootfs_tool.MAX_COMPONENT_BYTES
+        or any(ord(character) < 0x20 or ord(character) == 0x7F for character in receipt_name)
+    ):
+        _schema("installed tree receipt name must be one canonical path component")
     root_info = rootfs.lstat()
     if (
         not stat.S_ISDIR(root_info.st_mode)
@@ -651,7 +665,7 @@ def _scan_tree(rootfs: Path) -> dict[str, object]:
     ):
         _integrity("installed rootfs root metadata is not canonical")
     root_xattrs, xattr_budget = _xattr_digest(rootfs)
-    receipt_key = unicodedata.normalize("NFKC", RECEIPT_NAME).casefold()
+    receipt_key = unicodedata.normalize("NFKC", receipt_name).casefold()
     plain: list[ScannedEntry] = []
     files: list[tuple[ScannedEntry, tuple[int, int], int, int]] = []
     seen_paths: set[str] = set()
@@ -690,7 +704,7 @@ def _scan_tree(rootfs: Path) -> dict[str, object]:
                 unicodedata.normalize("NFKC", name).casefold() == receipt_key
             )
             if receipt_collision:
-                if name != RECEIPT_NAME:
+                if name != receipt_name:
                     _integrity("installed tree contains a receipt-name collision")
                 receipt_info = path.lstat()
                 if not stat.S_ISREG(receipt_info.st_mode):

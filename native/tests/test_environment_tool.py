@@ -486,6 +486,40 @@ class EnvironmentToolTest(unittest.TestCase):
         sys.platform == "linux" and hasattr(os, "geteuid") and os.geteuid() == 0,
         "installed-tree metadata tests require Linux root",
     )
+    def test_tree_digest_supports_a_distinct_canonical_receipt_name(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/var/tmp") as directory:
+            root = Path(directory) / "root"
+            root.mkdir(mode=0o700)
+            (root / "file").write_bytes(b"payload")
+            environment_tool._normalize_tree(root)
+            receipt_name = "ziv-sdk-projection.json"
+            before = environment_tool._scan_tree(root, receipt_name=receipt_name)
+            receipt = root / receipt_name
+            receipt.write_bytes(b"receipt")
+            os.chown(receipt, 0, 0)
+            receipt.chmod(0o644)
+            environment_tool._normalize_tree(root)
+            self.assertEqual(
+                before,
+                environment_tool._scan_tree(root, receipt_name=receipt_name),
+            )
+            receipt.unlink()
+            collision = root / receipt_name.upper()
+            collision.write_bytes(b"collision")
+            environment_tool._normalize_tree(root)
+            with self.assertRaisesRegex(source_tool.SourceToolError, "receipt-name"):
+                environment_tool._scan_tree(root, receipt_name=receipt_name)
+
+    def test_tree_digest_rejects_unsafe_custom_receipt_names(self) -> None:
+        for name in ("", "a/b", "a\\b", ".", "line\nfeed"):
+            with self.subTest(name=name), self.assertRaises(source_tool.SourceToolError) as raised:
+                environment_tool._scan_tree(Path("missing"), receipt_name=name)
+            self.assertEqual(source_tool.EXIT_SCHEMA, raised.exception.exit_code)
+
+    @unittest.skipUnless(
+        sys.platform == "linux" and hasattr(os, "geteuid") and os.geteuid() == 0,
+        "installed-tree metadata tests require Linux root",
+    )
     def test_tree_digest_rejects_relative_symlink_escape(self) -> None:
         with tempfile.TemporaryDirectory(dir="/var/tmp") as directory:
             root = Path(directory) / "root"

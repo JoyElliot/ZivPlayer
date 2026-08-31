@@ -182,9 +182,38 @@ Two fresh WSL inspection runs of the frozen implementation produced identical
 and byte-identical receipts with SHA-256
 `4ece2c1c82ea421d1f41ad48e70a34a5d1ec00624816dd75e47960832b2aeb91`.
 This closes offline base-plus-APT installation ambiguity under the stated
-trusted-host boundary, but not the installed container. The environment status
-therefore remains `roots-and-apt-locked-container-pending`: Android/Python roots,
-their final tool projection, accepted Android license files, and redistribution
+trusted-host boundary, but not the installed container.
+
+`native/tools/sdk_tool.py` separately closes the archive-to-filesystem
+ambiguity for the locked Android SDK/NDK and Meson wheel. It verifies immutable
+archive snapshots and ZIP metadata/content, Android package identities, the
+NDK's bounded relative symlink graph and explicit case-only header pairs, and
+the Meson source-wheel RECORD. It then writes a root-owned, timestamp-normalized
+Linux/ext4 projection for `/opt/zivplayer/toolchain`, retains the locked wheel,
+adds a fixed `python3.12 -I -S -B` Meson launcher, and atomically publishes only
+after a second archive, projection-record, tree, helper, and receipt check. It
+does not invoke `sdkmanager`, `pip`, or the network.
+
+Two fresh complete-cache WSL inspection materializations produced identical
+25,286-entry trees with 2,913,084,578 file bytes. Their installed-tree SHA-256
+was `dac187631c910c5e7bb10c20573d8c7b8accc1051077d22a6d11a5707c11c5a4`,
+their projection SHA-256 was
+`d5becfde012c856be4ed5eb04215e233a8a6e8ff3d860198c45c9f197fd6ef3c`, and
+their byte-identical receipt SHA-256 was
+`7f9bf9d66185c63d60a41e451146717be2794f95dc73a675618da7c09fd6e544`.
+The repeated output was removed after comparison; the retained inspection tree
+was separately reverified against the locked archives and current helpers.
+
+The SDK receipt intentionally declares a standalone mountable projection with
+`aptEnvironmentBound=false` and `releaseInput=false`. Its source wheel RECORD
+proves the original wheel members before `.data/data` remapping; a separate
+projection digest proves the installed paths. Its legal inventory is only the
+projected builder-tool subset. It neither generates `package.xml` nor proves
+Android license acceptance or product redistribution obligations.
+
+The environment status therefore remains
+`roots-and-apt-locked-container-pending`: isolated composition of the two trees,
+runtime smoke evidence, accepted Android license files, and redistribution
 inputs are still required. A successful build on an arbitrary workstation or
 floating hosted runner is not release provenance. Windows and the currently
 configured WSL environment are evidence/inspection environments, not accepted
@@ -229,12 +258,14 @@ artifact is blocked until all of the following are true:
 ## Consequences
 
 ZivPlayer now has independently verifiable native source and builder-input
-baselines plus a reproducible offline base-plus-APT materialization stage.
+baselines, a reproducible offline base-plus-APT materialization stage, and a
+separate reproducible Android/Python tool projection.
 Complete local source and toolchain/APT caches can be prepared without trusting
 mutable Git branches, floating container tags, or moving APT repositories, and
-the release-input gate fails closed while Android/Python installation and
+the release-input gate fails closed while environment composition and
 compliance evidence are absent. This closes source, root-object, package-
-closure, and offline APT installed-state ambiguity under the trusted builder
-boundary, but not binary reproducibility, JNI correctness, device playback, or
-license-package gates. The current public-release decision therefore remains
-No-Go until the remaining native and device milestones pass.
+closure, offline APT installed-state, and standalone SDK projection ambiguity
+under the trusted builder boundary, but not binary reproducibility, JNI
+correctness, device playback, or license-package gates. The current
+public-release decision therefore remains No-Go until the remaining native and
+device milestones pass.

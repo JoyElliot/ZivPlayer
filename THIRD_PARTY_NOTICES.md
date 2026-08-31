@@ -24,6 +24,14 @@ it does not promote build-time Ubuntu/OpenJDK components into distributed app
 dependencies, and it does not replace the still-pending generated system
 license/notices inventory for the controlled builder.
 
+The locked Android SDK/NDK and Meson wheel also have a reproducible standalone
+builder projection. Its receipt inventories the 26 projected NOTICE/LICENSE/
+COPYING-style builder files with archive-member mappings, but explicitly marks
+that inventory as builder-tool retention only. It is not Android SDK license
+acceptance evidence and is not the product notices bundle. Official package
+metadata, real operator acceptance evidence, the source manifest's declared
+license files, and the actual linked product graph remain separate gates.
+
 | Component | Intended use | Upstream license | Distribution note |
 | --- | --- | --- | --- |
 | AndroidX and Jetpack Compose | Android application and UI runtime | Apache-2.0 | Preserve notices required by resolved artifacts. |

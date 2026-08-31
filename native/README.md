@@ -328,11 +328,39 @@ The final fail-closed gate is:
 python3 native/tools/toolchain_tool.py check-lock
 ```
 
-It currently verifies all locked bytes and then exits 3: Android/Python tools
-have not yet been extracted into the installed environment, and accepted
-Android license files, system notices, retention bundle, and corresponding
-source-manifest container status remain pending. Do not change those status
-fields to `complete` without the named evidence.
+It currently verifies all locked bytes and then exits 3. Android/Python tools
+now have a canonical standalone projection, but that projection is not yet
+bound to the installed APT environment; accepted Android license files, system
+notices, retention bundle, and corresponding source-manifest container status
+also remain pending. Do not change those status fields to `complete` without
+the named evidence.
+
+The standalone SDK projection is prepared and verified with:
+
+```sh
+python3 native/tools/sdk_tool.py preflight
+sudo python3 native/tools/sdk_tool.py materialize \
+  --output /var/tmp/zivplayer-sdk-projection
+sudo python3 native/tools/sdk_tool.py verify \
+  --root /var/tmp/zivplayer-sdk-projection
+```
+
+`sdk_tool.py` re-verifies immutable archive snapshots, validates every ZIP
+member and Android `source.properties`, preserves the NDK's 37 audited relative
+symlinks and eight explicit case-only header pairs, validates every Meson wheel
+RECORD row, and projects all package resources plus a fixed Python launcher.
+It calls neither `sdkmanager` nor `pip`, normalizes ownership/modes/timestamps,
+rejects replacement, and publishes only after an independent tree/receipt
+verification and filesystem synchronization. The receipt explicitly says
+`aptEnvironmentBound=false`, `releaseInput=false`, and `packageXml=not-generated`.
+Its toolchain legal inventory covers projected builder tools only; it is not
+the generated product notices bundle.
+
+Two fresh complete-cache inspection materializations produced identical
+25,286-entry trees (2,913,084,578 file bytes) and byte-identical receipts. The
+tree SHA-256 is `dac18763...1c5a4`, the projection SHA-256 is
+`d5becfde...6ef3c`, and the receipt SHA-256 is `7f9bf9d6...6e544`. These are WSL
+inspection results, not accepted release provenance.
 
 ## Locked build baseline
 
@@ -352,10 +380,11 @@ fields to `complete` without the named evidence.
   `--enable-nonfree` is prohibited.
 
 The source bytes, Linux base-image object graph, Android/Python tool archives,
-base dpkg projection, and APT package/index closure are locked, and the base
-plus APT stage now has a reproducible offline materializer. This is not yet a
-release-grade installed container: the Android/Python tool roots still have to
-be extracted and projected, then paired with accepted Android license files and
+base dpkg projection, and APT package/index closure are locked. The base-plus-
+APT stage and standalone Android/Python projection now have reproducible
+offline materializers. This is not yet a release-grade installed container:
+the two verified trees still have to be composed under an isolated mount
+policy, runtime-smoked, and paired with accepted Android license files and
 redistribution evidence before native artifacts can be accepted.
 
 ## Remaining native gates
@@ -364,8 +393,9 @@ Traversal-safe offline materialization is now implemented and has been run
 against the complete locked cache in inspection mode. The next native
 milestones must:
 
-1. extract the locked Android/Python tool roots into the verified base-plus-APT
-   environment, record their final projection, then run canonical `preserve`
+1. bind the verified standalone Android/Python projection at
+   `/opt/zivplayer/toolchain` inside the verified base-plus-APT environment,
+   record and smoke that exact composition, then run canonical `preserve`
    source materialization there;
 2. adapt and harden the Kotlin/JNI wrapper inside `platform:libmpv-android`;
 3. build both selected ABIs at native API 26 in that environment;
