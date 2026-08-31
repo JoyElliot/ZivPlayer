@@ -37,8 +37,8 @@ readonly expected_layer_size="29752807"
 readonly expected_layer_sha256="0926a8eb0e608a5c6888d1cd5594184bdf3ed3aa311dba5b42a547caefdc6f2e"
 readonly expected_sources_size="195"
 readonly expected_sources_sha256="58d823a08ee0649fa9a9f75d6f4f761cd0ecf5fa39b59bd0a15fb2c17326a6d8"
-readonly expected_roots_size="191"
-readonly expected_roots_sha256="28b225bed576b40fe7195b557dccb4e30e548fd0a2712711d64a026e8ee2549f"
+readonly expected_roots_size="196"
+readonly expected_roots_sha256="d1b09501bcc6e988af7dae2e81e16ed56a138e1eb625a6dd823cc017bc7f35fa"
 
 assert_package_version() {
   local package="$1"
@@ -272,8 +272,8 @@ if /usr/bin/find "${staging}/debs/partial" -mindepth 1 -print -quit | /usr/bin/g
 fi
 /usr/bin/rmdir -- "${staging}/debs/partial"
 deb_count="$(/usr/bin/find "${staging}/debs" -maxdepth 1 -type f -name '*.deb' -printf '.' | /usr/bin/wc -c)"
-if [[ "${deb_count}" != "101" ]]; then
-  echo "error: expected 101 downloaded .deb files, got ${deb_count}" >&2
+if [[ "${deb_count}" != "102" ]]; then
+  echo "error: expected 102 downloaded .deb files, got ${deb_count}" >&2
   exit 4
 fi
 

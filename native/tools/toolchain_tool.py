@@ -467,10 +467,10 @@ def _validate_apt(value: object) -> dict[str, object]:
             f"apt.{key}Sha256",
         )
     expected_counts = {
-        "rootsCount": 22,
+        "rootsCount": 23,
         "baseDpkgPackageCount": 92,
         "indexCount": 9,
-        "packageCount": 101,
+        "packageCount": 102,
     }
     for key, expected in expected_counts.items():
         if _expect_int(apt[key], f"apt.{key}", minimum=1) != expected:

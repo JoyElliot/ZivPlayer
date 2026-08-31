@@ -121,12 +121,16 @@ source tool.
 `native/toolchain-manifest.toml` now locks the next boundary by bytes. It binds
 the source-manifest digest and Android tuple to a four-object linux/amd64 Ubuntu
 OCI graph, five Android/Python tool archives, Ubuntu snapshot
-`20260811T000000Z`, the 92-package base dpkg projection, 22 APT roots, nine
-signed resolver indexes, and 101 exact transitive `.deb` files. The descriptive
+`20260811T000000Z`, the 92-package base dpkg projection, 23 APT roots, nine
+signed resolver indexes, and 102 exact transitive `.deb` files. The descriptive
 Ubuntu tag is not build authority; the linux/amd64 manifest digest in
 `baseImage.buildReference` is. The manifest also makes the native build's
 network, repository, package-index, floating-reference, and nonfree
 prohibitions explicit.
+
+NASM `2.16.01-1build1` is a direct root because the selected FFmpeg x86_64
+configuration probes NASM by default. The NDK-bundled Yasm is not treated as
+an implicit substitute that would require an unrecorded configure override.
 
 `native/tools/toolchain_tool.py` independently checks root bytes, OCI
 descriptors and rootfs `diff_id`, the base status/keyring projection, signed

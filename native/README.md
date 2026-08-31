@@ -169,8 +169,8 @@ builder roots. It binds the source manifest digest and Android tuple to:
 - Android NDK `29.0.14206865`, Platform 36 revision 02, Build Tools 36.0.0,
   command-line tools 12.0, and the Meson 1.11.0 wheel by size and SHA-256;
 - the Ubuntu snapshot `20260811T000000Z`, its base dpkg status projection and
-  archive keyring, 22 direct package roots, nine resolver-required InRelease/
-  Packages indexes, and 101 exact `.deb` files; and
+  archive keyring, 23 direct package roots, nine resolver-required InRelease/
+  Packages indexes, and 102 exact `.deb` files; and
 - a no-network build policy that prohibits floating references, `sdkmanager`,
   APT repositories, a pip index, and nonfree output during the actual build.
 
@@ -192,10 +192,15 @@ locked dpkg status and keyring from that verified layer, rechecks all three
 InRelease signatures against fingerprint
 `f6ecb3762474eda9d21b7022871920d1991bc93c`, verifies the exact index and
 package sets plus the canonical receipt, checks every `.deb` control identity
-from the stable verified byte snapshot, and proves 92 base packages plus 101
-cached packages satisfy 521 dependency clauses. The solver transcript is
+from the stable verified byte snapshot, and proves 92 base packages plus 102
+cached packages satisfy 523 dependency clauses. The solver transcript is
 checked semantically for the exact install/configure set; cache directory
 metadata and timestamps are not release identities.
+
+NASM `2.16.01-1build1` is an explicit direct root. FFmpeg's selected x86_64
+configuration probes a NASM-compatible assembler by default; relying on the
+NDK-bundled Yasm instead would require a build-script override and separate
+compatibility evidence.
 
 The locked snapshot InRelease files do not carry `Valid-Until`. Reproducibility
 therefore rests on the explicit snapshot timestamp, exact signed bytes, locked
