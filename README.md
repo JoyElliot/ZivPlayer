@@ -85,9 +85,10 @@ The locked source closure has also been materialized twice in symlink-preserving
 mode on fresh WSL ext4 directories. Both runs produced the same 30,436-entry
 tree (29,238 files, 1,196 directories, and two symlinks), tree SHA-256
 `05a19a0f...46ee6`, and byte-identical receipt SHA-256
-`e2ea14b6...23c04`. `native/native-build-profile.toml` now binds that source
-manifest and the composed toolchain to an API-26, `arm64-v8a`/`x86_64`,
-16-KiB libmpv-stack profile. Its two reviewed overlays remove ambient SDK/NDK
+`e2ea14b6...23c04`. The historical `native/native-build-profile.toml` binds
+that source manifest and the composed toolchain to an API-26,
+`arm64-v8a`/`x86_64`, 16-KiB stack-only libmpv profile. Its two reviewed
+overlays remove ambient SDK/NDK
 selection and accept only the two fixed `mpv` commands. The profile preflight
 passed against the retained preserve-mode source tree and locked composition.
 The preparation command now publishes a fresh root-owned ext4 workspace with an
@@ -95,6 +96,22 @@ independent source copy, applies the two locked overlays there, and creates
 empty disjoint output, HOME, and temporary directories. Its independent
 verification passed without changing the canonical source. It did not execute
 either build command or compile native code.
+
+That stack profile, its executor policy, and its preparation/build receipts are
+immutable historical evidence. The additive
+`native/native-wrapper-build-profile.toml` now defines a separate schema-v2
+preparation boundary for the same nine stack libraries plus
+`libzivplayer_mpv.so` per ABI. A fresh WSL preparation with profile SHA-256
+`d6cf2a360b4c8f159e49fc9a9872faf4a21e3dc5e8a225905d3b3ccaf4fe42ce`
+was independently verified at
+`/var/tmp/zivplayer-native-build-wrapper-d6cf2a36-20260905-a1`; its canonical
+7,690-byte receipt has SHA-256
+`e51dae00b7f145de9663ee1b90010bf9904f8775ff2f12624454040c941132b4`.
+It snapshots six wrapper inputs into the permission-locked host
+`workspace/wrapper` tree for a future read-only `/build/wrapper` mount and
+records `buildExecuted=false`, `ready=false`, and `releaseInput=false`. The
+existing stack-only executor cannot consume this receipt; a separately locked
+wrapper namespace, runner, and 20-artifact audit are still required.
 
 These WSL runs are inspection evidence rather than accepted release
 provenance. The SDK tree is deliberately marked as a standalone mountable
@@ -361,10 +378,10 @@ process, or cgroup. The receipt's exact pending blockers remain
 `pending-actual-build-graph`, and `pending-release-gate`; these include the
 accepted release-builder and compliance work still required for publication.
 
-The source-side replacement is now checked in without changing that receipt or
-selecting it in the running backend. `SourceMpvClient` owns one event thread and
-a positive opaque token; an unexpected pump exit fails the active generation
-with RESET.
+The source-side replacement is now checked in without changing that historical
+receipt or selecting it in the running backend. `SourceMpvClient` owns one event
+thread and a positive opaque token; an unexpected pump exit fails the active
+generation with RESET.
 The `libzivplayer_mpv` source declares 16 guarded methods registered from
 `JNI_OnLoad`, copies supported event fields through a fixed primitive-buffer
 ABI, preserves raw identifiers, and retains every Surface accepted by
@@ -372,14 +389,16 @@ asynchronous `wid` handling until final mpv termination. The executable
 JNI-contract validator checks the top-level Kotlin object/direct instance
 descriptors, fixed 16-method cardinality, guarded C++ definitions and scoped
 `JNI_OnLoad` registration, exact wire-constant sets, CMake target/source
-literals, and Release final-name properties; it does not run CMake or validate
-its input gates, wire use sites, compiled/R8 identity, included-header or
-toolchain macro effects, ELF metadata, or runtime behavior. This source has passed
-JVM lifecycle tests and two-ABI syntax checks only: it is not yet built with the
-locked NDK, not staged into Gradle, not selected by `LibmpvBackend`, and not
-device or release evidence. The historical receipt therefore correctly
-continues to report `pending-source-wrapper` until a new additive
-wrapper-inclusive profile rebuilds and audits all ten libraries per ABI.
+literals, and Release final-name properties. CMake remains a contract/reference
+input only; the additive profile's locked build path is NDK `ndk-build` through
+`Android.mk` and `Application.mk`. The source validator does not execute that
+path or prove input gates, wire use sites, compiled/R8 identity, included-header
+or toolchain macro effects, ELF metadata, or runtime behavior. The additive
+profile and preparation now exist, but no wrapper-inclusive build has run and
+nothing has been staged into Gradle, selected by `LibmpvBackend`, or accepted as
+device/release evidence. The immutable historical receipt therefore correctly
+continues to report `pending-source-wrapper`; a new executor must build and
+audit all 20 outputs (ten libraries per ABI) under the additive contract.
 
 Two final WSL inspection runs of the fixed composition profile produced
 byte-identical receipts with SHA-256

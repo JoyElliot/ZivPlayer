@@ -1,0 +1,185 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Additive source-built profile for the reviewed libmpv stack and ZivPlayer's
+# RegisterNatives JNI wrapper. This profile has its own preparation and future
+# execution receipts; it never amends the historical stack-only evidence.
+
+schemaVersion = 2
+
+[project]
+name = "ZivPlayer"
+profile = "ziv-libmpv-stack-wrapper-api26-v1"
+upstreamRevision = "ad98fc97ff1d25e217389e7238a1abda8c13a6c4"
+sourceManifest = "native/source-manifest.toml"
+sourceManifestSha256 = "7fc9ae22f2c11b7deb3dcbc32fc132ed79581ad87bc5bbe326f99690def42a44"
+toolchainManifest = "native/toolchain-manifest.toml"
+toolchainManifestSha256 = "84228adbaae394eb34088551bdbb66a4cc5879576ece17a3fcba2596b188b668"
+nativeApi = 26
+pageSizeBytes = 16384
+releaseReady = false
+
+[toolchain]
+hostPlatform = "linux/amd64"
+mount = "/opt/zivplayer/toolchain"
+ndkVersion = "29.0.14206865"
+sdkPlatform = 36
+sdkBuildTools = "36.0.0"
+jdkMajor = 17
+pythonVersion = "3.12.3"
+mesonVersion = "1.11.0"
+ninjaVersion = "1.11.1"
+pkgConfigVersion = "1.8.1"
+
+[policy]
+networkAtBuild = "none"
+sourceMaterializationMode = "preserve"
+canonicalSourceReadOnly = true
+sourceCopyWritable = true
+outputWritable = true
+freshSourceCopyRequired = true
+freshOutputRequired = true
+freshBuildHomeRequired = true
+freshTemporaryRequired = true
+aptRootReadOnly = true
+sdkRootReadOnly = true
+inheritHostEnvironment = false
+allowGradle = false
+allowSdkManager = false
+allowAptRepositories = false
+allowPipIndex = false
+allowFloatingReferences = false
+allowNonfree = false
+sourceCopyMount = "/build/source"
+outputMount = "/build/output"
+buildHomeMount = "/build/home"
+temporaryMount = "/build/tmp"
+wrapperInputMount = "/build/wrapper"
+wrapperInputReadOnly = true
+sourceDateEpoch = 946684800
+jobs = 4
+
+[build]
+target = "mpv+zivplayer_mpv"
+commands = [
+    ["/build/source/buildscripts/buildall.sh", "--arch", "arm64", "mpv+zivplayer_mpv"],
+    ["/build/source/buildscripts/buildall.sh", "--arch", "x86_64", "mpv+zivplayer_mpv"],
+]
+expectedLibraries = [
+    "libavcodec.so",
+    "libavdevice.so",
+    "libavfilter.so",
+    "libavformat.so",
+    "libavutil.so",
+    "libc++_shared.so",
+    "libmpv.so",
+    "libswresample.so",
+    "libswscale.so",
+    "libzivplayer_mpv.so",
+]
+builtLibraries = [
+    "libavcodec.so",
+    "libavdevice.so",
+    "libavfilter.so",
+    "libavformat.so",
+    "libavutil.so",
+    "libmpv.so",
+    "libswresample.so",
+    "libswscale.so",
+    "libzivplayer_mpv.so",
+]
+runtimeLibraries = ["libc++_shared.so"]
+builtLibraryRootTemplate = "/build/source/buildscripts/prefix/{upstreamArch}/lib"
+runtimeLibraryRootTemplate = "/opt/zivplayer/toolchain/android-sdk/ndk/29.0.14206865/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/{ndkRuntimeDirectory}"
+outputLibraryTemplate = "/build/output/{abi}/{library}"
+artifactStaging = "copy-exact-allowlist"
+jniWrapperStatus = "pending-wrapper-inclusive-audit"
+gradleIntegrationStatus = "pending-offline-closure"
+complianceStatus = "pending-actual-build-graph"
+
+[[abi]]
+name = "arm64-v8a"
+upstreamArch = "arm64"
+clangTriple = "aarch64-linux-android26"
+elfClass = 64
+elfMachine = "AArch64"
+ndkRuntimeDirectory = "aarch64-linux-android"
+runtimeSize = 9290184
+runtimeSha256 = "0c52cfab2df0d957d8b346a2bdc5ae8d71feca2591924d77e1cd724d5bf74352"
+
+[[abi]]
+name = "x86_64"
+upstreamArch = "x86_64"
+clangTriple = "x86_64-linux-android26"
+elfClass = 64
+elfMachine = "Advanced Micro Devices X86-64"
+ndkRuntimeDirectory = "x86_64-linux-android"
+runtimeSize = 9015544
+runtimeSha256 = "e28cb9e0f456caf8498d0e8562b3ac3f73bf78c07555a52b5602396f240abec3"
+
+[[overlay]]
+destination = "buildscripts/buildall.sh"
+replacement = "native/overlays/mpv-android-api26-wrapper/buildscripts/buildall.sh"
+originalSize = 4679
+originalSha256 = "9e8b09babfe6f191811b7af371e025b16b56684aaaf58703248d69480b8bd308"
+replacementSize = 12825
+replacementSha256 = "2c49315eb781dd898b91054eb6dcee3c4e8351f1813e94c93829e9ff37b8bd59"
+originalMode = 493
+replacementMode = 493
+
+[[overlay]]
+destination = "buildscripts/include/path.sh"
+replacement = "native/overlays/mpv-android-api26/buildscripts/include/path.sh"
+originalSize = 519
+originalSha256 = "b7869b3d5ec68ab3018579d5fe7b194512a7aa410f37798f46849bbd4c3709ff"
+replacementSize = 2632
+replacementSha256 = "74e691c4c146c1dbe25c5d1c2f937af5483790fe120f45c31adb8905f2cfe152"
+originalMode = 493
+replacementMode = 493
+
+[[wrapperInput]]
+destination = "Android.mk"
+source = "native/wrapper/Android.mk"
+role = "build"
+size = 1360
+sha256 = "0dbe6408ea5fa0e4ad21d2ef2efda5ce718f7bcc82a211b0e8d9721ab750f0f8"
+mode = 292
+
+[[wrapperInput]]
+destination = "Application.mk"
+source = "native/wrapper/Application.mk"
+role = "build"
+size = 361
+sha256 = "4c7f0bda74ef74b385c877f28508318fe6af060f4cf8a4bbeb561adc8e1800d2"
+mode = 292
+
+[[wrapperInput]]
+destination = "CMakeLists.txt"
+source = "native/wrapper/CMakeLists.txt"
+role = "contract"
+size = 4050
+sha256 = "1cf728263640a19959a5a5c2963317add3ece57e0eb5ce06b5e58ebfc55c1c38"
+mode = 292
+
+[[wrapperInput]]
+destination = "MpvNativeBindings.kt"
+source = "platform/libmpv-android/src/main/kotlin/io/github/joyelliot/zivplayer/platform/libmpv/MpvNativeBindings.kt"
+role = "contract"
+size = 8874
+sha256 = "cf46bcba19529af8d561d8f36b820937bf6c0002fd33a5b7060ec24a8de9dcbb"
+mode = 292
+
+[[wrapperInput]]
+destination = "jni-contract.toml"
+source = "native/wrapper/jni-contract.toml"
+role = "contract"
+size = 3970
+sha256 = "e12677fcdda11a5c64dfea5e23e8474b407b8163f23fc5ea5d19faf17def9389"
+mode = 292
+
+[[wrapperInput]]
+destination = "zivplayer_mpv.cpp"
+source = "native/wrapper/zivplayer_mpv.cpp"
+role = "build-and-contract"
+size = 40906
+sha256 = "50d1d90247ec659c12bac74178d3971c2941697d4b6f398fd29cc4ca57a04179"
+mode = 292

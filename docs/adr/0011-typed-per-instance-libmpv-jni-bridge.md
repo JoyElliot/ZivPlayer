@@ -14,7 +14,8 @@ The locked mpv-android source contains a different `is.xyz.mpv` wrapper. That
 implementation owns one process-global `mpv_handle`, uses static callbacks,
 logs or terminates on several failures, and cannot be renamed into ZivPlayer's
 release bridge. The successful stack-only inspection receipt intentionally
-contains no JNI wrapper and rejects every exported `Java_` symbol.
+contains no JNI wrapper and rejects every exported `Java_` symbol. That profile,
+policy, and receipt remain immutable historical evidence.
 
 ## Decision
 
@@ -37,8 +38,9 @@ contains no JNI wrapper and rejects every exported `Java_` symbol.
   Destruction is idempotent and terminates each handle once.
 - Register native methods from `JNI_OnLoad` with `RegisterNatives`. The wrapper
   exports no name-derived `Java_` entry points; the wrapper-inclusive audit
-  will instead require the exact registration table and exported
-  `JNI_OnLoad`/SONAME contract. Every registered pointer targets a non-throwing
+  will instead require the exact 16-entry registration table, exported
+  `JNI_OnLoad`/`JNI_OnUnload`, SONAME contract, and all 20 outputs across the two
+  ABIs. Every registered pointer targets a non-throwing
   JNI guard so a C++ exception is converted to a Java failure instead of
   crossing the native boundary.
 - Keep the JNI event wire independent of Kotlin object construction: one call
@@ -99,19 +101,23 @@ contains no JNI wrapper and rejects every exported `Java_` symbol.
 - Keep Storage Access Framework descriptors in the Kotlin/Media3 owner. JNI
   receives only the existing `/proc/self/fd/<n>` locator and never closes or
   duplicates that descriptor.
-- Build the wrapper separately with locked NDK 29, native API 26, the two
-  selected ABIs, shared libc++, a Release configuration, and 16-KiB load
-  alignment. Source CMake reads the complete NDK revision from
-  `source.properties` and rejects other NDK/API/ABI/STL/build-type values plus
-  missing, relative, directory, or symlinked direct prefix inputs. This shallow
-  configure check is not provenance: a new
-  wrapper-inclusive profile and receipt must bind hashes and audit exactly nine
-  stack libraries plus the wrapper per ABI.
+- Build the wrapper separately with locked NDK 29 `ndk-build`, native API 26,
+  the two selected ABIs, shared libc++, a Release configuration, and 16-KiB load
+  alignment. The additive profile snapshots `Android.mk`, `Application.mk`, the
+  wrapper source, and contract inputs into a permission-locked tree for a future
+  read-only `/build/wrapper` mount. `CMakeLists.txt` remains a shallow
+  contract/reference input and is not the selected execution path. Neither its
+  restrictions nor the build-file declarations are provenance: the new
+  wrapper-inclusive executor and receipt must bind hashes and audit exactly nine
+  stack libraries plus the wrapper per ABI, or 20 outputs in total.
   Historical stack-only policies and receipts remain immutable.
 - Gradle may consume native libraries only from a generated staging tree whose
   complete manifest, hashes, ABI inventory, metadata, ELF dependency closure,
   and wrapper receipt have passed. It must never package directly from a WSL
   workspace or silently fall back to the bootstrap AAR.
+- Wrapper preparation alone records `buildExecuted=false`, `ready=false`, and
+  `releaseInput=false`; those gates remain closed through the non-release build
+  until generated staging, Gradle, compliance, and device evidence pass.
 - Bootstrap retirement requires regenerated dependency locks and verification
   metadata, an offline Gradle resolution proof, clean APK native inventory,
   wrapper-inclusive SBOM/notices/corresponding source, and device lifecycle and
@@ -142,7 +148,8 @@ unit and permits only its fixed system/audited-input include list. It
 deliberately does not run CMake or claim its NDK/API/ABI/STL/build-type/prefix
 gates, included-header or toolchain macro effects, compiled class/R8 identity,
 wire use-site semantics, ELF exports/SONAME/NEEDED, or runtime lifecycle
-behavior; those remain build and device evidence.
+behavior; those remain separate `ndk-build`, compiled-audit, and device
+evidence.
 
 An initial source-destruction attempt is rejected before state mutation on
 Android's main thread or the client's own event thread. Any reported

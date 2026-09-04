@@ -28,6 +28,7 @@ import materialize_sources
 import rootfs_tool
 import source_tool
 import toolchain_tool
+import wrapper_contract_core
 
 
 NATIVE_DIR = Path(__file__).resolve().parents[1]
@@ -52,9 +53,14 @@ PREPARATION_FREE_BYTE_MARGIN = 128 * 1024 * 1024
 PREPARATION_FREE_INODE_MARGIN = 4096
 PREPARATION_RECEIPT_NAME = "ziv-native-build-preparation.json"
 PREPARATION_RECEIPT_KIND = "ziv-native-build-preparation-v1"
+WRAPPER_PREPARATION_RECEIPT_KIND = "ziv-native-build-preparation-wrapper-v1"
 NORMALIZED_MTIME_NS = materialize_sources.NORMALIZED_GENERATED_MTIME_NS
 SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
-PROFILE_NAME = "ziv-libmpv-stack-api26-v1"
+STACK_PROFILE_NAME = "ziv-libmpv-stack-api26-v1"
+WRAPPER_PROFILE_NAME = "ziv-libmpv-stack-wrapper-api26-v1"
+# Kept as the historical public constant for callers and tests that validate
+# the original stack-only profile.
+PROFILE_NAME = STACK_PROFILE_NAME
 EXPECTED_ABIS = (
     {
         "name": "arm64-v8a",
@@ -100,10 +106,39 @@ EXPECTED_OVERLAY_REPLACEMENTS = (
     "native/overlays/mpv-android-api26/buildscripts/buildall.sh",
     "native/overlays/mpv-android-api26/buildscripts/include/path.sh",
 )
+WRAPPER_EXPECTED_LIBRARIES = EXPECTED_LIBRARIES + ("libzivplayer_mpv.so",)
+WRAPPER_EXPECTED_BUILT_LIBRARIES = EXPECTED_BUILT_LIBRARIES + (
+    "libzivplayer_mpv.so",
+)
+WRAPPER_EXPECTED_OVERLAY_DESTINATIONS = (
+    "buildscripts/buildall.sh",
+    "buildscripts/include/path.sh",
+)
+WRAPPER_EXPECTED_OVERLAY_REPLACEMENTS = (
+    "native/overlays/mpv-android-api26-wrapper/buildscripts/buildall.sh",
+    "native/overlays/mpv-android-api26/buildscripts/include/path.sh",
+)
+WRAPPER_INPUT_DESTINATIONS = (
+    "Android.mk",
+    "Application.mk",
+    "CMakeLists.txt",
+    "MpvNativeBindings.kt",
+    "jni-contract.toml",
+    "zivplayer_mpv.cpp",
+)
+WRAPPER_INPUT_SOURCES = (
+    "native/wrapper/Android.mk",
+    "native/wrapper/Application.mk",
+    "native/wrapper/CMakeLists.txt",
+    "platform/libmpv-android/src/main/kotlin/io/github/joyelliot/zivplayer/platform/libmpv/MpvNativeBindings.kt",
+    "native/wrapper/jni-contract.toml",
+    "native/wrapper/zivplayer_mpv.cpp",
+)
 
 TOP_LEVEL_KEYS = frozenset(
     {"schemaVersion", "project", "toolchain", "policy", "build", "abi", "overlay"}
 )
+WRAPPER_TOP_LEVEL_KEYS = frozenset((*TOP_LEVEL_KEYS, "wrapperInput"))
 PROJECT_KEYS = frozenset(
     {
         "name",
@@ -160,6 +195,9 @@ POLICY_KEYS = frozenset(
         "jobs",
     }
 )
+WRAPPER_POLICY_KEYS = frozenset(
+    (*POLICY_KEYS, "wrapperInputMount", "wrapperInputReadOnly")
+)
 BUILD_KEYS = frozenset(
     {
         "target",
@@ -200,6 +238,77 @@ OVERLAY_KEYS = frozenset(
         "replacementMode",
     }
 )
+WRAPPER_INPUT_KEYS = frozenset(
+    {
+        "destination",
+        "source",
+        "role",
+        "size",
+        "sha256",
+        "mode",
+    }
+)
+
+
+@dataclass(frozen=True)
+class ProfileContract:
+    schema_version: int
+    name: str
+    target: str
+    command_target: str
+    expected_libraries: tuple[str, ...]
+    built_libraries: tuple[str, ...]
+    runtime_libraries: tuple[str, ...]
+    overlay_destinations: tuple[str, ...]
+    overlay_replacements: tuple[str, ...]
+    overlay_modes: tuple[tuple[int, int], ...]
+    wrapper_input_destinations: tuple[str, ...] = ()
+    wrapper_input_sources: tuple[str, ...] = ()
+    wrapper_input_roles: tuple[str, ...] = ()
+    wrapper_input_modes: tuple[int, ...] = ()
+    jni_wrapper_status: str = "pending-source-wrapper"
+
+
+STACK_PROFILE_CONTRACT = ProfileContract(
+    schema_version=1,
+    name=STACK_PROFILE_NAME,
+    target="mpv",
+    command_target="mpv",
+    expected_libraries=EXPECTED_LIBRARIES,
+    built_libraries=EXPECTED_BUILT_LIBRARIES,
+    runtime_libraries=EXPECTED_RUNTIME_LIBRARIES,
+    overlay_destinations=EXPECTED_OVERLAY_DESTINATIONS,
+    overlay_replacements=EXPECTED_OVERLAY_REPLACEMENTS,
+    overlay_modes=((0o755, 0o755), (0o755, 0o755)),
+)
+WRAPPER_PROFILE_CONTRACT = ProfileContract(
+    schema_version=2,
+    name=WRAPPER_PROFILE_NAME,
+    target="mpv+zivplayer_mpv",
+    command_target="mpv+zivplayer_mpv",
+    expected_libraries=WRAPPER_EXPECTED_LIBRARIES,
+    built_libraries=WRAPPER_EXPECTED_BUILT_LIBRARIES,
+    runtime_libraries=EXPECTED_RUNTIME_LIBRARIES,
+    overlay_destinations=WRAPPER_EXPECTED_OVERLAY_DESTINATIONS,
+    overlay_replacements=WRAPPER_EXPECTED_OVERLAY_REPLACEMENTS,
+    overlay_modes=((0o755, 0o755), (0o755, 0o755)),
+    wrapper_input_destinations=WRAPPER_INPUT_DESTINATIONS,
+    wrapper_input_sources=WRAPPER_INPUT_SOURCES,
+    wrapper_input_roles=(
+        "build",
+        "build",
+        "contract",
+        "contract",
+        "contract",
+        "build-and-contract",
+    ),
+    wrapper_input_modes=(0o444,) * len(WRAPPER_INPUT_DESTINATIONS),
+    jni_wrapper_status="pending-wrapper-inclusive-audit",
+)
+PROFILE_CONTRACTS = {
+    contract.name: contract
+    for contract in (STACK_PROFILE_CONTRACT, WRAPPER_PROFILE_CONTRACT)
+}
 
 
 @dataclass(frozen=True)
@@ -213,6 +322,7 @@ class LoadedProfile:
     build: dict[str, object]
     abis: tuple[dict[str, object], ...]
     overlays: tuple[dict[str, object], ...]
+    wrapper_inputs: tuple[dict[str, object], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -232,6 +342,7 @@ class PreparationInputs:
     composition_receipt_raw: bytes
     overlay_raws: tuple[bytes, ...]
     canonical_source: TreePolicySnapshot
+    wrapper_input_raws: tuple[bytes, ...] = ()
 
 
 def _schema(message: str) -> NoReturn:
@@ -331,22 +442,44 @@ def _expect(value: object, expected: object, location: str) -> None:
 
 def validate_profile_data(data: object) -> LoadedProfile:
     root = _table(data, "profile")
-    _exact_keys(root, TOP_LEVEL_KEYS, "profile")
-    _expect(_integer(root["schemaVersion"], "schemaVersion", minimum=1), 1, "schemaVersion")
-
+    if "schemaVersion" not in root:
+        _schema("profile keys are not exact: missing schemaVersion")
+    if "project" not in root:
+        _schema("profile keys are not exact: missing project")
+    schema_version = _integer(root["schemaVersion"], "schemaVersion", minimum=1)
     project = _table(root["project"], "project")
+    _exact_keys(project, PROJECT_KEYS, "project")
+    profile_name = _string(project["profile"], "project.profile")
+    contract = PROFILE_CONTRACTS.get(profile_name)
+    if contract is None:
+        _schema(f"project.profile is not a supported locked profile: {profile_name}")
+    _expect(schema_version, contract.schema_version, "schemaVersion")
+    _exact_keys(
+        root,
+        WRAPPER_TOP_LEVEL_KEYS if contract.wrapper_input_destinations else TOP_LEVEL_KEYS,
+        "profile",
+    )
+
     toolchain = _table(root["toolchain"], "toolchain")
     policy = _table(root["policy"], "policy")
     build = _table(root["build"], "build")
     abis = _tables(root["abi"], "abi")
     overlays = _tables(root["overlay"], "overlay")
-    _exact_keys(project, PROJECT_KEYS, "project")
+    wrapper_inputs = (
+        _tables(root["wrapperInput"], "wrapperInput")
+        if contract.wrapper_input_destinations
+        else ()
+    )
     _exact_keys(toolchain, TOOLCHAIN_KEYS, "toolchain")
-    _exact_keys(policy, POLICY_KEYS, "policy")
+    _exact_keys(
+        policy,
+        WRAPPER_POLICY_KEYS if contract.wrapper_input_destinations else POLICY_KEYS,
+        "policy",
+    )
     _exact_keys(build, BUILD_KEYS, "build")
 
     _expect(_string(project["name"], "project.name"), "ZivPlayer", "project.name")
-    _expect(_string(project["profile"], "project.profile"), PROFILE_NAME, "project.profile")
+    _expect(profile_name, contract.name, "project.profile")
     upstream_revision = _string(project["upstreamRevision"], "project.upstreamRevision")
     if not re.fullmatch(r"[0-9a-f]{40}", upstream_revision):
         _schema("project.upstreamRevision must be a lowercase full Git commit")
@@ -430,31 +563,50 @@ def validate_profile_data(data: object) -> LoadedProfile:
     output_mount = _absolute_mount(policy["outputMount"], "policy.outputMount")
     build_home_mount = _absolute_mount(policy["buildHomeMount"], "policy.buildHomeMount")
     temporary_mount = _absolute_mount(policy["temporaryMount"], "policy.temporaryMount")
-    named_mounts = (
+    named_mounts: tuple[tuple[str, PurePosixPath], ...] = (
         ("source", PurePosixPath(source_mount)),
         ("output", PurePosixPath(output_mount)),
         ("build home", PurePosixPath(build_home_mount)),
         ("temporary", PurePosixPath(temporary_mount)),
     )
+    if contract.wrapper_input_destinations:
+        wrapper_mount = _absolute_mount(
+            policy["wrapperInputMount"], "policy.wrapperInputMount"
+        )
+        _expect(wrapper_mount, "/build/wrapper", "policy.wrapperInputMount")
+        _expect(
+            _boolean(policy["wrapperInputReadOnly"], "policy.wrapperInputReadOnly"),
+            True,
+            "policy.wrapperInputReadOnly",
+        )
+        named_mounts += (("wrapper input", PurePosixPath(wrapper_mount)),)
     for index, (left_name, left) in enumerate(named_mounts):
         for right_name, right in named_mounts[index + 1 :]:
             if left == right or left in right.parents or right in left.parents:
                 _schema(f"{left_name} and {right_name} mounts must be disjoint")
 
-    _expect(_string(build["target"], "build.target"), "mpv", "build.target")
+    _expect(_string(build["target"], "build.target"), contract.target, "build.target")
     expected_commands = [
-        [f"{source_mount}/buildscripts/buildall.sh", "--arch", str(abi["upstreamArch"]), "mpv"]
+        [
+            f"{source_mount}/buildscripts/buildall.sh",
+            "--arch",
+            str(abi["upstreamArch"]),
+            contract.command_target,
+        ]
         for abi in EXPECTED_ABIS
     ]
     commands = build["commands"]
     if commands != expected_commands:
-        _schema("build.commands must be the fixed API-26 two-ABI libmpv command sequence")
+        _schema(
+            "build.commands must be the fixed API-26 two-ABI command sequence "
+            f"for {contract.name}"
+        )
     libraries = _string_list(build["expectedLibraries"], "build.expectedLibraries")
-    _expect(libraries, EXPECTED_LIBRARIES, "build.expectedLibraries")
+    _expect(libraries, contract.expected_libraries, "build.expectedLibraries")
     built_libraries = _string_list(build["builtLibraries"], "build.builtLibraries")
-    _expect(built_libraries, EXPECTED_BUILT_LIBRARIES, "build.builtLibraries")
+    _expect(built_libraries, contract.built_libraries, "build.builtLibraries")
     runtime_libraries = _string_list(build["runtimeLibraries"], "build.runtimeLibraries")
-    _expect(runtime_libraries, EXPECTED_RUNTIME_LIBRARIES, "build.runtimeLibraries")
+    _expect(runtime_libraries, contract.runtime_libraries, "build.runtimeLibraries")
     if set(built_libraries) | set(runtime_libraries) != set(libraries):
         _schema("builtLibraries and runtimeLibraries must partition expectedLibraries")
     _expect(
@@ -479,7 +631,7 @@ def validate_profile_data(data: object) -> LoadedProfile:
     )
     _expect(
         _string(build["jniWrapperStatus"], "build.jniWrapperStatus"),
-        "pending-source-wrapper",
+        contract.jni_wrapper_status,
         "build.jniWrapperStatus",
     )
     _expect(
@@ -507,6 +659,8 @@ def validate_profile_data(data: object) -> LoadedProfile:
 
     destinations: list[str] = []
     replacements: list[str] = []
+    if len(overlays) != len(contract.overlay_destinations):
+        _schema(f"overlay must contain exactly {len(contract.overlay_destinations)} entries")
     for index, overlay in enumerate(overlays):
         location = f"overlay[{index}]"
         _exact_keys(overlay, OVERLAY_KEYS, location)
@@ -518,12 +672,12 @@ def validate_profile_data(data: object) -> LoadedProfile:
         _sha256(overlay["replacementSha256"], f"{location}.replacementSha256")
         _expect(
             _integer(overlay["originalMode"], f"{location}.originalMode"),
-            0o755,
+            contract.overlay_modes[index][0],
             f"{location}.originalMode",
         )
         _expect(
             _integer(overlay["replacementMode"], f"{location}.replacementMode"),
-            0o755,
+            contract.overlay_modes[index][1],
             f"{location}.replacementMode",
         )
         destinations.append(destination)
@@ -532,8 +686,56 @@ def validate_profile_data(data: object) -> LoadedProfile:
         _schema("overlay destinations must be unique and sorted")
     if len(set(replacements)) != len(replacements):
         _schema("overlay replacements must be unique")
-    _expect(tuple(destinations), EXPECTED_OVERLAY_DESTINATIONS, "overlay destinations")
-    _expect(tuple(replacements), EXPECTED_OVERLAY_REPLACEMENTS, "overlay replacements")
+    _expect(tuple(destinations), contract.overlay_destinations, "overlay destinations")
+    _expect(tuple(replacements), contract.overlay_replacements, "overlay replacements")
+
+    wrapper_destinations: list[str] = []
+    wrapper_sources: list[str] = []
+    wrapper_roles: list[str] = []
+    if len(wrapper_inputs) != len(contract.wrapper_input_destinations):
+        _schema(
+            "wrapperInput must contain exactly "
+            f"{len(contract.wrapper_input_destinations)} entries"
+        )
+    for index, wrapper_input in enumerate(wrapper_inputs):
+        location = f"wrapperInput[{index}]"
+        _exact_keys(wrapper_input, WRAPPER_INPUT_KEYS, location)
+        destination = _safe_relative_path(
+            wrapper_input["destination"], f"{location}.destination"
+        )
+        source = _safe_relative_path(wrapper_input["source"], f"{location}.source")
+        role = _string(wrapper_input["role"], f"{location}.role")
+        _integer(wrapper_input["size"], f"{location}.size", minimum=1)
+        _sha256(wrapper_input["sha256"], f"{location}.sha256")
+        _expect(
+            _integer(wrapper_input["mode"], f"{location}.mode"),
+            contract.wrapper_input_modes[index],
+            f"{location}.mode",
+        )
+        wrapper_destinations.append(destination)
+        wrapper_sources.append(source)
+        wrapper_roles.append(role)
+    if wrapper_destinations != sorted(wrapper_destinations) or len(
+        set(wrapper_destinations)
+    ) != len(wrapper_destinations):
+        _schema("wrapperInput destinations must be unique and sorted")
+    if len(set(wrapper_sources)) != len(wrapper_sources):
+        _schema("wrapperInput sources must be unique")
+    _expect(
+        tuple(wrapper_destinations),
+        contract.wrapper_input_destinations,
+        "wrapperInput destinations",
+    )
+    _expect(
+        tuple(wrapper_sources),
+        contract.wrapper_input_sources,
+        "wrapperInput sources",
+    )
+    _expect(
+        tuple(wrapper_roles),
+        contract.wrapper_input_roles,
+        "wrapperInput roles",
+    )
 
     return LoadedProfile(
         data=copy.deepcopy(root),
@@ -545,6 +747,7 @@ def validate_profile_data(data: object) -> LoadedProfile:
         build=copy.deepcopy(build),
         abis=tuple(copy.deepcopy(item) for item in abis),
         overlays=tuple(copy.deepcopy(item) for item in overlays),
+        wrapper_inputs=tuple(copy.deepcopy(item) for item in wrapper_inputs),
     )
 
 
@@ -712,6 +915,43 @@ def load_profile(
         if hashlib.sha256(replacement_raw).hexdigest() != overlay["replacementSha256"]:
             _integrity(f"overlay replacement digest differs: {overlay['replacement']}")
 
+    wrapper_raws: dict[str, bytes] = {}
+    for index, wrapper_input in enumerate(loaded.wrapper_inputs):
+        source = _resolve_repository_file(
+            repository_root,
+            str(wrapper_input["source"]),
+            f"wrapperInput[{index}].source",
+        )
+        source_raw = _stable_bytes(
+            source,
+            maximum=MAX_PROFILE_BYTES,
+            label=f"wrapper input {wrapper_input['source']}",
+            missing_exit=source_tool.EXIT_MISSING,
+        )
+        if len(source_raw) != wrapper_input["size"]:
+            _integrity(f"wrapper input size differs: {wrapper_input['source']}")
+        if hashlib.sha256(source_raw).hexdigest() != wrapper_input["sha256"]:
+            _integrity(f"wrapper input digest differs: {wrapper_input['source']}")
+        wrapper_raws[str(wrapper_input["destination"])] = source_raw
+    if loaded.wrapper_inputs:
+        try:
+            method_count = wrapper_contract_core.validate_sources(
+                wrapper_raws["jni-contract.toml"].decode("utf-8"),
+                wrapper_raws["zivplayer_mpv.cpp"].decode("utf-8"),
+                wrapper_raws["MpvNativeBindings.kt"].decode("utf-8"),
+                wrapper_raws["CMakeLists.txt"].decode("utf-8"),
+            )
+        except (
+            KeyError,
+            UnicodeDecodeError,
+            ValueError,
+            RecursionError,
+            wrapper_contract_core.ContractError,
+        ) as error:
+            _integrity(f"wrapper source contract differs from the locked profile: {error}")
+        if method_count != wrapper_contract_core.EXPECTED_METHOD_COUNT:
+            _integrity("wrapper source contract method count differs from the locked profile")
+
     return LoadedProfile(
         data=loaded.data,
         raw=raw,
@@ -722,6 +962,7 @@ def load_profile(
         build=loaded.build,
         abis=loaded.abis,
         overlays=loaded.overlays,
+        wrapper_inputs=loaded.wrapper_inputs,
     )
 
 
@@ -1923,6 +2164,29 @@ def _overlay_snapshots(profile: LoadedProfile) -> tuple[bytes, ...]:
     return tuple(result)
 
 
+def _wrapper_input_snapshots(profile: LoadedProfile) -> tuple[bytes, ...]:
+    result: list[bytes] = []
+    for index, wrapper_input in enumerate(profile.wrapper_inputs):
+        source = _resolve_repository_file(
+            REPOSITORY_ROOT,
+            str(wrapper_input["source"]),
+            f"wrapperInput[{index}].source",
+        )
+        raw = _stable_bytes(
+            source,
+            maximum=MAX_PROFILE_BYTES,
+            label=f"wrapper input {wrapper_input['source']}",
+            missing_exit=source_tool.EXIT_MISSING,
+        )
+        if (
+            len(raw) != wrapper_input["size"]
+            or hashlib.sha256(raw).hexdigest() != wrapper_input["sha256"]
+        ):
+            _integrity(f"wrapper input changed: {wrapper_input['source']}")
+        result.append(raw)
+    return tuple(result)
+
+
 def _snapshot_preparation_inputs(
     profile: LoadedProfile,
     source_workspace: Path,
@@ -1975,6 +2239,7 @@ def _snapshot_preparation_inputs(
         composition_receipt_raw=composition_receipt_raw,
         overlay_raws=_overlay_snapshots(profile),
         canonical_source=canonical_source,
+        wrapper_input_raws=_wrapper_input_snapshots(profile),
     )
 
 
@@ -1991,6 +2256,11 @@ def _assert_same_preparation_inputs(
             "toolchain composition receipt",
         ),
         (before.overlay_raws, after.overlay_raws, "overlay replacements"),
+        (
+            before.wrapper_input_raws,
+            after.wrapper_input_raws,
+            "wrapper inputs",
+        ),
         (before.canonical_source.tree, after.canonical_source.tree, "canonical source tree"),
         (
             before.canonical_source.file_bytes,
@@ -2174,6 +2444,123 @@ def _apply_overlays(
             os.close(parent_fd)
 
 
+def _create_wrapper_input_tree(
+    path: Path,
+    profile: LoadedProfile,
+    wrapper_input_raws: tuple[bytes, ...],
+) -> TreePolicySnapshot | None:
+    if not profile.wrapper_inputs:
+        if wrapper_input_raws:
+            _integrity("stack-only profile unexpectedly supplied wrapper inputs")
+        return None
+    if len(wrapper_input_raws) != len(profile.wrapper_inputs):
+        _integrity("wrapper input snapshot count differs from the native build profile")
+    try:
+        path.mkdir(mode=0o700)
+        root_fd = os.open(path, _directory_flags())
+    except OSError as error:
+        _integrity(f"cannot create wrapper input root {path}: {error}")
+    try:
+        for index, (wrapper_input, raw) in enumerate(
+            zip(profile.wrapper_inputs, wrapper_input_raws, strict=True)
+        ):
+            relative = PurePosixPath(str(wrapper_input["destination"]))
+            if len(relative.parts) != 1:
+                _integrity(
+                    "wrapper input destination must be a direct child: "
+                    f"{relative.as_posix()}"
+                )
+            if (
+                len(raw) != wrapper_input["size"]
+                or hashlib.sha256(raw).hexdigest() != wrapper_input["sha256"]
+            ):
+                _integrity(f"wrapper input bytes differ: {wrapper_input['source']}")
+            descriptor = -1
+            try:
+                descriptor = os.open(
+                    relative.name,
+                    os.O_RDWR
+                    | os.O_CREAT
+                    | os.O_EXCL
+                    | getattr(os, "O_NOFOLLOW", 0)
+                    | getattr(os, "O_CLOEXEC", 0),
+                    0o600,
+                    dir_fd=root_fd,
+                )
+                _write_all(descriptor, raw)
+                os.fchown(descriptor, 0, 0)
+                os.fchmod(descriptor, int(wrapper_input["mode"]))
+                os.utime(descriptor, ns=(NORMALIZED_MTIME_NS, NORMALIZED_MTIME_NS))
+                _clear_fd_xattrs(
+                    descriptor,
+                    f"wrapperInput[{index}] prepared file",
+                )
+                os.fsync(descriptor)
+            except source_tool.SourceToolError:
+                raise
+            except OSError as error:
+                _integrity(
+                    f"cannot create wrapper input {relative.as_posix()}: {error}"
+                )
+            finally:
+                if descriptor >= 0:
+                    os.close(descriptor)
+        os.fchown(root_fd, 0, 0)
+        os.fchmod(root_fd, 0o555)
+        os.utime(root_fd, ns=(NORMALIZED_MTIME_NS, NORMALIZED_MTIME_NS))
+        _clear_fd_xattrs(root_fd, "wrapper input root")
+        os.fsync(root_fd)
+    finally:
+        os.close(root_fd)
+    return _verify_wrapper_input_tree(path, profile, wrapper_input_raws)
+
+
+def _verify_wrapper_input_tree(
+    path: Path,
+    profile: LoadedProfile,
+    wrapper_input_raws: tuple[bytes, ...],
+) -> TreePolicySnapshot | None:
+    if not profile.wrapper_inputs:
+        if wrapper_input_raws:
+            _integrity("stack-only profile unexpectedly supplied wrapper inputs")
+        if path.exists() or path.is_symlink():
+            _integrity("stack-only prepared workspace must not contain wrapper inputs")
+        return None
+    if len(wrapper_input_raws) != len(profile.wrapper_inputs):
+        _integrity("wrapper input snapshot count differs from the native build profile")
+    _require_no_nested_mounts(path, "prepared wrapper input")
+    snapshot = _scan_policy_tree(
+        path,
+        "prepared wrapper input",
+        skip_materialization_receipt=False,
+        expected_root_mode=0o555,
+    )
+    expected_paths = {".", *(str(item["destination"]) for item in profile.wrapper_inputs)}
+    if set(snapshot.identities) != expected_paths or snapshot.symlinks:
+        _integrity("prepared wrapper input has an unexpected path set")
+    for index, (wrapper_input, expected_raw) in enumerate(
+        zip(profile.wrapper_inputs, wrapper_input_raws, strict=True)
+    ):
+        relative = PurePosixPath(str(wrapper_input["destination"]))
+        raw, info = environment_tool._read_stable_beneath(  # noqa: SLF001
+            path,
+            relative,
+            maximum=MAX_PROFILE_BYTES,
+            label=f"wrapperInput[{index}] prepared file",
+        )
+        if (
+            raw != expected_raw
+            or len(raw) != wrapper_input["size"]
+            or hashlib.sha256(raw).hexdigest() != wrapper_input["sha256"]
+            or info.st_nlink != 1
+            or (info.st_uid, info.st_gid) != (0, 0)
+            or stat.S_IMODE(info.st_mode) != wrapper_input["mode"]
+            or info.st_mtime_ns != NORMALIZED_MTIME_NS
+        ):
+            _integrity(f"prepared wrapper input differs: {relative.as_posix()}")
+    return snapshot
+
+
 def _assert_independent_copy(
     canonical: TreePolicySnapshot,
     prepared: TreePolicySnapshot,
@@ -2193,8 +2580,12 @@ def _assert_independent_copy(
 def _preparation_receipt_data(
     inputs: PreparationInputs,
     prepared_source: TreePolicySnapshot,
+    prepared_wrapper: TreePolicySnapshot | None = None,
 ) -> dict[str, object]:
     profile = inputs.profile
+    has_wrapper_inputs = bool(profile.wrapper_inputs)
+    if has_wrapper_inputs != (prepared_wrapper is not None):
+        _integrity("prepared wrapper input evidence differs from the native build profile")
     composition = inputs.composition_receipt["composition"]
     assert isinstance(composition, dict)
     overlay_records = [
@@ -2215,9 +2606,13 @@ def _preparation_receipt_data(
         }
         for overlay in profile.overlays
     ]
-    return {
-        "schemaVersion": 1,
-        "kind": PREPARATION_RECEIPT_KIND,
+    receipt: dict[str, object] = {
+        "schemaVersion": 2 if has_wrapper_inputs else 1,
+        "kind": (
+            WRAPPER_PREPARATION_RECEIPT_KIND
+            if has_wrapper_inputs
+            else PREPARATION_RECEIPT_KIND
+        ),
         "phase": "prepared",
         "buildExecuted": False,
         "ready": False,
@@ -2248,6 +2643,11 @@ def _preparation_receipt_data(
             "output": profile.policy["outputMount"],
             "home": profile.policy["buildHomeMount"],
             "temporary": profile.policy["temporaryMount"],
+            **(
+                {"wrapperInput": profile.policy["wrapperInputMount"]}
+                if has_wrapper_inputs
+                else {}
+            ),
         },
         "policy": {
             "networkAtBuild": profile.policy["networkAtBuild"],
@@ -2259,7 +2659,18 @@ def _preparation_receipt_data(
             "symlinks": "preserved-within-source-tree",
             "overlays": "locked-bytes-applied-before-publication",
             "inheritedEnvironment": "empty",
-            "freshPaths": ["source", "output", "home", "tmp"],
+            "freshPaths": [
+                "source",
+                "output",
+                "home",
+                "tmp",
+                *(["wrapper"] if has_wrapper_inputs else []),
+            ],
+            **(
+                {"wrapperInput": "fresh-independent-read-only-copy"}
+                if has_wrapper_inputs
+                else {}
+            ),
         },
         "layout": {
             "rootMode": 0o700,
@@ -2267,6 +2678,11 @@ def _preparation_receipt_data(
             "emptyDirectoryMode": 0o700,
             "emptyDirectories": ["home", "output", "tmp"],
             "normalizedMtimeNs": NORMALIZED_MTIME_NS,
+            **(
+                {"wrapperInputRootMode": 0o555, "wrapperInputFileMode": 0o444}
+                if has_wrapper_inputs
+                else {}
+            ),
         },
         "commands": copy.deepcopy(profile.build["commands"]),
         "source": {
@@ -2280,6 +2696,26 @@ def _preparation_receipt_data(
         },
         "overlays": overlay_records,
     }
+    if prepared_wrapper is not None:
+        receipt["wrapperInput"] = {
+            "mount": profile.policy["wrapperInputMount"],
+            "readOnly": profile.policy["wrapperInputReadOnly"],
+            "tree": copy.deepcopy(prepared_wrapper.tree),
+            "fileBytes": prepared_wrapper.file_bytes,
+            "entryIdentitiesIndependent": True,
+            "files": [
+                {
+                    "destination": wrapper_input["destination"],
+                    "source": wrapper_input["source"],
+                    "role": wrapper_input["role"],
+                    "size": wrapper_input["size"],
+                    "sha256": wrapper_input["sha256"],
+                    "mode": wrapper_input["mode"],
+                }
+                for wrapper_input in profile.wrapper_inputs
+            ],
+        }
+    return receipt
 
 
 def _write_preparation_receipt(path: Path, receipt: dict[str, object]) -> None:
@@ -2718,7 +3154,14 @@ def _verify_prepared_workspace(
     except OSError as error:
         _integrity(f"cannot enumerate native build workspace {workspace}: {error}")
     expected_children = sorted(
-        ("source", "output", "home", "tmp", PREPARATION_RECEIPT_NAME)
+        (
+            "source",
+            "output",
+            "home",
+            "tmp",
+            PREPARATION_RECEIPT_NAME,
+            *(["wrapper"] if inputs.profile.wrapper_inputs else []),
+        )
     )
     if children != expected_children:
         _integrity("native build workspace has an unexpected root entry set")
@@ -2732,6 +3175,18 @@ def _verify_prepared_workspace(
     if prepared_source.symlinks != inputs.canonical_source.symlinks:
         _integrity("prepared source symbolic-link topology differs from the canonical source")
     _verify_applied_overlays(inputs.profile, workspace / "source", inputs.overlay_raws)
+    prepared_wrapper = _verify_wrapper_input_tree(
+        workspace / "wrapper",
+        inputs.profile,
+        inputs.wrapper_input_raws,
+    )
+    if prepared_wrapper is not None:
+        if set(prepared_source.identities.values()) & set(
+            prepared_wrapper.identities.values()
+        ):
+            _integrity("prepared wrapper input aliases the prepared source tree")
+        if prepared_wrapper.identities["."][0] != root_device:
+            _integrity("prepared wrapper input must share the workspace filesystem")
 
     empty_identities = {
         _verify_empty_prepared_directory(
@@ -2751,7 +3206,11 @@ def _verify_prepared_workspace(
     ):
         _integrity("prepared workspace paths do not have distinct filesystem identities")
 
-    expected_receipt = _preparation_receipt_data(inputs, prepared_source)
+    expected_receipt = _preparation_receipt_data(
+        inputs,
+        prepared_source,
+        prepared_wrapper,
+    )
     actual_receipt, actual_raw = _read_canonical_json_receipt(
         workspace / PREPARATION_RECEIPT_NAME,
         label="native build preparation receipt",
@@ -2904,9 +3363,19 @@ def prepare(
             _integrity("prepared source symbolic-link topology changed while applying overlays")
         _verify_applied_overlays(profile, source_copy, inputs_before.overlay_raws)
 
+        prepared_wrapper = _create_wrapper_input_tree(
+            staging / "wrapper",
+            profile,
+            inputs_before.wrapper_input_raws,
+        )
+
         for name in ("output", "home", "tmp"):
             _create_empty_prepared_directory(staging / name)
-        receipt = _preparation_receipt_data(inputs_before, prepared_source)
+        receipt = _preparation_receipt_data(
+            inputs_before,
+            prepared_source,
+            prepared_wrapper,
+        )
         _write_preparation_receipt(staging / PREPARATION_RECEIPT_NAME, receipt)
         os.chown(staging, 0, 0)
         os.chmod(staging, 0o700)

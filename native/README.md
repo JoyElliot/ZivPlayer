@@ -408,10 +408,10 @@ It explicitly retains `ready=false` and `releaseInput=false`. These measurements
 assume an exclusive trusted root-controlled host; they do not claim protection
 from a concurrent hostile root process and remain WSL inspection evidence only.
 
-## Locked libmpv-stack profile, preflight, and preparation
+## Historical locked libmpv-stack profile, preflight, and preparation
 
-`native-build-profile.toml` is the fail-closed input contract for the first
-source-built libmpv-stack slice. It binds the source and toolchain manifest byte
+`native-build-profile.toml` is the historical fail-closed input contract for
+the first source-built libmpv-stack slice. It binds the source and toolchain manifest byte
 digests, upstream revision, API 26, the two selected ABIs, 16 KiB page-size
 policy, fixed tool versions, logical mounts, exact command argv, output
 allowlist, NDK runtime-library bytes, and both original/replacement overlay
@@ -426,6 +426,8 @@ mbedTLS in their source directories. The eventual executor must start from an
 empty environment and apply only the declared variables; the profile forbids
 network, Gradle, `sdkmanager`, APT repositories, a pip index, floating
 references, and nonfree output during this stack-only phase.
+The profile, its executor policy, and every preparation/build receipt produced
+from it remain immutable stack-only evidence.
 
 The two byte-locked overlays are intentionally narrow:
 
@@ -436,12 +438,12 @@ The two byte-locked overlays are intentionally narrow:
   helper digest, four-job parallelism, locale/time/reproducibility variables,
   and isolated HOME/TMP/XDG paths.
 
-The fixed output allowlist for each ABI is eight source-built libraries
-(`libavcodec.so`, `libavdevice.so`, `libavfilter.so`, `libavformat.so`,
+The historical fixed output allowlist for each ABI is eight source-built
+libraries (`libavcodec.so`, `libavdevice.so`, `libavfilter.so`, `libavformat.so`,
 `libavutil.so`, `libmpv.so`, `libswresample.so`, and `libswscale.so`) plus the
-exact NDK `libc++_shared.so`. `libplayer.so` is deliberately absent: the
-release-grade ZivPlayer JNI wrapper remains a separate pending source and
-contract gate.
+exact NDK `libc++_shared.so`, or nine libraries in total. Neither
+`libplayer.so` nor `libzivplayer_mpv.so` may be added to that old allowlist or
+receipt; the ZivPlayer wrapper uses a separate additive profile.
 
 Validate the profile without building:
 
@@ -500,8 +502,49 @@ An independent verification command passed; the original overlay destinations
 still match their upstream hashes. The receipt records `phase=prepared`,
 `buildExecuted=false`, `ready=false`, and `releaseInput=false`.
 
-An accepted namespace-only executor run now exists in the WSL inspection
-environment. Four separate build attempts also exist. The first two failed
+## Additive wrapper-inclusive preparation
+
+`native-wrapper-build-profile.toml` is a separate schema-v2 preparation
+contract. It retains the historical nine-library stack and adds the built
+`libzivplayer_mpv.so`, for ten expected libraries per ABI and 20 eventual
+artifacts. The locked build path is NDK 29 `ndk-build` through the checked-in
+`wrapper/Android.mk` and `wrapper/Application.mk`. `wrapper/CMakeLists.txt`
+remains a source-contract/reference input and is not executed by this profile.
+
+The preparation copies six exact wrapper inputs into host
+`<build-workspace>/wrapper` with root mode `0555` and file mode `0444`. That
+permission-locked snapshot is intended for a future read-only bind at
+`/build/wrapper`; preparation alone does not establish the execution namespace.
+Use only a fresh, absent ext4 workspace:
+
+```sh
+python3 native/tools/native_build_tool.py \
+  --profile native/native-wrapper-build-profile.toml validate
+sudo python3 native/tools/native_build_tool.py \
+  --profile native/native-wrapper-build-profile.toml preflight \
+  --source-workspace /var/tmp/zivplayer-native-source
+sudo python3 native/tools/native_build_tool.py \
+  --profile native/native-wrapper-build-profile.toml prepare \
+  --source-workspace /var/tmp/zivplayer-native-source \
+  --build-workspace <fresh-ext4-path>
+sudo python3 native/tools/native_build_tool.py \
+  --profile native/native-wrapper-build-profile.toml verify-preparation \
+  --source-workspace /var/tmp/zivplayer-native-source \
+  --build-workspace <prepared-ext4-path>
+```
+
+The verified inspection preparation at
+`/var/tmp/zivplayer-native-build-wrapper-d6cf2a36-20260905-a1` binds profile
+SHA-256
+`d6cf2a360b4c8f159e49fc9a9872faf4a21e3dc5e8a225905d3b3ccaf4fe42ce`.
+Its canonical 7,690-byte receipt has SHA-256
+`e51dae00b7f145de9663ee1b90010bf9904f8775ff2f12624454040c941132b4`
+and records `kind=ziv-native-build-preparation-wrapper-v1`,
+`buildExecuted=false`, `ready=false`, and `releaseInput=false`. It has not run
+`buildall.sh`; the historical executor is not permitted to consume it.
+
+For the historical stack-only path, an accepted namespace-only executor run now
+exists in the WSL inspection environment. Four separate build attempts also exist. The first two failed
 before output staging; the third completed both ABI commands and staging, then
 failed the API-26 symbol audit. The fourth completed the two-command build,
 exact staging, structural audit, and canonical non-release receipt
@@ -718,8 +761,8 @@ actual build graph, and release gate. Post-run verification found exactly the
 seven expected workspace-root entries, no temporary receipt, empty HOME/TMP,
 no residual executor process, and no `.zivplayer-apt-*` cgroup.
 
-Execution is single-attempt. Before launching, it publishes and
-syncs a canonical, bounded, root-owned, metadata-normalized, no-replace attempt
+Historical stack-only execution is single-attempt. Before launching, it
+publishes and syncs a canonical, bounded, root-owned, metadata-normalized, no-replace attempt
 marker through the pinned workspace descriptor. Its immutable fields bind the
 policy, profile, preparation/composition receipts, accepted probe evidence,
 helpers, exact commands, and pre-launch consumed state. Every failure retains
@@ -732,7 +775,8 @@ not command-order evidence; the receipt must bind the policy/profile, locked
 runner bytes, and parent-observed runner lifecycle. Failure teardown is locked
 to pidfd/cgroup termination, a bounded drain, and cgroup identity/emptiness
 proof before removal. The new namespace and runner helpers are byte-locked; the
-runner contains only the fixed API-26 `arm64` and `x86_64` `mpv` commands. They
+historical runner contains only the fixed API-26 `arm64` and `x86_64` `mpv`
+commands. They
 are reachable only through the explicit `execute` command after every input
 gate passes.
 
@@ -749,7 +793,8 @@ input from the prepared `workspace/source` tree. The former must remain
 byte-identical; the latter is deliberately writable and may gain build output,
 but only within its pinned directory and the policy's bounded filesystem delta.
 
-Staging resolves each source symlink inside its locked prefix and copies only
+Historical stack-only staging resolves each source symlink inside its locked
+prefix and copies only
 the nine expected regular-library bytes per ABI into no-replace output trees.
 The audit requires exactly one complete `.dynsym` table whose declared rows
 have contiguous zero-based indices. It also requires ELF64 `ET_DYN` and the
@@ -771,6 +816,14 @@ must report NDK major r29. The byte-locked NDK 29 package's prebuilt
 `libc++_shared.so` reports r28 and is accepted as a locked runtime input rather
 than misrepresented as a newly built artifact.
 
+The additive wrapper path requires a new policy, namespace probe, runner, and
+receipt kind bound to its exact preparation. The namespace must mount the six
+inputs at `/build/wrapper` read-only, and the compiled audit must cover all 20
+artifacts, including exact `JNI_OnLoad`/`JNI_OnUnload` visibility, no `Java_`
+exports, the 16-entry `RegisterNatives` contract, SONAME/NEEDED closure, API 26,
+and 16-KiB LOAD alignment. None of that evidence exists merely because the
+preparation receipt passed.
+
 The receipt records exact command order, bounded log sizes and
 digests, parent-observed command events, cgroup/filesystem outcomes, artifact
 hashes, ELF/SONAME/NEEDED/API-26
@@ -791,8 +844,10 @@ workspace and its successful non-release receipt are retained without rerun.
 - `arm64-v8a` and `x86_64` only.
 - 16 KiB maximum page-size alignment, with ELF validation still required on
   produced libraries.
-- Meson/Ninja, Autoconf/Automake/libtool/Make, and `ndk-build`. The selected
-  upstream pipeline does not use CMake.
+- Meson/Ninja, Autoconf/Automake/libtool/Make, and `ndk-build`. The upstream
+  stack pipeline does not use CMake; the additive wrapper profile also executes
+  only locked NDK `ndk-build`. Its `CMakeLists.txt` is contract/reference input,
+  not the selected build system.
 - Full GPL-compatible feature profile. FFmpeg uses GPL and version-3 features;
   `--enable-nonfree` is prohibited.
 
@@ -814,18 +869,22 @@ mode. The separate byte-locked namespace probe has also passed through the
 canonical executor in inspection mode, and the fourth WSL one-shot build has
 published its successful non-release receipt. The next native milestones must:
 
-1. reproduce the source build and artifact audit on the accepted release
-   builder and publish release-eligible provenance rather than reusing the
-   fourth inspection receipt;
-2. close the portable offline Gradle artifact set before any Android wrapper
-   build;
-3. adapt and harden the Kotlin/JNI wrapper inside `platform:libmpv-android`;
-4. package both selected API-26 ABIs and prove their Gradle/APK native closure;
-5. retain every release-builder option and patch hash;
-6. repeat the ELF class, machine, SONAME/NEEDED, 16 KiB LOAD-alignment, and JNI
-   export audits on the accepted wrapper-inclusive outputs;
-7. produce per-artifact hashes, SBOM, notices, and complete corresponding
-   source; and
+1. add a wrapper-specific policy and namespace probe bound to the additive
+   profile and preparation, including a verified read-only `/build/wrapper`
+   mount;
+2. run the two locked `mpv+zivplayer_mpv` commands once in a fresh workspace and
+   audit exactly 20 outputs, including ELF class/machine, API 26, SONAME/NEEDED,
+   strong/weak symbol closure, 16-KiB LOAD alignment, and the exact JNI export
+   and registration contract;
+3. publish a separate non-release wrapper receipt without changing any
+   historical stack receipt;
+4. close the portable offline Gradle artifact set and generate a complete,
+   receipt-bound native staging manifest before Gradle consumes any wrapper;
+5. reproduce the source build and audit on the accepted release builder while
+   retaining every option and patch hash;
+6. package both selected API-26 ABIs and prove their Gradle/APK native closure;
+7. produce per-artifact hashes, SBOM, notices, complete corresponding source,
+   and device lifecycle/playback evidence; and
 8. prove the release APK contains no `dev.jdtech.mpv:libmpv:1.0.0` bootstrap
    artifact.
 

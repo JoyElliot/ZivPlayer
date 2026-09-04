@@ -167,9 +167,9 @@ def _read_text(path: Path) -> str:
         raise ContractError(f"cannot read {path}: {failure}") from failure
 
 
-def _load_contract(path: Path) -> dict[str, Any]:
+def _load_contract_text(source: str) -> dict[str, Any]:
     try:
-        data = tomllib.loads(_read_text(path))
+        data = tomllib.loads(source)
     except tomllib.TOMLDecodeError as failure:
         raise ContractError(f"invalid contract TOML: {failure}") from failure
     if data.get("schemaVersion") != 1 or data.get("kind") != "zivplayer-libmpv-jni-contract":
@@ -182,6 +182,10 @@ def _load_contract(path: Path) -> dict[str, Any]:
             f"the wrapper contract must declare exactly {EXPECTED_METHOD_COUNT} native methods"
         )
     return data
+
+
+def _load_contract(path: Path) -> dict[str, Any]:
+    return _load_contract_text(_read_text(path))
 
 
 def _blank(chars: list[str], start: int, end: int) -> None:
@@ -991,12 +995,13 @@ def _wire_entries(
     return parsed
 
 
-def validate(contract_path: Path, cpp_path: Path, kotlin_path: Path, cmake_path: Path) -> int:
-    contract = _load_contract(contract_path)
-    cpp_source = _read_text(cpp_path)
-    kotlin_source = _read_text(kotlin_path)
-    cmake_source = _read_text(cmake_path)
-
+def validate_sources(
+    contract_source: str,
+    cpp_source: str,
+    kotlin_source: str,
+    cmake_source: str,
+) -> int:
+    contract = _load_contract_text(contract_source)
     expected: list[tuple[str, str, str]] = []
     for entry in contract["methods"]:
         if not isinstance(entry, dict):
@@ -1105,3 +1110,12 @@ def validate(contract_path: Path, cpp_path: Path, kotlin_path: Path, cmake_path:
             f"expected {expected_cpp_constants!r}, got {actual_cpp.wire_constants!r}"
         )
     return len(expected)
+
+
+def validate(contract_path: Path, cpp_path: Path, kotlin_path: Path, cmake_path: Path) -> int:
+    return validate_sources(
+        _read_text(contract_path),
+        _read_text(cpp_path),
+        _read_text(kotlin_path),
+        _read_text(cmake_path),
+    )

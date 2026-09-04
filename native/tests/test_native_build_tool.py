@@ -27,6 +27,9 @@ import source_tool  # noqa: E402
 
 
 COMMITTED_PROFILE = REPOSITORY_ROOT / "native" / "native-build-profile.toml"
+COMMITTED_WRAPPER_PROFILE = (
+    REPOSITORY_ROOT / "native" / "native-wrapper-build-profile.toml"
+)
 COMMITTED_SOURCE_MANIFEST = REPOSITORY_ROOT / "native" / "source-manifest.toml"
 COMMITTED_TOOLCHAIN_MANIFEST = REPOSITORY_ROOT / "native" / "toolchain-manifest.toml"
 LINUX_ROOT = sys.platform == "linux" and hasattr(os, "geteuid") and os.geteuid() == 0
@@ -34,6 +37,11 @@ LINUX_ROOT = sys.platform == "linux" and hasattr(os, "geteuid") and os.geteuid()
 
 def committed_data() -> dict[str, object]:
     with COMMITTED_PROFILE.open("rb") as stream:
+        return tomllib.load(stream)
+
+
+def committed_wrapper_data() -> dict[str, object]:
+    with COMMITTED_WRAPPER_PROFILE.open("rb") as stream:
         return tomllib.load(stream)
 
 
@@ -62,6 +70,136 @@ class NativeBuildProfileTest(unittest.TestCase):
         self.assertEqual(2, len(loaded.overlays))
         self.assertFalse(loaded.project["releaseReady"])
         self.assertEqual("pending-source-wrapper", loaded.build["jniWrapperStatus"])
+
+    def test_wrapper_profile_binds_read_only_contract_inputs_and_ten_libraries(self) -> None:
+        loaded = native_build_tool.load_profile(
+            COMMITTED_WRAPPER_PROFILE,
+            COMMITTED_SOURCE_MANIFEST,
+            COMMITTED_TOOLCHAIN_MANIFEST,
+        )
+        self.assertEqual(native_build_tool.WRAPPER_PROFILE_NAME, loaded.project["profile"])
+        self.assertEqual(2, loaded.data["schemaVersion"])
+        self.assertEqual(
+            hashlib.sha256(COMMITTED_WRAPPER_PROFILE.read_bytes()).hexdigest(),
+            loaded.sha256,
+        )
+        self.assertEqual(native_build_tool.WRAPPER_EXPECTED_LIBRARIES, tuple(loaded.build["expectedLibraries"]))
+        self.assertEqual(
+            native_build_tool.WRAPPER_EXPECTED_BUILT_LIBRARIES,
+            tuple(loaded.build["builtLibraries"]),
+        )
+        self.assertEqual("pending-wrapper-inclusive-audit", loaded.build["jniWrapperStatus"])
+        self.assertEqual("/build/wrapper", loaded.policy["wrapperInputMount"])
+        self.assertIs(loaded.policy["wrapperInputReadOnly"], True)
+        self.assertEqual(
+            native_build_tool.WRAPPER_INPUT_DESTINATIONS,
+            tuple(str(item["destination"]) for item in loaded.wrapper_inputs),
+        )
+        self.assertEqual(
+            (
+                "build",
+                "build",
+                "contract",
+                "contract",
+                "contract",
+                "build-and-contract",
+            ),
+            tuple(str(item["role"]) for item in loaded.wrapper_inputs),
+        )
+        self.assertTrue(all(item["mode"] == 0o444 for item in loaded.wrapper_inputs))
+
+    def test_wrapper_profile_reports_contract_parser_limits_as_integrity_failure(self) -> None:
+        with patch.object(
+            native_build_tool.wrapper_contract_core,
+            "validate_sources",
+            side_effect=ValueError("integer literal exceeds the parser limit"),
+        ):
+            with self.assertRaises(source_tool.SourceToolError) as raised:
+                native_build_tool.load_profile(
+                    COMMITTED_WRAPPER_PROFILE,
+                    COMMITTED_SOURCE_MANIFEST,
+                    COMMITTED_TOOLCHAIN_MANIFEST,
+                )
+        self.assertEqual(source_tool.EXIT_INTEGRITY, raised.exception.exit_code)
+        self.assertIn("wrapper source contract differs", str(raised.exception))
+
+    def test_wrapper_profile_schema_lists_roles_and_mounts_fail_closed(self) -> None:
+        mutations = (
+            (("schemaVersion",), 1, "schemaVersion"),
+            (("policy", "wrapperInputMount"), "/build/source/wrapper", "wrapperInputMount"),
+            (("policy", "wrapperInputReadOnly"), False, "wrapperInputReadOnly"),
+            (("build", "target"), "mpv", "build.target"),
+            (("build", "jniWrapperStatus"), "audited", "jniWrapperStatus"),
+            (("wrapperInput", 0, "mode"), 0o644, "wrapperInput[0].mode"),
+            (("wrapperInput", 0, "role"), "contract", "wrapperInput roles"),
+        )
+        for path, value, fragment in mutations:
+            with self.subTest(path=path):
+                data = committed_wrapper_data()
+                target: object = data
+                for component in path[:-1]:
+                    if isinstance(component, int):
+                        assert isinstance(target, list)
+                        target = target[component]
+                    else:
+                        assert isinstance(target, dict)
+                        target = target[component]
+                assert isinstance(target, dict)
+                final = path[-1]
+                assert isinstance(final, str)
+                target[final] = value
+                self.assert_schema_error(data, fragment)
+
+        data = committed_wrapper_data()
+        build = data["build"]
+        assert isinstance(build, dict)
+        libraries = build["expectedLibraries"]
+        assert isinstance(libraries, list)
+        libraries.remove("libzivplayer_mpv.so")
+        self.assert_schema_error(data, "build.expectedLibraries")
+
+        data = committed_wrapper_data()
+        wrapper_inputs = data["wrapperInput"]
+        assert isinstance(wrapper_inputs, list)
+        wrapper_inputs.reverse()
+        self.assert_schema_error(data, "wrapperInput destinations")
+
+    def test_wrapper_build_overlay_uses_only_locked_ndk_build_inputs(self) -> None:
+        buildall = (
+            REPOSITORY_ROOT
+            / "native"
+            / "overlays"
+            / "mpv-android-api26-wrapper"
+            / "buildscripts"
+            / "buildall.sh"
+        ).read_bytes()
+        self.assertIn(b'local wrapper_input_root=/build/wrapper', buildall)
+        self.assertIn(b'"$ANDROID_NDK_ROOT/ndk-build"', buildall)
+        self.assertIn(b'NDK_PROJECT_PATH=null', buildall)
+        self.assertIn(b'APP_PLATFORM=android-26', buildall)
+        self.assertIn(b'APP_STL=c++_shared', buildall)
+        self.assertIn(b'APP_OPTIM=release', buildall)
+        self.assertIn(b'APP_SUPPORT_FLEXIBLE_PAGE_SIZES=true', buildall)
+        self.assertIn(b'unset APP_ALLOW_MISSING_DEPS APP_WEAK_API_DEFS', buildall)
+        self.assertIn(b'NDK_LIBS_OUT="$wrapper_build_root/libs"', buildall)
+        self.assertIn(b'libzivplayer_mpv.so', buildall)
+        self.assertNotIn(b"cmake ", buildall)
+        self.assertNotIn(b"gradlew", buildall)
+        self.assertNotIn(b"libplayer.so", buildall)
+
+        profile = committed_wrapper_data()
+        wrapper_inputs = profile["wrapperInput"]
+        assert isinstance(wrapper_inputs, list)
+        for wrapper_input in wrapper_inputs:
+            assert isinstance(wrapper_input, dict)
+            if wrapper_input["role"] not in {"build", "build-and-contract"}:
+                continue
+            expected = (
+                "verify_wrapper_input "
+                f"/build/wrapper/{wrapper_input['destination']} "
+                f"{wrapper_input['size']} {wrapper_input['sha256']}"
+            ).encode("ascii")
+            self.assertIn(expected, buildall)
 
     def test_buildall_overlay_installs_only_the_locked_fail_closed_git_stub(self) -> None:
         buildall = (
@@ -550,6 +688,93 @@ class NativeBuildProfileTest(unittest.TestCase):
         self.assertNotIn(b"/var/tmp", raw)
         self.assertNotIn(str(REPOSITORY_ROOT).encode("utf-8"), raw)
 
+    def test_wrapper_preparation_receipt_binds_the_separate_read_only_tree(self) -> None:
+        loaded = native_build_tool.load_profile(
+            COMMITTED_WRAPPER_PROFILE,
+            COMMITTED_SOURCE_MANIFEST,
+            COMMITTED_TOOLCHAIN_MANIFEST,
+        )
+        source_tree = {
+            "format": native_build_tool.materialize_sources.TREE_DIGEST_FORMAT,
+            "sha256": "1" * 64,
+            "entryCount": 1,
+            "fileCount": 1,
+            "directoryCount": 0,
+            "symlinkCount": 0,
+        }
+        wrapper_tree = {
+            "format": native_build_tool.materialize_sources.TREE_DIGEST_FORMAT,
+            "sha256": "2" * 64,
+            "entryCount": len(loaded.wrapper_inputs),
+            "fileCount": len(loaded.wrapper_inputs),
+            "directoryCount": 0,
+            "symlinkCount": 0,
+        }
+        source_snapshot = native_build_tool.TreePolicySnapshot(
+            tree=source_tree,
+            file_bytes=3,
+            symlinks=(),
+            identities={".": (1, 1), "file": (1, 2)},
+        )
+        wrapper_snapshot = native_build_tool.TreePolicySnapshot(
+            tree=wrapper_tree,
+            file_bytes=sum(int(item["size"]) for item in loaded.wrapper_inputs),
+            symlinks=(),
+            identities={
+                ".": (1, 3),
+                **{
+                    str(item["destination"]): (1, index + 4)
+                    for index, item in enumerate(loaded.wrapper_inputs)
+                },
+            },
+        )
+        source_receipt = {"linkMode": "preserve", "tree": source_tree}
+        composition_receipt = {
+            "composition": {"sha256": "3" * 64},
+            "inputs": {"apt": {"tree": "apt"}, "sdk": {"tree": "sdk"}},
+        }
+        inputs = native_build_tool.PreparationInputs(
+            profile=loaded,
+            source_receipt=source_receipt,
+            source_receipt_raw=native_build_tool._canonical_json(source_receipt),  # noqa: SLF001
+            composition_receipt=composition_receipt,
+            composition_receipt_raw=native_build_tool._canonical_json(  # noqa: SLF001
+                composition_receipt
+            ),
+            overlay_raws=tuple(
+                (REPOSITORY_ROOT / str(overlay["replacement"])).read_bytes()
+                for overlay in loaded.overlays
+            ),
+            canonical_source=source_snapshot,
+            wrapper_input_raws=tuple(
+                (REPOSITORY_ROOT / str(item["source"])).read_bytes()
+                for item in loaded.wrapper_inputs
+            ),
+        )
+        receipt = native_build_tool._preparation_receipt_data(  # noqa: SLF001
+            inputs,
+            source_snapshot,
+            wrapper_snapshot,
+        )
+        self.assertEqual(2, receipt["schemaVersion"])
+        self.assertEqual(
+            native_build_tool.WRAPPER_PREPARATION_RECEIPT_KIND,
+            receipt["kind"],
+        )
+        self.assertIs(receipt["ready"], False)
+        self.assertIs(receipt["releaseInput"], False)
+        self.assertEqual("/build/wrapper", receipt["mounts"]["wrapperInput"])
+        self.assertEqual(
+            "fresh-independent-read-only-copy",
+            receipt["policy"]["wrapperInput"],
+        )
+        self.assertEqual(wrapper_tree, receipt["wrapperInput"]["tree"])
+        self.assertEqual(
+            [str(item["role"]) for item in loaded.wrapper_inputs],
+            [str(item["role"]) for item in receipt["wrapperInput"]["files"]],
+        )
+        self.assertNotIn(b"/mnt/", native_build_tool._canonical_json(receipt))  # noqa: SLF001
+
     def test_nested_mounts_are_rejected_and_never_recursively_cleaned(self) -> None:
         mount_record = b"/var/tmp/staging/source\text4\trw,bind"
         with patch.object(
@@ -691,6 +916,46 @@ class NativeBuildProfileTest(unittest.TestCase):
             native_build_tool._assert_independent_copy(canonical, prepared)  # noqa: SLF001
         self.assertEqual(source_tool.EXIT_INTEGRITY, raised.exception.exit_code)
         self.assertIn("across paths", str(raised.exception))
+
+    @unittest.skipUnless(LINUX_ROOT, "requires Linux root")
+    def test_wrapper_input_tree_is_read_only_exact_and_tamper_evident(self) -> None:
+        loaded = native_build_tool.load_profile(
+            COMMITTED_WRAPPER_PROFILE,
+            COMMITTED_SOURCE_MANIFEST,
+            COMMITTED_TOOLCHAIN_MANIFEST,
+        )
+        wrapper_raws = tuple(
+            (REPOSITORY_ROOT / str(item["source"])).read_bytes()
+            for item in loaded.wrapper_inputs
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            wrapper_root = Path(temporary) / "wrapper"
+            snapshot = native_build_tool._create_wrapper_input_tree(  # noqa: SLF001
+                wrapper_root,
+                loaded,
+                wrapper_raws,
+            )
+            self.assertIsNotNone(snapshot)
+            self.assertEqual(0o555, stat.S_IMODE(wrapper_root.stat().st_mode))
+            self.assertEqual(
+                {".", *native_build_tool.WRAPPER_INPUT_DESTINATIONS},
+                set(snapshot.identities),
+            )
+            for destination in native_build_tool.WRAPPER_INPUT_DESTINATIONS:
+                self.assertEqual(
+                    0o444,
+                    stat.S_IMODE((wrapper_root / destination).stat().st_mode),
+                )
+
+            changed = wrapper_root / "Android.mk"
+            changed.chmod(0o644)
+            with self.assertRaises(source_tool.SourceToolError) as raised:
+                native_build_tool._verify_wrapper_input_tree(  # noqa: SLF001
+                    wrapper_root,
+                    loaded,
+                    wrapper_raws,
+                )
+            self.assertEqual(source_tool.EXIT_INTEGRITY, raised.exception.exit_code)
 
     @unittest.skipUnless(LINUX_ROOT, "requires Linux root")
     def test_source_copy_is_independent_and_preserves_symlink_text(self) -> None:

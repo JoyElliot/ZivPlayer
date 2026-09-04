@@ -2,22 +2,23 @@
 
 This directory contains the source-only `libzivplayer_mpv.so` bridge specified
 by ADR 0011. No backend factory selects it, and it is not a Gradle or release
-input yet.
+input yet. The additive build profile now prepares these sources, but that
+preparation is not compiled or release evidence.
 
-The wrapper is built separately against one per-ABI prefix whose provenance is
-audited by the later build profile. Configure
-the Android NDK 29.0.14206865 CMake toolchain with API 26, one of
-`arm64-v8a`/`x86_64`, `-DCMAKE_BUILD_TYPE=Release`,
-`-DANDROID_STL=c++_shared`, and
-`-DZIVPLAYER_NATIVE_PREFIX=<absolute-prefix>`. The full NDK revision is read
-from `source.properties`; CMake's shortened `CMAKE_ANDROID_NDK_VERSION` is not
-used as provenance. Configuration rejects missing, directory, or symlinked mpv
-and FFmpeg header paths plus `libmpv.so` and `libavcodec.so`. This is
-only a shallow direct-input check: the additive wrapper profile must still bind
-hashes, ABI identity, the complete nine-library stack, and ELF dependency
-closure. The target registers the exact Kotlin table from `JNI_OnLoad`,
-uses an explicit `libzivplayer_mpv.so` SONAME, and requests 16-KiB load
-alignment. Those declarations still require verification on the resulting ELF.
+`native/native-wrapper-build-profile.toml` snapshots six exact inputs into the
+host `<build-workspace>/wrapper` tree. A future wrapper-specific executor must
+bind that tree read-only at `/build/wrapper`. Its locked execution path is
+Android NDK 29.0.14206865 `ndk-build` through `Android.mk` and
+`Application.mk`, with API 26, `arm64-v8a`/`x86_64`, shared libc++, Release,
+and 16-KiB linker settings. It builds separately against each audited stack
+prefix and installs `libzivplayer_mpv.so` beside the existing nine libraries.
+
+`CMakeLists.txt` is retained as a shallow source-contract/reference input. It
+records the same NDK/API/ABI/STL/build-type/prefix restrictions and direct mpv
+and FFmpeg inputs, but the selected profile does not run CMake. Neither build
+file is provenance by itself: the eventual executor and compiled audit must
+prove the exact input hashes, ABI identity, full dependency closure, explicit
+SONAME, 16-KiB LOAD alignment, and JNI exports on the resulting ELF.
 
 The first wire exposes synchronous property getters only; asynchronous
 `GET_PROPERTY_REPLY` payloads are not decoded. Native strings are converted to
@@ -26,10 +27,13 @@ safe but not byte-preserving. Android `Surface` global references which have
 successfully reached mpv's asynchronous `wid` option are retained until mpv is
 fully terminated.
 
-The next native-build profile must copy the resulting library into that same
-prefix, audit ten libraries per ABI, validate this registration table against
-the compiled Kotlin descriptors, and keep `ready=false` / `releaseInput=false`
-until the full staging and device gates pass. Do not amend the historical
+The additive profile and a verified preparation now exist, but the
+wrapper-specific namespace, build runner, and audit do not. Its preparation
+receipt therefore keeps `buildExecuted=false`, `ready=false`, and
+`releaseInput=false`. The next executor must audit ten libraries per ABI (20 in
+total), validate this registration table against the compiled Kotlin
+descriptors, and keep `ready=false` / `releaseInput=false` until all staging,
+Gradle, compliance, and device gates pass. Do not amend the historical
 stack-only receipt or package this source tree directly from Gradle.
 
 `jni-contract.toml` is the checked-in registration and event-buffer ABI.
@@ -53,4 +57,4 @@ rejects source `#define`, `#undef`, and conditional-compilation directives in
 this JNI translation unit. It does not run CMake or prove the NDK/API/ABI/STL/
 build-type/prefix gates, included-header or toolchain macro effects, wire use-site
 semantics, compiled/R8 descriptors, JNI runtime behavior, or ELF properties;
-those remain separate compiled and device gates.
+those remain separate `ndk-build`, compiled-audit, and device gates.
