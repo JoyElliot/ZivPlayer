@@ -372,6 +372,70 @@ after proving `populated 0` and zero descendants. Stronger protection against
 hostile root or host-binary replacement would require a separately reviewed
 native trampoline and host-image identity and is outside this phase.
 
+The actual inspection-build contract is now stored separately in
+`native/native-build-executor-policy.toml`; it does not revise the accepted
+namespace-probe bytes or transcript. It binds that probe evidence, the exact
+native-build profile, the deterministic preparation and composition receipts,
+and four byte-locked launcher/namespace/runner/seccomp helpers. Its policy
+SHA-256 is
+`a947326abe1d4d7cff9da18eb0b29cca9bbd0545c989ffdc381567a4c90727f8`.
+
+This new policy defines build commands, exact allowlist staging, structural
+artifact audit, and canonical build-receipt publication as one closed loop.
+Those four capabilities are enabled in the policy while `ready=false` and
+`releaseInput=false`; capability declaration is not execution evidence. The
+current `native_build_executor_tool.py` exposes only static `validate` and
+read-only `verify-inputs`. The latter rechecks the complete prepared input,
+preparation/composition receipt bytes, and locked ELF audit tool without
+entering a namespace. No attempt marker, build command, artifact, audit result,
+or build receipt has yet been produced.
+
+The complete WSL `verify-inputs` run passed with preparation receipt
+`eff4993d2c1a079564f8da458eb2fc3bb7ee234716d8ce2380ee4c5e59de49f5`,
+composition receipt
+`e9b88860b8e6d043a80a7f3d6aa7e3e641574e7da4c66a0541db129a4e081989`,
+and resolved ELF-tool digest
+`5104576a3518575cf1887c2afa9249bbd0dc175cb9dc0f2af0d430fe0cb20bbe`.
+This was still a read-only input check, not an execution attempt.
+
+A conforming executor must consume a prepared workspace exactly once by
+publishing and syncing a canonical, bounded, root-owned, metadata-normalized,
+no-replace attempt marker through the pinned workspace descriptor before
+launch. The marker binds the policy, profile, preparation/composition receipts,
+accepted probe evidence, helper hashes, exact command order, and immutable
+pre-launch consumed state. The executor must retain that marker and the
+workspace on every failure without publishing a build receipt. Successful
+execution must run only the profile's two argv vectors in order, enforce the
+fixed environment/cgroup/filesystem/log bounds, copy only the per-ABI
+nine-library allowlist into no-replace output trees, and publish a receipt only
+after post-build immutable-input verification and artifact audit.
+
+The four-hour timeout is a dedicated build wall-clock deadline, not the shorter
+installer timeout. Child stdout markers are diagnostic only; command evidence
+comes from the policy/profile, locked runner bytes, and the parent-observed
+runner lifecycle. Failure teardown must use the locked pidfd/cgroup kill order,
+bounded drain, and cgroup emptiness/identity proof before removal. Post-build
+checks reverify the immutable external canonical source input while allowing
+bounded build mutations inside the separately pinned prepared
+`workspace/source` directory.
+
+The invocation policy fixes the namespace marker, preserved descriptor count,
+seccomp interpreter/helper argv, clean Bash interpreter argv, and runner argv.
+The proc mount requests `hidepid=2` and accepts only its `2`/`invisible`
+reported forms. The policy also requires APT, SDK, canonical source, and
+workspace roots to share the single mapped block device used by the cgroup I/O
+controller.
+
+The artifact audit requires the selected ELF64 machine and `ET_DYN`, one or
+more `PT_LOAD` segments all using `p_align=0x4000` with offset/address
+congruence, unique basename SONAME identities, and a complete `DT_NEEDED`
+resolution over staged SONAMEs or an exact API-26 platform-stub allowlist.
+Undefined platform symbols must resolve against the API-26 NDK stubs. Because
+this profile deliberately excludes the JNI wrapper, any exported `Java_`
+symbol is rejected. Observed SONAME/NEEDED, hashes, sizes, logs, build options,
+overlay hashes, and pending release blockers belong in the non-release receipt;
+they are not guessed in advance.
+
 The environment status therefore remains
 `roots-and-apt-locked-container-pending`: accepted Android license files,
 redistribution inputs, an accepted release-builder materialization/run, and the

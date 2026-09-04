@@ -563,6 +563,88 @@ hard host failure or a cgroup-removal error can retain one precisely named empty
 descendants before removing that exact directory. The verified preparation and
 all build/release gates remain unchanged.
 
+## Locked offline inspection-build contract
+
+`native-build-executor-policy.toml` is a new policy rather than a mutation of
+the accepted namespace-probe policy. It binds the exact profile and prepared
+workspace receipt, the current composition receipt, and the accepted probe
+policy/transcript. Its SHA-256 is
+`a947326abe1d4d7cff9da18eb0b29cca9bbd0545c989ffdc381567a4c90727f8`.
+
+Validate this contract without creating an attempt marker, entering a
+namespace, or executing a build:
+
+```sh
+python3 native/tools/native_build_executor_tool.py validate
+sudo python3 native/tools/native_build_executor_tool.py verify-inputs
+```
+
+The policy treats build execution, exact allowlist staging, structural artifact
+audit, and canonical build-receipt publication as one future closed loop. Those
+four policy capabilities are `true` because a conforming implementation must
+complete all four; `ready` and `releaseInput` remain `false`. The current CLI
+exposes only static `validate` and read-only `verify-inputs`, so those capability
+declarations are not evidence that any command or audit has run. On Linux as
+root, `verify-inputs` rechecks the complete prepared inputs, the exact
+preparation/composition receipt bytes, and the resolved locked `llvm-readelf`
+target without entering a namespace.
+
+The complete WSL read-only check passed for preparation receipt
+`eff4993d2c1a079564f8da458eb2fc3bb7ee234716d8ce2380ee4c5e59de49f5`,
+composition receipt
+`e9b88860b8e6d043a80a7f3d6aa7e3e641574e7da4c66a0541db129a4e081989`,
+and resolved ELF-tool digest
+`5104576a3518575cf1887c2afa9249bbd0dc175cb9dc0f2af0d430fe0cb20bbe`.
+That check opened no namespace and ran no build command.
+
+The future execution is single-attempt. Before launching, it must publish and
+sync a canonical, bounded, root-owned, metadata-normalized, no-replace attempt
+marker through the pinned workspace descriptor. Its immutable fields bind the
+policy, profile, preparation/composition receipts, accepted probe evidence,
+helpers, exact commands, and pre-launch consumed state. Every failure retains
+the consumed workspace without a build receipt. The two profile commands must
+run in their fixed order with an empty inherited environment, the existing
+cgroup envelope, a dedicated four-hour build deadline, and separate 32-MiB
+stdout/stderr bounds. The build deadline requires its own validator rather than
+the shorter installer-timeout validator. Child stdout markers are diagnostic,
+not command-order evidence; the receipt must bind the policy/profile, locked
+runner bytes, and parent-observed runner lifecycle. Failure teardown is locked
+to pidfd/cgroup termination, a bounded drain, and cgroup identity/emptiness
+proof before removal. The new namespace and runner helpers are byte-locked; the
+runner contains only the fixed API-26 `arm64` and `x86_64` `mpv` commands. They
+are not reachable from the CLI yet.
+
+The invocation contract separately fixes the execution namespace marker,
+descriptor count, seccomp interpreter/helper, clean Bash interpreter flags,
+and runner argv. The proc mount requests `hidepid=2`; the policy accepts only
+the equivalent reported values `2` and `invisible`. The cgroup I/O device policy
+requires the retained APT root, SDK projection, external canonical source, and
+build workspace to share the same mapped block device; the accepted current
+inputs satisfy that precondition.
+
+Post-build verification distinguishes the immutable external canonical source
+input from the prepared `workspace/source` tree. The former must remain
+byte-identical; the latter is deliberately writable and may gain build output,
+but only within its pinned directory and the policy's bounded filesystem delta.
+
+Staging must resolve each source symlink inside its locked prefix and copy only
+the nine expected regular-library bytes per ABI into no-replace output trees.
+The future audit must require ELF64 `ET_DYN` and the profile machine for each
+ABI; at least one `PT_LOAD`, with every `PT_LOAD` aligned to exactly `0x4000`
+and `p_offset`/`p_vaddr` congruent; a unique basename SONAME per artifact; and a
+complete per-ABI `DT_NEEDED` closure over staged SONAMEs or the locked API-26
+platform-stub allowlist. Undefined platform symbols must resolve against the
+API-26 NDK stubs. This stack-only phase also records `Java_` exports and rejects
+any such export because the ZivPlayer JNI wrapper is still absent.
+
+The future receipt must record exact command order, bounded log sizes and
+digests, parent-observed command events, cgroup/filesystem outcomes, artifact
+hashes, ELF/SONAME/NEEDED/API-26
+observations, overlay/build options, and explicit pending release blockers. It
+will remain a non-release inspection receipt even after successful execution.
+No build, staging, ELF/JNI audit, or receipt publication has occurred in this
+contract-locking step.
+
 ## Locked build baseline
 
 - Linux host only for native artifact provenance.
@@ -597,9 +679,8 @@ implemented and have been run against the complete locked cache in inspection
 mode. The separate byte-locked namespace probe has also passed through the
 canonical executor in inspection mode. The next native milestones must:
 
-1. extend the Linux namespace executor under a separately reviewed policy to
-   run the two exact offline build commands, audit outputs, and publish a
-   no-replace canonical build receipt;
+1. implement the locked offline inspection-build policy to run the two exact
+   commands, audit outputs, and publish a no-replace canonical build receipt;
 2. close the portable offline Gradle artifact set before any Android wrapper
    build;
 3. adapt and harden the Kotlin/JNI wrapper inside `platform:libmpv-android`;

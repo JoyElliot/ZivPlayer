@@ -193,6 +193,8 @@ sudo python3 native/tools/native_build_tool.py prepare
 sudo python3 native/tools/native_build_tool.py verify-preparation
 python3 native/tools/native_executor_tool.py validate
 sudo python3 native/tools/native_executor_tool.py probe
+python3 native/tools/native_build_executor_tool.py validate
+sudo python3 native/tools/native_build_executor_tool.py verify-inputs
 python3 native/tools/toolchain_tool.py check-lock
 ```
 
@@ -254,6 +256,24 @@ and transcript SHA-256
 `fd251aeb116fd8ced374df5c9887af8dcc3bde03002b4968181421a1682b9f81`.
 The accepted run left no executor cgroup or process; the output, HOME, and
 temporary trees remained empty. It did not execute a compiler or `buildall.sh`.
+
+The next closed-loop inspection-build contract is now separate from that
+accepted probe policy. `native-build-executor-policy.toml` binds the exact
+profile, preparation/composition receipts, accepted probe policy/transcript,
+one-shot workspace state, two-command order, bounded logs, exact artifact
+allowlist, API-26/ELF/16-KiB audits, and a canonical non-release build receipt.
+Its policy SHA-256 is
+`a947326abe1d4d7cff9da18eb0b29cca9bbd0545c989ffdc381567a4c90727f8`.
+The new tool exposes only read-only `validate` and Linux-root `verify-inputs`;
+the latter rechecks the current preparation/composition receipt bytes and the
+locked ELF audit tool without entering a namespace. No build attempt marker,
+command, artifact, audit result, or build receipt has been created.
+The complete WSL input check passed with preparation receipt
+`eff4993d2c1a079564f8da458eb2fc3bb7ee234716d8ce2380ee4c5e59de49f5`,
+composition receipt
+`e9b88860b8e6d043a80a7f3d6aa7e3e641574e7da4c66a0541db129a4e081989`,
+and resolved ELF-tool digest
+`5104576a3518575cf1887c2afa9249bbd0dc175cb9dc0f2af0d430fe0cb20bbe`.
 
 Two final WSL inspection runs of the fixed composition profile produced
 byte-identical receipts with SHA-256
