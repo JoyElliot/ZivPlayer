@@ -79,6 +79,8 @@ seccomp = true
 oldRootDetached = true
 
 [helpers]
+launcherPath = "native/toolchain/native-executor-child.py"
+launcherSha256 = "02bdfc1357fbf533364f12829caa7f763f422c0053b8841499ae63166c272e3a"
 namespacePath = "native/toolchain/native-build-namespace.bash"
 namespaceSha256 = "8a5177f0664b2909dd75e922843c3f430b36f495c7ea9ef38e85d54173485959"
 probePath = "native/toolchain/native-build-probe.bash"

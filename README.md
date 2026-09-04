@@ -192,6 +192,7 @@ sudo python3 native/tools/native_build_tool.py preflight
 sudo python3 native/tools/native_build_tool.py prepare
 sudo python3 native/tools/native_build_tool.py verify-preparation
 python3 native/tools/native_executor_tool.py validate
+sudo python3 native/tools/native_executor_tool.py probe
 python3 native/tools/toolchain_tool.py check-lock
 ```
 
@@ -228,12 +229,15 @@ applies the overlays atomically, normalizes metadata, and publishes only after
 a canonical preparation receipt passes verification. `verify-preparation`
 recomputes that contract from the current locked inputs and published tree.
 `native_executor_tool.py validate` checks a separate exact namespace-probe
-policy, its build-profile binding, and the three byte-locked helpers. That
-policy keeps build commands, artifact staging, build receipts, readiness, and
-release input explicitly disabled. No canonical Python namespace launcher
-exists and no accepted executor-probe result has been recorded; there is still
-no build-command execution, artifact staging, ELF audit, JNI wrapper, Gradle
-integration, or build receipt.
+policy, its build-profile binding, and four byte-locked launcher/namespace/
+probe/seccomp helpers. Its Linux-root-only `probe` command pins and re-verifies
+the immutable inputs, reserves pidfd capacity, applies the locked cgroup and
+process limits, enters the private namespace with an empty inherited
+environment plus fixed variables, and accepts only the exact six-record probe
+transcript. The policy keeps build commands, artifact staging, build receipts,
+readiness, and release input explicitly disabled. There is still no
+build-command execution,
+artifact staging, ELF audit, JNI wrapper, Gradle integration, or build receipt.
 
 The complete WSL inspection preparation at
 `/var/tmp/zivplayer-native-build` produced a 5,378-byte receipt with SHA-256
@@ -242,6 +246,14 @@ The prepared post-overlay source retains 30,436 entries and has tree SHA-256
 `bdabef1dc6032963422aad7576ab8ea45a5f5393d5a304b5273f94fbaabb2d2d`.
 An independent `verify-preparation` run passed. The receipt explicitly records
 `buildExecuted=false`, `ready=false`, and `releaseInput=false`.
+
+The canonical executor then passed the namespace-only WSL inspection probe
+with policy SHA-256
+`fe3db9f8397e2cacd96077228b5dabc8fb9fa788492d523beea62da0530b17b9`
+and transcript SHA-256
+`fd251aeb116fd8ced374df5c9887af8dcc3bde03002b4968181421a1682b9f81`.
+The accepted run left no executor cgroup or process; the output, HOME, and
+temporary trees remained empty. It did not execute a compiler or `buildall.sh`.
 
 Two final WSL inspection runs of the fixed composition profile produced
 byte-identical receipts with SHA-256

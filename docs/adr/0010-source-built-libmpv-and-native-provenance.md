@@ -331,11 +331,12 @@ The executor isolation contract is intentionally stored separately in
 `native/native-executor-policy.toml`, so locking it does not invalidate the
 existing preparation receipt. Its first phase is `namespace-probe` and binds
 the exact native-build profile SHA-256, logical mount paths, empty inherited
-environment, process/cgroup/filesystem limits, namespace properties, and the
-byte digests of the namespace, probe, and seccomp helpers. The schema fixes
-`buildCommands=false`, `artifactStaging=false`, `buildReceipt=false`,
-`ready=false`, and `releaseInput=false`; changing any of those values is not an
-extension of this phase.
+environment plus fixed variables, process/cgroup/filesystem limits, namespace
+properties, and the byte digests of the child launcher, namespace, probe, and
+seccomp helpers. The schema fixes `buildCommands=false`,
+`artifactStaging=false`,
+`buildReceipt=false`, `ready=false`, and `releaseInput=false`; changing any of
+those values is not an extension of this phase.
 
 The locked namespace design uses the APT stage only as an overlay lower,
 creates `/build` in the ephemeral upper rather than modifying the APT tree,
@@ -343,10 +344,33 @@ binds separately pinned source/output/HOME/TMP directories, remounts the
 composed root read-only, pivots away from and detaches the host root, then drops
 all capabilities and applies the existing seccomp helper. The probe is limited
 to mount, environment, network, privilege, descriptor, and write-protection
-checks. `native/tools/native_executor_tool.py validate` currently performs only
-static policy/profile/helper validation: it has no launch or build subcommand,
-no accepted executor-probe result has been recorded, and implementation-only
-helper checks have not executed a compiler or upstream build command.
+checks. `native/tools/native_executor_tool.py validate` performs static
+policy/profile/helper validation. Its Linux-root-only `probe` additionally pins
+the selected immutable files and directories, reserves pidfd capacity, applies
+the exact cgroup/resource envelope, starts the byte-locked child with an empty
+inherited environment plus fixed variables and descriptor set, and re-verifies
+all inputs after a successful exact transcript. `SIGINT`, `SIGTERM`, and
+`SIGHUP` stay blocked in the parent until process and cgroup cleanup completes;
+the child sets a parent-death signal before validating and entering its cgroup.
+
+The canonical executor passed this namespace-only probe in the current WSL
+inspection environment with policy SHA-256
+`fe3db9f8397e2cacd96077228b5dabc8fb9fa788492d523beea62da0530b17b9`
+and exact six-record transcript SHA-256
+`fd251aeb116fd8ced374df5c9887af8dcc3bde03002b4968181421a1682b9f81`.
+Pre/post identities were unchanged, the output/HOME/temporary trees remained
+empty, and no executor process or cgroup remained. The probe did not invoke a
+compiler, `buildall.sh`, artifact staging, or a build receipt, so all build and
+release gates remain closed.
+
+This launcher shares the exclusive trusted root-controlled host boundary used
+by the earlier materializers. The host Python interpreter, system binaries,
+kernel, and hard host termination are not byte-locked executor inputs. A hard
+host failure or cgroup-removal error can retain a precisely named empty
+`.zivplayer-apt-*` cgroup; an operator may remove only that exact directory
+after proving `populated 0` and zero descendants. Stronger protection against
+hostile root or host-binary replacement would require a separately reviewed
+native trampoline and host-image identity and is outside this phase.
 
 The environment status therefore remains
 `roots-and-apt-locked-container-pending`: accepted Android license files,
@@ -399,9 +423,9 @@ baselines, a reproducible offline base-plus-APT materialization stage, and a
 separate reproducible Android/Python tool projection whose fixed read-only
 composition has passed an isolated inspection smoke. A byte-locked API-26
 libmpv-stack profile, preserve-source preflight, and verified independent
-prepared workspace, plus a closed namespace-probe policy, now make the next
-execution boundary explicit without treating preparation or static validation
-as a build result.
+prepared workspace, plus a closed namespace-probe policy and accepted WSL
+inspection probe, now make the next execution boundary explicit without
+treating preparation or namespace validation as a build result.
 Complete local source and toolchain/APT caches can be prepared without trusting
 mutable Git branches, floating container tags, or moving APT repositories, and
 the release-input gate fails closed while compliance, canonical native-build,

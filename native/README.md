@@ -495,27 +495,36 @@ An independent verification command passed; the original overlay destinations
 still match their upstream hashes. The receipt records `phase=prepared`,
 `buildExecuted=false`, `ready=false`, and `releaseInput=false`.
 
-There is still no accepted native executor run, build command execution,
-output staging, ELF/JNI audit, canonical build receipt, offline Gradle/AAR
-integration, or compliance bundle. No libmpv library was produced by
-preparation, and its success must not be reported as an M7E build. These checks
-assume the ADR's exclusive trusted root-controlled builder boundary and do not
-claim protection against a concurrent hostile root process.
+An accepted namespace-only executor run now exists in the WSL inspection
+environment. There is still no build command execution, output staging,
+ELF/JNI audit, canonical build receipt, offline Gradle/AAR integration, or
+compliance bundle. No libmpv library was produced by preparation or the probe,
+and neither success may be reported as an M7E build. These checks assume the
+ADR's exclusive trusted root-controlled builder boundary and do not claim
+protection against a concurrent hostile root process.
 
 ## Locked namespace-probe policy
 
 `native-executor-policy.toml` is a separate, exact contract for the next
 executor step. Keeping it separate from `native-build-profile.toml` preserves
 the already-published preparation receipt while binding that profile's exact
-SHA-256, logical mount paths, empty inherited environment, timeout and output
-limits, cgroup/resource envelope, namespace properties, and three helper byte
-digests. Its current phase is only `namespace-probe`; `buildCommands`,
+SHA-256, logical mount paths, empty inherited environment plus fixed variables,
+timeout and output limits, cgroup/resource envelope, namespace properties, and
+four byte-locked launcher/namespace/probe/seccomp helpers. Its current phase is
+only `namespace-probe`; `buildCommands`,
 `artifactStaging`, `buildReceipt`, `ready`, and `releaseInput` are all `false`.
 
 Validate this contract without entering a namespace or executing a build:
 
 ```sh
 python3 native/tools/native_executor_tool.py validate
+```
+
+Run only the namespace probe as Linux root; this still does not execute a
+build:
+
+```sh
+sudo python3 native/tools/native_executor_tool.py probe
 ```
 
 The locked namespace helper describes an ephemeral overlay root over the APT
@@ -526,11 +535,33 @@ loopback-only network, empty/fixed environment, zero capabilities,
 temporary build bind deliberately remains executable until real upstream build
 behavior proves a stricter setting is compatible.
 
-This step only establishes and statically validates that contract. The Python
-launcher does not yet expose a probe or build subcommand, and no accepted
-executor-probe result has been recorded. Implementation-only WSL helper checks
-do not change that boundary and did not execute a compiler or `buildall.sh`.
-Consequently the verified preparation and all release gates remain unchanged.
+The canonical launcher pins the selected policy/profile/manifests, preparation
+and composition receipts, APT/SDK roots, prepared directories, overlays, and
+all four helpers before spawning. It re-verifies them before the probe and,
+only after an exact successful transcript plus complete cgroup cleanup, again
+afterward. The child makes parent-death signaling its first main-path action,
+then validates the exact descriptor set and empty inherited environment,
+enrolls in the cgroup, and applies hard rlimits; the parent reserves pidfd
+capacity before launch and blocks `SIGINT`, `SIGTERM`, and `SIGHUP` until
+cleanup completes.
+
+The accepted WSL inspection run used policy SHA-256
+`fe3db9f8397e2cacd96077228b5dabc8fb9fa788492d523beea62da0530b17b9`
+and produced the exact six-record transcript with SHA-256
+`fd251aeb116fd8ced374df5c9887af8dcc3bde03002b4968181421a1682b9f81`.
+It confirmed the private mount/network/PID/UTS/IPC namespace, declared mounts,
+fixed environment, loopback-only network, zero capabilities, `no_new_privs`,
+seccomp, descriptor isolation, unchanged workspace, and closed build gate. The
+run left no executor cgroup or process; the output, HOME, and temporary trees
+remained empty. It did not execute a compiler or `buildall.sh`.
+
+This remains inspection evidence, not accepted release-builder provenance.
+The host Python interpreter, system tools, kernel, and hard host termination are
+inside the trusted-host boundary rather than byte-locked executor inputs. A
+hard host failure or a cgroup-removal error can retain one precisely named empty
+`.zivplayer-apt-*` cgroup; an operator must prove `populated 0` and zero
+descendants before removing that exact directory. The verified preparation and
+all build/release gates remain unchanged.
 
 ## Locked build baseline
 
@@ -563,13 +594,12 @@ be accepted.
 
 Traversal-safe offline materialization and fixed toolchain composition are now
 implemented and have been run against the complete locked cache in inspection
-mode. A separate namespace-probe policy is also byte-locked but has not yet
-been launched by the canonical executor. The next native milestones must:
+mode. The separate byte-locked namespace probe has also passed through the
+canonical executor in inspection mode. The next native milestones must:
 
-1. finish the Linux namespace executor: pin and re-verify every immutable input,
-   run the harmless namespace probe, then separately authorize and run the two
-   exact offline build commands before publishing a no-replace canonical build
-   receipt;
+1. extend the Linux namespace executor under a separately reviewed policy to
+   run the two exact offline build commands, audit outputs, and publish a
+   no-replace canonical build receipt;
 2. close the portable offline Gradle artifact set before any Android wrapper
    build;
 3. adapt and harden the Kotlin/JNI wrapper inside `platform:libmpv-android`;
