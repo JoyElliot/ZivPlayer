@@ -512,10 +512,10 @@ artifacts. The locked build path is NDK 29 `ndk-build` through the checked-in
 remains a source-contract/reference input and is not executed by this profile.
 
 The preparation copies six exact wrapper inputs into host
-`<build-workspace>/wrapper` with root mode `0555` and file mode `0444`. That
-permission-locked snapshot is intended for a future read-only bind at
-`/build/wrapper`; preparation alone does not establish the execution namespace.
-Use only a fresh, absent ext4 workspace:
+`<build-workspace>/wrapper` with root mode `0555` and file mode `0444`. The
+wrapper namespace probe now binds that snapshot read-only at `/build/wrapper`;
+preparation alone still does not establish the execution namespace. Use only a
+fresh, absent ext4 workspace:
 
 ```sh
 python3 native/tools/native_build_tool.py \
@@ -543,6 +543,38 @@ and records `kind=ziv-native-build-preparation-wrapper-v1`,
 `buildExecuted=false`, `ready=false`, and `releaseInput=false`. It has not run
 `buildall.sh`; the historical executor is not permitted to consume it.
 
+`native-wrapper-executor-policy.toml` is the separate namespace-only contract
+for this additive profile. It adds a wrapper directory descriptor and identity
+without changing the historical policy: 31 namespace arguments, 11 preserved
+descriptors, 13 outer `pass_fds`, and 16 exact mounts. `/build/wrapper` must be
+an ext4 bind with `ro,nosuid,nodev,noexec`; the probe independently verifies
+the root `0555`, all six root-owned `0444`/single-link files, their exact sizes
+and SHA-256 values, no xattrs, and no extra or nested entries. Validate or run
+the non-building probe explicitly:
+
+```sh
+python3 native/tools/native_executor_tool.py \
+  --policy native/native-wrapper-executor-policy.toml \
+  --profile native/native-wrapper-build-profile.toml validate
+sudo python3 native/tools/native_executor_tool.py \
+  --policy native/native-wrapper-executor-policy.toml \
+  --profile native/native-wrapper-build-profile.toml probe \
+  --source-workspace /var/tmp/zivplayer-native-source \
+  --build-workspace <verified-wrapper-preparation>
+```
+
+The accepted WSL inspection probe used
+`/var/tmp/zivplayer-native-build-wrapper-d6cf2a36-20260905-a1`, policy SHA-256
+`e38767eb0e8e095364d13040a9ce3f49479f9147e1a2740d4f81860c496d1647`,
+and exact seven-record transcript SHA-256
+`e182d70ac1a76b00f7f3a622835c23621ba3df4654a339b945f66094f959dc9f`.
+It verified private mount/network/PID/UTS/IPC namespaces, the read-only wrapper
+bind, fixed environment, cgroup/resource envelope, zero capabilities,
+`no_new_privs`, seccomp, descriptor cleanup, and unchanged prepared inputs. It
+did not run `buildall.sh`, stage an artifact, write a receipt, or open any
+readiness/release gate. The prepared output, HOME, and temporary trees remained
+empty, and no executor process or `.zivplayer-apt-*` cgroup remained.
+
 For the historical stack-only path, an accepted namespace-only executor run now
 exists in the WSL inspection environment. Four separate build attempts also exist. The first two failed
 before output staging; the third completed both ABI commands and staging, then
@@ -556,7 +588,7 @@ These checks assume the ADR's
 exclusive trusted root-controlled builder boundary and do not claim protection
 against a concurrent hostile root process.
 
-## Locked namespace-probe policy
+## Historical stack-only locked namespace-probe policy
 
 `native-executor-policy.toml` is a separate, exact contract for the
 namespace-only executor step. It binds the current build profile's exact
@@ -816,13 +848,14 @@ must report NDK major r29. The byte-locked NDK 29 package's prebuilt
 `libc++_shared.so` reports r28 and is accepted as a locked runtime input rather
 than misrepresented as a newly built artifact.
 
-The additive wrapper path requires a new policy, namespace probe, runner, and
-receipt kind bound to its exact preparation. The namespace must mount the six
-inputs at `/build/wrapper` read-only, and the compiled audit must cover all 20
-artifacts, including exact `JNI_OnLoad`/`JNI_OnUnload` visibility, no `Java_`
-exports, the 16-entry `RegisterNatives` contract, SONAME/NEEDED closure, API 26,
-and 16-KiB LOAD alignment. None of that evidence exists merely because the
-preparation receipt passed.
+The additive wrapper path now has a separate policy and accepted namespace
+probe bound to its exact preparation. It proves the six inputs are mounted at
+`/build/wrapper` read-only, but it deliberately does not authorize a build. A
+new build policy, runner, and receipt kind must cover all 20 artifacts,
+including exact `JNI_OnLoad`/`JNI_OnUnload` visibility, no `Java_` exports, the
+16-entry `RegisterNatives` contract, SONAME/NEEDED closure, API 26, and 16-KiB
+LOAD alignment. None of that compiled evidence exists merely because the
+preparation or namespace probe passed.
 
 The receipt records exact command order, bounded log sizes and
 digests, parent-observed command events, cgroup/filesystem outcomes, artifact
@@ -865,13 +898,13 @@ The completed fourth WSL build and audit are non-release inspection evidence.
 
 Traversal-safe offline materialization and fixed toolchain composition are now
 implemented and have been run against the complete locked cache in inspection
-mode. The separate byte-locked namespace probe has also passed through the
-canonical executor in inspection mode, and the fourth WSL one-shot build has
-published its successful non-release receipt. The next native milestones must:
+mode. Both the historical stack-only namespace probe and the additive wrapper
+namespace probe have passed through the canonical executor in inspection mode,
+and the fourth stack-only WSL one-shot build has published its successful
+non-release receipt. The next native milestones must:
 
-1. add a wrapper-specific policy and namespace probe bound to the additive
-   profile and preparation, including a verified read-only `/build/wrapper`
-   mount;
+1. add a wrapper-specific build-executor policy and runner bound to the accepted
+   probe, additive profile, exact preparation, and read-only `/build/wrapper`;
 2. run the two locked `mpv+zivplayer_mpv` commands once in a fresh workspace and
    audit exactly 20 outputs, including ELF class/machine, API 26, SONAME/NEEDED,
    strong/weak symbol closure, 16-KiB LOAD alignment, and the exact JNI export

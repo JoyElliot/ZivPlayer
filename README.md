@@ -108,10 +108,16 @@ was independently verified at
 7,690-byte receipt has SHA-256
 `e51dae00b7f145de9663ee1b90010bf9904f8775ff2f12624454040c941132b4`.
 It snapshots six wrapper inputs into the permission-locked host
-`workspace/wrapper` tree for a future read-only `/build/wrapper` mount and
-records `buildExecuted=false`, `ready=false`, and `releaseInput=false`. The
-existing stack-only executor cannot consume this receipt; a separately locked
-wrapper namespace, runner, and 20-artifact audit are still required.
+`workspace/wrapper` tree and records `buildExecuted=false`, `ready=false`, and
+`releaseInput=false`. A separate wrapper namespace probe has now mounted that
+tree at `/build/wrapper` with `ro,nosuid,nodev,noexec` and accepted its exact
+six-file contents. The accepted policy SHA-256 is
+`e38767eb0e8e095364d13040a9ce3f49479f9147e1a2740d4f81860c496d1647`;
+its seven-record transcript SHA-256 is
+`e182d70ac1a76b00f7f3a622835c23621ba3df4654a339b945f66094f959dc9f`.
+The existing stack-only build executor still cannot consume this receipt; a
+separately locked wrapper build runner and 20-artifact compiled audit are still
+required.
 
 These WSL runs are inspection evidence rather than accepted release
 provenance. The SDK tree is deliberately marked as a standalone mountable
@@ -250,16 +256,18 @@ preserving the two locked symlink texts, rejects hardlinks and nested mounts,
 applies the overlays atomically, normalizes metadata, and publishes only after
 a canonical preparation receipt passes verification. `verify-preparation`
 recomputes that contract from the current locked inputs and published tree.
-`native_executor_tool.py validate` checks a separate exact namespace-probe
-policy, its build-profile binding, and four byte-locked launcher/namespace/
-probe/seccomp helpers. Its Linux-root-only `probe` command pins and re-verifies
-the immutable inputs, reserves pidfd capacity, applies the locked cgroup and
-process limits, enters the private namespace with an empty inherited
-environment plus fixed variables, and accepts only the exact six-record probe
-transcript. The policy keeps build commands, artifact staging, build receipts,
-readiness, and release input explicitly disabled. The probe itself never
-authorizes build-command execution, artifact staging, ELF audit, JNI wrapper,
-Gradle integration, or a build receipt.
+`native_executor_tool.py validate` selects either the historical stack-only or
+the additive wrapper exact namespace-probe policy, checks its build-profile
+binding, and verifies four byte-locked launcher/namespace/probe/seccomp helpers.
+Its Linux-root-only `probe` command pins and re-verifies the immutable inputs,
+reserves pidfd capacity, applies the locked cgroup and process limits, enters
+the private namespace with an empty inherited environment plus fixed variables,
+and accepts only the policy-specific exact transcript. The historical contract
+has six records; the wrapper contract adds a seventh record for the read-only,
+exact-six input tree. Both policies keep build commands, artifact staging,
+build receipts, readiness, and release input explicitly disabled. A probe never
+authorizes compilation, staging, ELF audit, Gradle integration, or a build
+receipt.
 
 The initial preparation of the fourth WSL inspection workspace at
 `/var/tmp/zivplayer-native-build-298845ca4076-weak-audit` produced a
@@ -394,11 +402,12 @@ input only; the additive profile's locked build path is NDK `ndk-build` through
 `Android.mk` and `Application.mk`. The source validator does not execute that
 path or prove input gates, wire use sites, compiled/R8 identity, included-header
 or toolchain macro effects, ELF metadata, or runtime behavior. The additive
-profile and preparation now exist, but no wrapper-inclusive build has run and
-nothing has been staged into Gradle, selected by `LibmpvBackend`, or accepted as
-device/release evidence. The immutable historical receipt therefore correctly
-continues to report `pending-source-wrapper`; a new executor must build and
-audit all 20 outputs (ten libraries per ABI) under the additive contract.
+profile, preparation, and wrapper-specific namespace probe now exist, but no
+wrapper-inclusive build has run and nothing has been staged into Gradle,
+selected by `LibmpvBackend`, or accepted as device/release evidence. The
+immutable historical receipt therefore correctly continues to report
+`pending-source-wrapper`; a new build executor must build and audit all 20
+outputs (ten libraries per ABI) under the additive contract.
 
 Two final WSL inspection runs of the fixed composition profile produced
 byte-identical receipts with SHA-256

@@ -62,6 +62,15 @@ EXPECTED_PROFILE_SHA256 = (
 EXPECTED_POLICY_SHA256 = (
     "24a42f725bc174d41a7434d57c7078dd1f02a2cc27963202a8638909cb7276ce"
 )
+WRAPPER_POLICY_KIND = "ziv-native-wrapper-executor-policy-v1"
+WRAPPER_NAMESPACE_PROFILE = "ziv-native-build-wrapper-namespace-probe-v1"
+WRAPPER_CHILD_PROFILE = "ziv-native-wrapper-executor-child-v1"
+WRAPPER_EXPECTED_PROFILE_SHA256 = (
+    "d6cf2a360b4c8f159e49fc9a9872faf4a21e3dc5e8a225905d3b3ccaf4fe42ce"
+)
+WRAPPER_EXPECTED_POLICY_SHA256 = (
+    "e38767eb0e8e095364d13040a9ce3f49479f9147e1a2740d4f81860c496d1647"
+)
 HELPER_KEYS = (
     ("launcherPath", "launcherSha256"),
     ("namespacePath", "namespaceSha256"),
@@ -81,6 +90,21 @@ PROBE_RECORDS = (
 )
 EXPECTED_PROBE_TRANSCRIPT = "".join(
     f"{key}\t{value}\n" for key, value in PROBE_RECORDS
+).encode("utf-8")
+WRAPPER_PROBE_RECORDS = (
+    ("namespace", "private:mnt,net,pid,uts,ipc"),
+    (
+        "mounts",
+        "overlay-root-ro;apt-lower-ro;sdk-ro;source-rw;output-rw;home-rw;tmp-rw;wrapper-ro",
+    ),
+    ("environment", "empty-inheritance;fixed-build-variables"),
+    ("network", "loopback-device-only;no-external-routes;af-inet-denied"),
+    ("sandbox", "no-caps;no-new-privs;seccomp;no-host-fds"),
+    ("workspace", "mounted-unmodified;build-not-executed"),
+    ("wrapper", "read-only-input;root-0555;files-0444;exact-six"),
+)
+WRAPPER_EXPECTED_PROBE_TRANSCRIPT = "".join(
+    f"{key}\t{value}\n" for key, value in WRAPPER_PROBE_RECORDS
 ).encode("utf-8")
 
 EXPECTED_POLICY: dict[str, object] = {
@@ -177,6 +201,90 @@ EXPECTED_POLICY: dict[str, object] = {
     },
 }
 
+WRAPPER_EXPECTED_POLICY = copy.deepcopy(EXPECTED_POLICY)
+WRAPPER_EXPECTED_POLICY["kind"] = WRAPPER_POLICY_KIND
+WRAPPER_EXPECTED_POLICY["binding"] = {
+    "profileName": native_build_tool.WRAPPER_PROFILE_NAME,
+    "profileSha256": WRAPPER_EXPECTED_PROFILE_SHA256,
+    "preparationReceiptKind": native_build_tool.WRAPPER_PREPARATION_RECEIPT_KIND,
+    "hostPlatform": "linux/amd64",
+    "toolchainMount": "/opt/zivplayer/toolchain",
+    "sourceMount": "/build/source",
+    "outputMount": "/build/output",
+    "homeMount": "/build/home",
+    "temporaryMount": "/build/tmp",
+    "wrapperInputMount": "/build/wrapper",
+    "wrapperInputReadOnly": True,
+}
+wrapper_namespace = copy.deepcopy(EXPECTED_POLICY["namespace"])
+assert isinstance(wrapper_namespace, dict)
+wrapper_namespace["profile"] = WRAPPER_NAMESPACE_PROFILE
+wrapper_namespace["wrapper"] = "ext4:ro,nosuid,nodev,noexec"
+wrapper_namespace["expectedMountCount"] = 16
+WRAPPER_EXPECTED_POLICY["namespace"] = wrapper_namespace
+WRAPPER_EXPECTED_POLICY["helpers"] = {
+    "launcherPath": "native/toolchain/native-wrapper-executor-child.py",
+    "launcherSha256": (
+        "1264e5b7d40c3451ef82f42cb1145dfdbf7da65e91be20a34d185a6a084a37bb"
+    ),
+    "namespacePath": "native/toolchain/native-build-wrapper-namespace.bash",
+    "namespaceSha256": (
+        "da4e3795ee350a2a41b80b51069d2eb65eb6e9d7377d8445c8d9d91649df5554"
+    ),
+    "probePath": "native/toolchain/native-build-wrapper-probe.bash",
+    "probeSha256": (
+        "e63067cd5316c17067fdc298f9f68c8121a314b92584ac19cc467b93499da9e0"
+    ),
+    "seccompPath": "native/toolchain/install-seccomp.pl",
+    "seccompSha256": (
+        "ab2e6d21a2768a585b2bc53a2495c78f46ab9a4dbac32d09bf58e311091c597d"
+    ),
+}
+
+
+@dataclass(frozen=True)
+class ExecutorContract:
+    policy_kind: str
+    expected_policy: dict[str, object]
+    expected_policy_sha256: str
+    expected_profile_sha256: str
+    preparation_receipt_kind: str
+    namespace_profile: str
+    child_profile: str
+    probe_records: tuple[tuple[str, str], ...]
+    expected_probe_transcript: bytes
+    includes_wrapper: bool
+
+
+STACK_EXECUTOR_CONTRACT = ExecutorContract(
+    policy_kind=POLICY_KIND,
+    expected_policy=EXPECTED_POLICY,
+    expected_policy_sha256=EXPECTED_POLICY_SHA256,
+    expected_profile_sha256=EXPECTED_PROFILE_SHA256,
+    preparation_receipt_kind=native_build_tool.PREPARATION_RECEIPT_KIND,
+    namespace_profile=NAMESPACE_PROFILE,
+    child_profile=CHILD_PROFILE,
+    probe_records=PROBE_RECORDS,
+    expected_probe_transcript=EXPECTED_PROBE_TRANSCRIPT,
+    includes_wrapper=False,
+)
+WRAPPER_EXECUTOR_CONTRACT = ExecutorContract(
+    policy_kind=WRAPPER_POLICY_KIND,
+    expected_policy=WRAPPER_EXPECTED_POLICY,
+    expected_policy_sha256=WRAPPER_EXPECTED_POLICY_SHA256,
+    expected_profile_sha256=WRAPPER_EXPECTED_PROFILE_SHA256,
+    preparation_receipt_kind=native_build_tool.WRAPPER_PREPARATION_RECEIPT_KIND,
+    namespace_profile=WRAPPER_NAMESPACE_PROFILE,
+    child_profile=WRAPPER_CHILD_PROFILE,
+    probe_records=WRAPPER_PROBE_RECORDS,
+    expected_probe_transcript=WRAPPER_EXPECTED_PROBE_TRANSCRIPT,
+    includes_wrapper=True,
+)
+EXECUTOR_CONTRACTS = {
+    contract.policy_kind: contract
+    for contract in (STACK_EXECUTOR_CONTRACT, WRAPPER_EXECUTOR_CONTRACT)
+}
+
 
 @dataclass(frozen=True)
 class LoadedExecutorPolicy:
@@ -185,6 +293,7 @@ class LoadedExecutorPolicy:
     sha256: str
     profile: native_build_tool.LoadedProfile
     helper_raws: dict[str, bytes]
+    contract: ExecutorContract
 
 
 @dataclass
@@ -280,8 +389,18 @@ def _assert_exact(actual: object, expected: object, location: str) -> None:
         _schema(f"{location} must be {expected!r}")
 
 
+def _executor_contract(data: object) -> ExecutorContract:
+    if not isinstance(data, dict):
+        _schema("executor policy must be a table")
+    kind = data.get("kind")
+    if not isinstance(kind, str) or kind not in EXECUTOR_CONTRACTS:
+        _schema("executor policy kind is not supported")
+    return EXECUTOR_CONTRACTS[kind]
+
+
 def validate_policy_data(data: object) -> dict[str, object]:
-    _assert_exact(data, EXPECTED_POLICY, "executor policy")
+    contract = _executor_contract(data)
+    _assert_exact(data, contract.expected_policy, "executor policy")
     assert isinstance(data, dict)
     return copy.deepcopy(data)
 
@@ -321,6 +440,8 @@ def _directory_stat(
 def _snapshot_probe_directories(
     source_workspace: Path,
     build_workspace: Path,
+    *,
+    include_wrapper: bool = False,
 ) -> dict[str, tuple[int, ...]]:
     paths = {
         "canonical-source": source_workspace,
@@ -330,6 +451,8 @@ def _snapshot_probe_directories(
         "home": build_workspace / "home",
         "tmp": build_workspace / "tmp",
     }
+    if include_wrapper:
+        paths["wrapper"] = build_workspace / "wrapper"
     try:
         return {key: _stat_signature(path.lstat()) for key, path in paths.items()}
     except OSError as error:
@@ -591,7 +714,7 @@ def _assert_runtime_policy(policy: LoadedExecutorPolicy) -> None:
         "rlimitFileSizeBytes": environment_tool.INSTALLER_FILE_SIZE_LIMIT,
         "rlimitCoreBytes": 0,
     }
-    expected_namespace = EXPECTED_POLICY["namespace"]
+    expected_namespace = policy.contract.expected_policy["namespace"]
     assert isinstance(expected_namespace, dict)
     if (
         process != expected_process
@@ -665,8 +788,9 @@ def load_execution_policy(
     except (UnicodeDecodeError, tomllib.TOMLDecodeError, RecursionError) as error:
         _schema(f"cannot parse native executor policy {policy_path}: {error}")
     data = validate_policy_data(parsed)
+    contract = _executor_contract(data)
     policy_sha256 = hashlib.sha256(raw).hexdigest()
-    if policy_sha256 != EXPECTED_POLICY_SHA256:
+    if policy_sha256 != contract.expected_policy_sha256:
         _integrity("native executor policy digest differs from the locked policy")
     profile = native_build_tool.load_profile(
         profile_path,
@@ -679,14 +803,23 @@ def load_execution_policy(
     if (
         binding["profileName"] != profile.project["profile"]
         or binding["profileSha256"] != profile.sha256
-        or binding["preparationReceiptKind"]
-        != native_build_tool.PREPARATION_RECEIPT_KIND
+        or profile.sha256 != contract.expected_profile_sha256
+        or binding["preparationReceiptKind"] != contract.preparation_receipt_kind
         or binding["hostPlatform"] != profile.toolchain["hostPlatform"]
         or binding["toolchainMount"] != profile.toolchain["mount"]
         or binding["sourceMount"] != profile.policy["sourceCopyMount"]
         or binding["outputMount"] != profile.policy["outputMount"]
         or binding["homeMount"] != profile.policy["buildHomeMount"]
         or binding["temporaryMount"] != profile.policy["temporaryMount"]
+        or bool(profile.wrapper_inputs) != contract.includes_wrapper
+        or (
+            contract.includes_wrapper
+            and (
+                binding["wrapperInputMount"] != profile.policy["wrapperInputMount"]
+                or binding["wrapperInputReadOnly"]
+                is not profile.policy["wrapperInputReadOnly"]
+            )
+        )
     ):
         _integrity("native executor policy is not bound to the selected build profile")
     helper_raws = _helper_snapshot(data, repository_root=repository_root)
@@ -696,6 +829,7 @@ def load_execution_policy(
         sha256=policy_sha256,
         profile=profile,
         helper_raws=helper_raws,
+        contract=contract,
     )
 
 
@@ -765,12 +899,15 @@ def _pin_probe_inputs(
             expected_mode=0o700,
         )
         directories["workspace"] = workspace
-        for name, mode in (
+        directory_specs = [
             ("source", 0o755),
             ("output", 0o700),
             ("home", 0o700),
             ("tmp", 0o700),
-        ):
+        ]
+        if policy.contract.includes_wrapper:
+            directory_specs.append(("wrapper", 0o555))
+        for name, mode in directory_specs:
             directories[name] = _open_pinned_directory(
                 build_workspace / name,
                 label=f"prepared {name} directory",
@@ -941,10 +1078,13 @@ def _assert_pinned_probe_inputs(inputs: PinnedProbeInputs) -> None:
             "native executor requires one block device for the locked I/O envelope: "
             + details
         )
+    directory_descriptor_keys = ["workspace", "source", "output", "home", "tmp"]
+    if inputs.policy.contract.includes_wrapper:
+        directory_descriptor_keys.append("wrapper")
     passed_descriptors = (
         bound.apt_fd,
         bound.sdk_fd,
-        *(inputs.directories[key].descriptor for key in ("workspace", "source", "output", "home", "tmp")),
+        *(inputs.directories[key].descriptor for key in directory_descriptor_keys),
         *(
             inputs.files[f"helper:{relative}"].descriptor
             for relative in inputs.policy.helper_raws
@@ -952,7 +1092,12 @@ def _assert_pinned_probe_inputs(inputs: PinnedProbeInputs) -> None:
     )
     if (
         len(set(passed_descriptors)) != len(passed_descriptors)
-        or any(descriptor < 3 or descriptor == 255 for descriptor in passed_descriptors)
+        or any(
+            descriptor < 3
+            or descriptor == 255
+            or len(str(descriptor)) > 9
+            for descriptor in passed_descriptors
+        )
     ):
         _integrity("native executor descriptors are duplicated or outside the allowed range")
 
@@ -1060,14 +1205,13 @@ def _probe_process_arguments(
     seccomp_descriptor = helper_descriptor("seccompPath")
     directories = inputs.directories
     bound = inputs.composition_inputs
+    directory_descriptor_keys = ["workspace", "source", "output", "home", "tmp"]
+    if inputs.policy.contract.includes_wrapper:
+        directory_descriptor_keys.append("wrapper")
     preserved = (
         bound.apt_fd,
         bound.sdk_fd,
-        directories["workspace"].descriptor,
-        directories["source"].descriptor,
-        directories["output"].descriptor,
-        directories["home"].descriptor,
-        directories["tmp"].descriptor,
+        *(directories[key].descriptor for key in directory_descriptor_keys),
         namespace_descriptor,
         probe_descriptor,
         seccomp_descriptor,
@@ -1075,7 +1219,12 @@ def _probe_process_arguments(
     pass_fds = (*preserved, launcher_descriptor, cgroup_procs_descriptor)
     if (
         len(set(pass_fds)) != len(pass_fds)
-        or any(descriptor < 3 or descriptor == 255 for descriptor in pass_fds)
+        or any(
+            descriptor < 3
+            or descriptor == 255
+            or len(str(descriptor)) > 9
+            for descriptor in pass_fds
+        )
     ):
         _integrity("native executor launch descriptors are duplicated or reserved")
 
@@ -1105,7 +1254,7 @@ def _probe_process_arguments(
         _identity_text(bound.sdk_identity),
         *(
             _identity_text(directories[key].identity)
-            for key in ("workspace", "source", "output", "home", "tmp")
+            for key in directory_descriptor_keys
         ),
         hashlib.sha256(
             inputs.files[f"helper:{helpers['namespacePath']}"].raw
@@ -1117,7 +1266,7 @@ def _probe_process_arguments(
             inputs.files[f"helper:{helpers['seccompPath']}"].raw
         ).hexdigest(),
         *(composition_tool._namespace_id(name) for name in ("mnt", "net", "pid", "uts", "ipc")),  # noqa: SLF001
-        NAMESPACE_PROFILE,
+        inputs.policy.contract.namespace_profile,
     ]
     argv = [
         "/usr/bin/python3.12",
@@ -1125,7 +1274,7 @@ def _probe_process_arguments(
         "-S",
         "-B",
         f"/proc/self/fd/{launcher_descriptor}",
-        CHILD_PROFILE,
+        inputs.policy.contract.child_profile,
         str(os.getpid()),
         str(cgroup_procs_descriptor),
         str(launcher_descriptor),
@@ -1525,10 +1674,13 @@ def _run_namespace_probe(inputs: PinnedProbeInputs) -> bytes:
     return stdout
 
 
-def _parse_probe_transcript(raw: bytes) -> dict[str, str]:
-    if raw != EXPECTED_PROBE_TRANSCRIPT:
+def _parse_probe_transcript(
+    raw: bytes,
+    contract: ExecutorContract = STACK_EXECUTOR_CONTRACT,
+) -> dict[str, str]:
+    if raw != contract.expected_probe_transcript:
         _integrity("native executor probe transcript differs from the locked result")
-    return dict(PROBE_RECORDS)
+    return dict(contract.probe_records)
 
 
 def _combine_failures(
@@ -1600,6 +1752,7 @@ def probe(
     directory_baseline = _snapshot_probe_directories(
         source_workspace,
         build_workspace,
+        include_wrapper=policy.contract.includes_wrapper,
     )
     _receipt, preparation_receipt_raw = native_build_tool._verify_prepared_workspace(  # noqa: SLF001
         build_workspace,
@@ -1640,7 +1793,7 @@ def probe(
         )
         try:
             stdout = _run_namespace_probe(inputs)
-            _parse_probe_transcript(stdout)
+            _parse_probe_transcript(stdout, policy.contract)
             probe_succeeded = True
         except BaseException as error:
             failure = error

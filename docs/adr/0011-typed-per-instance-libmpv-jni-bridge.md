@@ -104,12 +104,14 @@ policy, and receipt remain immutable historical evidence.
 - Build the wrapper separately with locked NDK 29 `ndk-build`, native API 26,
   the two selected ABIs, shared libc++, a Release configuration, and 16-KiB load
   alignment. The additive profile snapshots `Android.mk`, `Application.mk`, the
-  wrapper source, and contract inputs into a permission-locked tree for a future
-  read-only `/build/wrapper` mount. `CMakeLists.txt` remains a shallow
-  contract/reference input and is not the selected execution path. Neither its
-  restrictions nor the build-file declarations are provenance: the new
-  wrapper-inclusive executor and receipt must bind hashes and audit exactly nine
-  stack libraries plus the wrapper per ABI, or 20 outputs in total.
+  wrapper source, and contract inputs into a permission-locked tree. A separate
+  namespace-only policy now proves that tree can be mounted read-only at
+  `/build/wrapper` without opening any build or release gate. `CMakeLists.txt`
+  remains a shallow contract/reference input and is not the selected execution
+  path. Neither its restrictions nor the build-file declarations are
+  provenance: the new wrapper-inclusive build executor and receipt must bind
+  the accepted probe and hashes, then audit exactly nine stack libraries plus
+  the wrapper per ABI, or 20 outputs in total.
   Historical stack-only policies and receipts remain immutable.
 - Gradle may consume native libraries only from a generated staging tree whose
   complete manifest, hashes, ABI inventory, metadata, ELF dependency closure,

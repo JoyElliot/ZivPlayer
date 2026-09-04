@@ -761,6 +761,8 @@ class NativeBuildProfileTest(unittest.TestCase):
             native_build_tool.WRAPPER_PREPARATION_RECEIPT_KIND,
             receipt["kind"],
         )
+        self.assertEqual("prepared", receipt["phase"])
+        self.assertIs(receipt["buildExecuted"], False)
         self.assertIs(receipt["ready"], False)
         self.assertIs(receipt["releaseInput"], False)
         self.assertEqual("/build/wrapper", receipt["mounts"]["wrapperInput"])
@@ -769,9 +771,21 @@ class NativeBuildProfileTest(unittest.TestCase):
             receipt["policy"]["wrapperInput"],
         )
         self.assertEqual(wrapper_tree, receipt["wrapperInput"]["tree"])
+        self.assertIs(receipt["wrapperInput"]["readOnly"], True)
+        self.assertEqual(loaded.build["commands"], receipt["commands"])
         self.assertEqual(
-            [str(item["role"]) for item in loaded.wrapper_inputs],
-            [str(item["role"]) for item in receipt["wrapperInput"]["files"]],
+            [
+                {
+                    "destination": item["destination"],
+                    "source": item["source"],
+                    "role": item["role"],
+                    "size": item["size"],
+                    "sha256": item["sha256"],
+                    "mode": item["mode"],
+                }
+                for item in loaded.wrapper_inputs
+            ],
+            receipt["wrapperInput"]["files"],
         )
         self.assertNotIn(b"/mnt/", native_build_tool._canonical_json(receipt))  # noqa: SLF001
 
@@ -956,6 +970,86 @@ class NativeBuildProfileTest(unittest.TestCase):
                     wrapper_raws,
                 )
             self.assertEqual(source_tool.EXIT_INTEGRITY, raised.exception.exit_code)
+
+        def change_bytes(root: Path) -> None:
+            (root / "Android.mk").write_bytes(b"changed wrapper bytes\n")
+
+        def remove_file(root: Path) -> None:
+            (root / "Application.mk").unlink()
+
+        def add_file(root: Path) -> None:
+            (root / "unexpected").write_bytes(b"unexpected\n")
+
+        def replace_with_symlink(root: Path) -> None:
+            (root / "CMakeLists.txt").unlink()
+            (root / "CMakeLists.txt").symlink_to("Android.mk")
+
+        def add_external_hardlink(root: Path) -> None:
+            os.link(root / "Android.mk", root.parent / "wrapper-hardlink")
+
+        def change_mtime(root: Path) -> None:
+            changed = root / "MpvNativeBindings.kt"
+            os.utime(
+                changed,
+                ns=(native_build_tool.NORMALIZED_MTIME_NS + 1,) * 2,
+            )
+
+        def change_owner(root: Path) -> None:
+            os.chown(root / "jni-contract.toml", 1, 0)
+
+        def add_nested_entry(root: Path) -> None:
+            root.chmod(0o755)
+            (root / "nested").mkdir()
+            root.chmod(0o555)
+
+        mutations = (
+            ("bytes", change_bytes),
+            ("missing", remove_file),
+            ("extra", add_file),
+            ("symlink", replace_with_symlink),
+            ("hardlink", add_external_hardlink),
+            ("mtime", change_mtime),
+            ("owner", change_owner),
+            ("nested", add_nested_entry),
+            ("root-mode", lambda root: root.chmod(0o755)),
+        )
+        for label, mutate in mutations:
+            with self.subTest(tamper=label), tempfile.TemporaryDirectory() as temporary:
+                wrapper_root = Path(temporary) / "wrapper"
+                native_build_tool._create_wrapper_input_tree(  # noqa: SLF001
+                    wrapper_root,
+                    loaded,
+                    wrapper_raws,
+                )
+                mutate(wrapper_root)
+                with self.assertRaises(source_tool.SourceToolError) as raised:
+                    native_build_tool._verify_wrapper_input_tree(  # noqa: SLF001
+                        wrapper_root,
+                        loaded,
+                        wrapper_raws,
+                    )
+                self.assertEqual(source_tool.EXIT_INTEGRITY, raised.exception.exit_code)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            wrapper_root = Path(temporary) / "wrapper"
+            native_build_tool._create_wrapper_input_tree(  # noqa: SLF001
+                wrapper_root,
+                loaded,
+                wrapper_raws,
+            )
+            changed = wrapper_root / "zivplayer_mpv.cpp"
+            try:
+                os.setxattr(changed, "user.zivplayer-test", b"tamper")
+            except (AttributeError, OSError):
+                pass
+            else:
+                with self.assertRaises(source_tool.SourceToolError) as raised:
+                    native_build_tool._verify_wrapper_input_tree(  # noqa: SLF001
+                        wrapper_root,
+                        loaded,
+                        wrapper_raws,
+                    )
+                self.assertEqual(source_tool.EXIT_INTEGRITY, raised.exception.exit_code)
 
     @unittest.skipUnless(LINUX_ROOT, "requires Linux root")
     def test_source_copy_is_independent_and_preserves_symlink_text(self) -> None:

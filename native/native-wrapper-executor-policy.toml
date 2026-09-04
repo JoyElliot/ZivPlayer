@@ -1,0 +1,92 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Isolation policy for the wrapper-inclusive pre-build namespace probe. This
+# policy only proves the isolated mount and process envelope; it does not run
+# build commands, stage artifacts, or publish a build receipt.
+
+schemaVersion = 1
+kind = "ziv-native-wrapper-executor-policy-v1"
+
+[binding]
+profileName = "ziv-libmpv-stack-wrapper-api26-v1"
+profileSha256 = "d6cf2a360b4c8f159e49fc9a9872faf4a21e3dc5e8a225905d3b3ccaf4fe42ce"
+preparationReceiptKind = "ziv-native-build-preparation-wrapper-v1"
+hostPlatform = "linux/amd64"
+toolchainMount = "/opt/zivplayer/toolchain"
+sourceMount = "/build/source"
+outputMount = "/build/output"
+homeMount = "/build/home"
+temporaryMount = "/build/tmp"
+wrapperInputMount = "/build/wrapper"
+wrapperInputReadOnly = true
+
+[gate]
+phase = "namespace-probe"
+buildCommands = false
+artifactStaging = false
+buildReceipt = false
+ready = false
+releaseInput = false
+
+[process]
+environmentMode = "empty"
+probeTimeoutSeconds = 180
+stdoutLimitBytes = 1048576
+stderrLimitBytes = 1048576
+stderrAllowed = false
+parentDeathSignal = "SIGKILL"
+newSession = true
+rlimitNoFile = 4096
+rlimitFileSizeBytes = 2147483648
+rlimitCoreBytes = 0
+
+[cgroup]
+version = 2
+controllers = ["cpu", "io", "memory", "pids"]
+pidsMax = 512
+memoryMaxBytes = 2147483648
+memorySwapMaxBytes = 0
+cpuQuotaMicros = 200000
+cpuPeriodMicros = 100000
+ioReadBytesPerSecond = 8388608
+ioWriteBytesPerSecond = 8388608
+ioReadOperationsPerSecond = 2048
+ioWriteOperationsPerSecond = 2048
+
+[filesystem]
+minimumFreeBytes = 8589934592
+reserveFreeBytes = 4294967296
+minimumFreeInodes = 250000
+reserveFreeInodes = 100000
+maximumEntryDelta = 104096
+
+[namespace]
+profile = "ziv-native-build-wrapper-namespace-probe-v1"
+unshare = ["mount", "net", "pid", "uts", "ipc"]
+propagation = "private"
+network = "loopback-device-only-no-external-routes"
+root = "overlay:ro,nosuid,nodev,exec"
+aptLower = "ext4:immutable"
+buildRoot = "tmpfs:ro,nosuid,nodev,noexec:size=16777216:mode=0755"
+toolchain = "ext4:ro,nosuid,nodev,exec"
+source = "ext4:rw,nosuid,nodev,exec"
+output = "ext4:rw,nosuid,nodev,noexec"
+home = "ext4:rw,nosuid,nodev,noexec"
+temporary = "ext4:rw,nosuid,nodev,exec"
+wrapper = "ext4:ro,nosuid,nodev,noexec"
+transientTmpfsBytes = 67108864
+expectedMountCount = 16
+capabilities = "none"
+noNewPrivileges = true
+seccomp = true
+oldRootDetached = true
+
+[helpers]
+launcherPath = "native/toolchain/native-wrapper-executor-child.py"
+launcherSha256 = "1264e5b7d40c3451ef82f42cb1145dfdbf7da65e91be20a34d185a6a084a37bb"
+namespacePath = "native/toolchain/native-build-wrapper-namespace.bash"
+namespaceSha256 = "da4e3795ee350a2a41b80b51069d2eb65eb6e9d7377d8445c8d9d91649df5554"
+probePath = "native/toolchain/native-build-wrapper-probe.bash"
+probeSha256 = "e63067cd5316c17067fdc298f9f68c8121a314b92584ac19cc467b93499da9e0"
+seccompPath = "native/toolchain/install-seccomp.pl"
+seccompSha256 = "ab2e6d21a2768a585b2bc53a2495c78f46ab9a4dbac32d09bf58e311091c597d"
