@@ -19,7 +19,10 @@ class MpvClientContractTest {
         assertEquals(MpvPropertyFormat.UNKNOWN, MpvPropertyFormat.fromRaw(10_000))
         assertTrue(MpvPropertyFormat.DOUBLE.isPrimitiveObservationFormat)
         assertTrue(MpvPropertyFormat.OSD_STRING.isPrimitiveObservationFormat)
+        assertTrue(MpvPropertyFormat.DOUBLE.isSourceObservationFormat)
+        assertFalse(MpvPropertyFormat.OSD_STRING.isSourceObservationFormat)
         assertFalse(MpvPropertyFormat.NODE.isPrimitiveObservationFormat)
+        assertFalse(MpvPropertyFormat.NODE.isSourceObservationFormat)
         assertFalse(MpvPropertyFormat.BYTE_ARRAY.isPrimitiveObservationFormat)
         assertFalse(MpvPropertyFormat.UNKNOWN.isPrimitiveObservationFormat)
     }

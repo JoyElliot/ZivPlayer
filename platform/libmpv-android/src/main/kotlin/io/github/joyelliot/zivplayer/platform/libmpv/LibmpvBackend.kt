@@ -191,6 +191,33 @@ class LibmpvBackend internal constructor(
                 else -> Unit
             }
         }
+
+        override fun onFailure(failure: MpvClientFailure) {
+            nativeGate.withLock {
+                if (closed || nativeUnusable) {
+                    return
+                }
+                nativeUnusable = true
+                val generation = generationFence.failCurrent()
+                fileLoadedGeneration = null
+                resetSeekCorrelation()
+                if (generation != null) {
+                    emitSemantic(
+                        BackendEvent.Failure(
+                            generation = generation,
+                            error = PlayerError(
+                                kind = PlayerErrorKind.BACKEND_OPERATION_FAILED,
+                                message = when (failure) {
+                                    MpvClientFailure.EVENT_PUMP_STOPPED ->
+                                        "The libmpv event pump stopped unexpectedly."
+                                },
+                                recovery = ErrorRecovery.RESET,
+                            ),
+                        ),
+                    )
+                }
+            }
+        }
     }
 
     override suspend fun load(request: BackendLoadRequest) = lifecycleGate.withLock {

@@ -11,6 +11,7 @@ import io.github.joyelliot.zivplayer.core.model.MediaSource
 import io.github.joyelliot.zivplayer.core.model.Milliseconds
 import io.github.joyelliot.zivplayer.core.model.QueueItem
 import io.github.joyelliot.zivplayer.core.model.QueueItemId
+import io.github.joyelliot.zivplayer.core.player.ErrorRecovery
 import io.github.joyelliot.zivplayer.core.player.PlayerErrorKind
 import io.github.joyelliot.zivplayer.core.player.runtime.BackendEvent
 import io.github.joyelliot.zivplayer.core.player.runtime.BackendLoadRequest
@@ -68,6 +69,23 @@ class LibmpvBackendTest {
         val failure = events[1] as BackendEvent.Failure
         assertEquals(PlayerErrorKind.SOURCE_UNAVAILABLE, failure.error.kind)
         assertEquals("libmpv could not play the media (error -13).", failure.error.message)
+        backend.close()
+    }
+
+    @Test
+    fun eventPumpFailureFailsActiveGenerationAndRequiresBackendReset() = runBlocking {
+        val client = FakeMpvClient()
+        val backend = LibmpvBackend(TestContext, MpvClientFactory { client })
+
+        backend.load(loadRequest())
+        client.fail(MpvClientFailure.EVENT_PUMP_STOPPED)
+
+        val failure = withTimeout(1_000) { backend.events.take(1).toList().single() }
+            as BackendEvent.Failure
+        assertEquals(PlayerErrorKind.BACKEND_OPERATION_FAILED, failure.error.kind)
+        assertEquals(ErrorRecovery.RESET, failure.error.recovery)
+        assertEquals("The libmpv event pump stopped unexpectedly.", failure.error.message)
+        assertTrue(runCatching { backend.play() }.exceptionOrNull() is IllegalStateException)
         backend.close()
     }
 
@@ -172,6 +190,10 @@ class LibmpvBackendTest {
 
         fun emit(event: MpvClientEvent) {
             checkNotNull(observer).onEvent(event)
+        }
+
+        fun fail(failure: MpvClientFailure) {
+            checkNotNull(observer).onFailure(failure)
         }
     }
 

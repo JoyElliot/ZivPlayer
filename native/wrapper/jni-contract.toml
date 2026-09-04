@@ -1,0 +1,191 @@
+schemaVersion = 1
+kind = "zivplayer-libmpv-jni-contract"
+methodCount = 16
+bindingsClass = "io/github/joyelliot/zivplayer/platform/libmpv/MpvNativeBindings"
+libraryName = "zivplayer_mpv"
+
+[[methods]]
+name = "nativeCreate"
+descriptor = "(Landroid/content/Context;)J"
+function = "GuardedNativeCreate"
+
+[[methods]]
+name = "nativeSetOptionString"
+descriptor = "(JLjava/lang/String;Ljava/lang/String;)I"
+function = "GuardedNativeSetOptionString"
+
+[[methods]]
+name = "nativeInitialize"
+descriptor = "(J)I"
+function = "GuardedNativeInitialize"
+
+[[methods]]
+name = "nativeCommand"
+descriptor = "(J[Ljava/lang/String;)I"
+function = "GuardedNativeCommand"
+
+[[methods]]
+name = "nativeGetPropertyDouble"
+descriptor = "(JLjava/lang/String;[D)I"
+function = "GuardedNativeGetPropertyDouble"
+
+[[methods]]
+name = "nativeGetPropertyBoolean"
+descriptor = "(JLjava/lang/String;[I)I"
+function = "GuardedNativeGetPropertyBoolean"
+
+[[methods]]
+name = "nativeSetPropertyDouble"
+descriptor = "(JLjava/lang/String;D)I"
+function = "GuardedNativeSetPropertyDouble"
+
+[[methods]]
+name = "nativeSetPropertyBoolean"
+descriptor = "(JLjava/lang/String;Z)I"
+function = "GuardedNativeSetPropertyBoolean"
+
+[[methods]]
+name = "nativeSetPropertyString"
+descriptor = "(JLjava/lang/String;Ljava/lang/String;)I"
+function = "GuardedNativeSetPropertyString"
+
+[[methods]]
+name = "nativeObserveProperty"
+descriptor = "(JLjava/lang/String;IJ)I"
+function = "GuardedNativeObserveProperty"
+
+[[methods]]
+name = "nativeUnobserveProperty"
+descriptor = "(JJ)I"
+function = "GuardedNativeUnobserveProperty"
+
+[[methods]]
+name = "nativeWaitEvent"
+descriptor = "(JD[I[J[D[Ljava/lang/String;)I"
+function = "GuardedNativeWaitEvent"
+
+[[methods]]
+name = "nativeWakeup"
+descriptor = "(J)I"
+function = "GuardedNativeWakeup"
+
+[[methods]]
+name = "nativeAttachSurface"
+descriptor = "(JLandroid/view/Surface;)I"
+function = "GuardedNativeAttachSurface"
+
+[[methods]]
+name = "nativeDetachSurface"
+descriptor = "(J)I"
+function = "GuardedNativeDetachSurface"
+
+[[methods]]
+name = "nativeTerminateDestroy"
+descriptor = "(J)I"
+function = "GuardedNativeTerminateDestroy"
+
+[wire]
+integerFieldCount = 8
+longFieldCount = 4
+doubleFieldCount = 1
+stringFieldCount = 2
+
+[[wire.integerFields]]
+kotlin = "INTEGER_EVENT_ID"
+cpp = "kEventId"
+value = 0
+
+[[wire.integerFields]]
+kotlin = "INTEGER_EVENT_ERROR"
+cpp = "kEventError"
+value = 1
+
+[[wire.integerFields]]
+kotlin = "INTEGER_PROPERTY_FORMAT"
+cpp = "kPropertyFormat"
+value = 2
+
+[[wire.integerFields]]
+kotlin = "INTEGER_END_REASON"
+cpp = "kEndReason"
+value = 3
+
+[[wire.integerFields]]
+kotlin = "INTEGER_END_ERROR"
+cpp = "kEndError"
+value = 4
+
+[[wire.integerFields]]
+kotlin = "INTEGER_INSERT_COUNT"
+cpp = "kInsertCount"
+value = 5
+
+[[wire.integerFields]]
+kotlin = "INTEGER_PRESENCE_FLAGS"
+cpp = "kPresenceFlags"
+value = 6
+
+[[wire.integerFields]]
+kotlin = "INTEGER_PROPERTY_FLAG"
+cpp = "kPropertyFlag"
+value = 7
+
+[[wire.longFields]]
+kotlin = "LONG_REPLY_USERDATA"
+cpp = "kReplyUserdata"
+value = 0
+
+[[wire.longFields]]
+kotlin = "LONG_PLAYLIST_ENTRY_ID"
+cpp = "kPlaylistEntryId"
+value = 1
+
+[[wire.longFields]]
+kotlin = "LONG_PLAYLIST_INSERT_ID"
+cpp = "kPlaylistInsertId"
+value = 2
+
+[[wire.longFields]]
+kotlin = "LONG_PROPERTY_INT64"
+cpp = "kPropertyInt64"
+value = 3
+
+[[wire.doubleFields]]
+kotlin = "DOUBLE_PROPERTY_VALUE"
+cpp = "kPropertyDouble"
+value = 0
+
+[[wire.stringFields]]
+kotlin = "STRING_PROPERTY_NAME"
+cpp = "kPropertyName"
+value = 0
+
+[[wire.stringFields]]
+kotlin = "STRING_PROPERTY_VALUE"
+cpp = "kPropertyString"
+value = 1
+
+[[wire.presenceFlags]]
+kotlin = "PRESENCE_REPLY_USERDATA"
+cpp = "kHasReplyUserdata"
+value = 1
+
+[[wire.presenceFlags]]
+kotlin = "PRESENCE_PLAYLIST_ENTRY_ID"
+cpp = "kHasPlaylistEntryId"
+value = 2
+
+[[wire.presenceFlags]]
+kotlin = "PRESENCE_END_REASON"
+cpp = "kHasEndReason"
+value = 4
+
+[[wire.presenceFlags]]
+kotlin = "PRESENCE_PLAYLIST_INSERT_ID"
+cpp = "kHasPlaylistInsertId"
+value = 8
+
+[[wire.presenceFlags]]
+kotlin = "PRESENCE_PROPERTY_VALUE"
+cpp = "kHasPropertyValue"
+value = 16

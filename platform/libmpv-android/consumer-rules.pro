@@ -1,2 +1,5 @@
-# ZivPlayer's application shrinker consumes the keep rules published by the
-# libmpv AAR. This module currently needs no additional consumer rules.
+# libzivplayer_mpv resolves this class and its private native methods from
+# JNI_OnLoad/RegisterNatives. Keep the binary ABI stable through app shrinking.
+-keep class io.github.joyelliot.zivplayer.platform.libmpv.MpvNativeBindings {
+    native <methods>;
+}

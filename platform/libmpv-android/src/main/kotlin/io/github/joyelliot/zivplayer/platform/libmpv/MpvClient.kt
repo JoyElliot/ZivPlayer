@@ -25,6 +25,8 @@ internal interface MpvClient {
         fun onPropertyChanged(change: MpvPropertyChange)
 
         fun onEvent(event: MpvClientEvent)
+
+        fun onFailure(failure: MpvClientFailure) = Unit
     }
 
     fun addObserver(observer: Observer)
@@ -67,6 +69,10 @@ internal fun interface MpvClientFactory {
     fun create(applicationContext: Context): MpvClient?
 }
 
+internal enum class MpvClientFailure {
+    EVENT_PUMP_STOPPED,
+}
+
 internal enum class MpvPropertyFormat(val rawValue: Int) {
     NONE(0),
     STRING(1),
@@ -97,6 +103,25 @@ internal val MpvPropertyFormat.isPrimitiveObservationFormat: Boolean
         MpvPropertyFormat.DOUBLE,
         -> true
 
+        MpvPropertyFormat.NODE,
+        MpvPropertyFormat.NODE_ARRAY,
+        MpvPropertyFormat.NODE_MAP,
+        MpvPropertyFormat.BYTE_ARRAY,
+        MpvPropertyFormat.UNKNOWN,
+        -> false
+    }
+
+/** OSD_STRING is read-only in libmpv and cannot be observed. */
+internal val MpvPropertyFormat.isSourceObservationFormat: Boolean
+    get() = when (this) {
+        MpvPropertyFormat.NONE,
+        MpvPropertyFormat.STRING,
+        MpvPropertyFormat.FLAG,
+        MpvPropertyFormat.INT64,
+        MpvPropertyFormat.DOUBLE,
+        -> true
+
+        MpvPropertyFormat.OSD_STRING,
         MpvPropertyFormat.NODE,
         MpvPropertyFormat.NODE_ARRAY,
         MpvPropertyFormat.NODE_MAP,

@@ -32,17 +32,33 @@ contains no JNI wrapper and rejects every exported `Java_` symbol.
   global `libplayer.so` ABI or its package name.
 - The source bridge uses an opaque positive token backed by a native registry,
   not a raw `mpv_handle *` exposed as a `jlong`. Tokens have a fail-closed
-  lifecycle and stale, foreign, closing, or destroyed tokens cannot reach a
-  native handle. Destruction is idempotent and terminates each handle once.
+  lifecycle. Ordinary operations reject stale, foreign, closing, or destroyed
+  tokens; only controlled wakeup and teardown paths may reach a closing handle.
+  Destruction is idempotent and terminates each handle once.
 - Register native methods from `JNI_OnLoad` with `RegisterNatives`. The wrapper
   exports no name-derived `Java_` entry points; the wrapper-inclusive audit
   will instead require the exact registration table and exported
-  `JNI_OnLoad`/SONAME contract.
+  `JNI_OnLoad`/SONAME contract. Every registered pointer targets a non-throwing
+  JNI guard so a C++ exception is converted to a Java failure instead of
+  crossing the native boundary.
+- Keep the JNI event wire independent of Kotlin object construction: one call
+  fills fixed-size integer, long, double, and nullable-string buffers before
+  returning. Presence bits distinguish absent fields from valid zero values,
+  and `uint64_t reply_userdata` is retained as the exact signed `Long` bit
+  pattern. The registration table and buffer indices are an audited ABI.
 - A single Kotlin-owned event thread is the only caller of `mpv_wait_event` for
-  one handle. JNI deep-copies every event and payload before returning because
-  libmpv owns that memory only until the next wait. Shutdown marks the client
-  closed, calls `mpv_wakeup`, joins the event thread off Android's main Looper,
-  clears the Surface, and only then calls `mpv_terminate_destroy`.
+  one handle. JNI deep-copies every supported primitive event field and payload
+  before returning because libmpv owns that memory only until the next wait.
+  Node and byte-array payloads are deliberately omitted: observation requests
+  for them are rejected, while an unexpected received format is surfaced as
+  typed `Unsupported` metadata. Shutdown marks the client closed, calls
+  `mpv_wakeup`, joins the event thread off Android's main Looper, clears the
+  Surface, and only then calls `mpv_terminate_destroy`.
+- An unexpected event-pump exit moves the source client to `BROKEN` once and
+  notifies its observer. The owning backend then becomes unusable, fails the
+  active generation with a sanitized RESET error, and rejects later observer
+  registration or native operations. Malformed START_FILE/END_FILE payloads
+  take this path instead of being guessed as a natural completion.
 - Carry the raw event identity only inside this module, with typed property
   values, operation error codes, `reply_userdata`, START_FILE/END_FILE
   playlist-entry IDs, END_FILE reason/error, and insertion details. Unknown
@@ -51,26 +67,46 @@ contains no JNI wrapper and rejects every exported `Java_` symbol.
 - Treat an explicit END_FILE error as a source failure rather than natural
   completion. Quit, redirect, and unknown reasons fail closed and require a
   backend reset until entry-ID-aware redirect handling is implemented.
-- Every command, option, property, observation, and Surface mutation returns
-  its native status. The first backend surface deliberately uses synchronous
-  command/property operations, so submission results are available before the
-  call returns. Property observations retain non-zero correlation IDs. If an
+- Every command, option, property, observation, and Surface mutation propagates
+  its native result: negative statuses become typed operation failures,
+  property-unavailable maps to `null`, and unobserve retains its native count.
+  The first backend surface deliberately uses synchronous command/property
+  operations, so submission results are available before the call returns.
+  Property observations retain non-zero correlation IDs. If an
   asynchronous command/property API is added later, both submission failure
   and its reply ID become part of this contract. The first source client accepts
   only the primitive property formats it requests; node and byte-array formats
   must be rejected explicitly rather than dropped until an immutable node model
   and exact copy/free tests are added.
-- Preserve the existing direct Android `wid` path for the first source bridge:
-  hold a global `Surface` reference until a successful clear or final native
-  destruction, detach the old target before replacement, and propagate every
-  `mpv_set_option` failure back to the Surface lease controller. This behavior
-  is pinned to the selected mpv Android source and still requires device tests.
+- Version 1 does not expose asynchronous property getters and therefore does
+  not decode `GET_PROPERTY_REPLY` payloads. Adding them requires a correlated
+  typed reply contract, including error-gated values, before the wire expands.
+- `MPV_FORMAT_OSD_STRING` is read-only and libmpv rejects it for property
+  observation. The source client therefore rejects it alongside node and byte
+  formats even though the temporary AAR can request it and then mislabels its
+  callback as a plain string.
+- Preserve the existing direct Android `wid` path for the first source bridge.
+  A successful `mpv_set_option` only queues the selected mpv build's VO update,
+  so replacement writes the new target directly and retains every global
+  `Surface` reference which reached `wid` until `mpv_terminate_destroy`
+  completes. Surface calls use a lock separate from lifecycle state, and no
+  lifecycle lock is held across libmpv. Every requested mutation still returns
+  its `mpv_set_option` status to the Surface lease controller. This behavior is
+  pinned to the selected source and still requires device tests.
+- FFmpeg retains its Android application-context pointer without a clear API.
+  The wrapper therefore owns one process-lifetime global reference and does not
+  delete it from `JNI_OnUnload`.
 - Keep Storage Access Framework descriptors in the Kotlin/Media3 owner. JNI
   receives only the existing `/proc/self/fd/<n>` locator and never closes or
   duplicates that descriptor.
 - Build the wrapper separately with locked NDK 29, native API 26, the two
-  selected ABIs, and 16-KiB load alignment. A new wrapper-inclusive profile and
-  receipt must audit exactly nine stack libraries plus the wrapper per ABI.
+  selected ABIs, shared libc++, a Release configuration, and 16-KiB load
+  alignment. Source CMake reads the complete NDK revision from
+  `source.properties` and rejects other NDK/API/ABI/STL/build-type values plus
+  missing, relative, directory, or symlinked direct prefix inputs. This shallow
+  configure check is not provenance: a new
+  wrapper-inclusive profile and receipt must bind hashes and audit exactly nine
+  stack libraries plus the wrapper per ABI.
   Historical stack-only policies and receipts remain immutable.
 - Gradle may consume native libraries only from a generated staging tree whose
   complete manifest, hashes, ABI inventory, metadata, ELF dependency closure,
@@ -88,6 +124,35 @@ The first migration commit can replace direct vendor API use with the typed
 client seam without changing the running engine. Native source, wrapper build,
 artifact staging, Gradle cutover, and bootstrap retirement can then be reviewed
 and validated as separate commits.
+
+The checked-in `SourceMpvClient`, `MpvNativeBindings`, and
+`native/wrapper/zivplayer_mpv.cpp` establish the source-side contract, but the
+public backend factory remains `BootstrapMpvClient` until a wrapper-inclusive
+receipt and generated staging tree pass. Their presence in source is not
+release provenance and does not permit Gradle to fall back to an unaudited
+local library.
+
+The checked-in contract tool verifies declared source structure, including the
+top-level Kotlin object and direct native members, guarded C++ definitions and
+signatures, the scoped `JNI_OnLoad` registration path, exact fixed-buffer
+constant sets, the fixed 16-method cardinality, exact CMake target/source
+literals, and Release final-name properties. It rejects source `#define`,
+`#undef`, and conditional-compilation directives in the JNI ABI translation
+unit and permits only its fixed system/audited-input include list. It
+deliberately does not run CMake or claim its NDK/API/ABI/STL/build-type/prefix
+gates, included-header or toolchain macro effects, compiled class/R8 identity,
+wire use-site semantics, ELF exports/SONAME/NEEDED, or runtime lifecycle
+behavior; those remain build and device evidence.
+
+An initial source-destruction attempt is rejected before state mutation on
+Android's main thread or the client's own event thread. Any reported
+pre-termination failure—wakeup, join, requested Surface cleanup, or the native
+bridge's final defensive Surface clear—leaves a retryable closing client. A
+negative final-clear status is returned before `mpv_terminate_destroy`;
+success means the token was already absent or destroyed, or termination
+completed. If the JNI call throws, Kotlin treats its commit point as unknowable
+and retains a terminal failure rather than invoking native termination a second
+time.
 
 The bootstrap AAR can still accept a seek command which native mpv rejects
 because its void wrapper discards submission status. Such a seek may remain

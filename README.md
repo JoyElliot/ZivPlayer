@@ -100,9 +100,9 @@ These WSL runs are inspection evidence rather than accepted release
 provenance. The SDK tree is deliberately marked as a standalone mountable
 projection, not a release input: its accepted release-input binding to the
 verified APT environment, accepted Android license evidence, an accepted
-release-builder source/build run and artifact audit, the source-built wrapper,
-SBOM, system notices, retention/corresponding-source bundles, and bootstrap-AAR
-retirement remain pending.
+release-builder source/build run and artifact audit, a wrapper-inclusive native
+receipt, SBOM, system notices, retention/corresponding-source bundles, and
+bootstrap-AAR retirement remain pending.
 
 ## Baseline
 
@@ -360,6 +360,26 @@ process, or cgroup. The receipt's exact pending blockers remain
 `pending-source-wrapper`, `pending-offline-closure`,
 `pending-actual-build-graph`, and `pending-release-gate`; these include the
 accepted release-builder and compliance work still required for publication.
+
+The source-side replacement is now checked in without changing that receipt or
+selecting it in the running backend. `SourceMpvClient` owns one event thread and
+a positive opaque token; an unexpected pump exit fails the active generation
+with RESET.
+The `libzivplayer_mpv` source declares 16 guarded methods registered from
+`JNI_OnLoad`, copies supported event fields through a fixed primitive-buffer
+ABI, preserves raw identifiers, and retains every Surface accepted by
+asynchronous `wid` handling until final mpv termination. The executable
+JNI-contract validator checks the top-level Kotlin object/direct instance
+descriptors, fixed 16-method cardinality, guarded C++ definitions and scoped
+`JNI_OnLoad` registration, exact wire-constant sets, CMake target/source
+literals, and Release final-name properties; it does not run CMake or validate
+its input gates, wire use sites, compiled/R8 identity, included-header or
+toolchain macro effects, ELF metadata, or runtime behavior. This source has passed
+JVM lifecycle tests and two-ABI syntax checks only: it is not yet built with the
+locked NDK, not staged into Gradle, not selected by `LibmpvBackend`, and not
+device or release evidence. The historical receipt therefore correctly
+continues to report `pending-source-wrapper` until a new additive
+wrapper-inclusive profile rebuilds and audits all ten libraries per ABI.
 
 Two final WSL inspection runs of the fixed composition profile produced
 byte-identical receipts with SHA-256
