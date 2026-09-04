@@ -68,13 +68,15 @@ UTS/IPC namespaces, drops all capabilities before package scripts, applies a
 locked seccomp policy and cgroup-v2 resource envelope, and publishes only after
 canonical installed-state, evidence, tree, and durability verification.
 
-Two fresh WSL inspection builds from the same locked inputs produced identical
-12,449-entry trees (`b584b9cf...f10426`) and identical canonical receipts
-(`4ece2c1c...aeb91`). The locked Android SDK/NDK and Meson wheel can now also be
-projected directly, without `sdkmanager`, `pip`, or network access, into a
-fresh Linux/ext4 tree. The projection preserves the NDK's audited symlinks and
-case-sensitive headers, validates the wheel RECORD, and writes an independently
-verifiable receipt before atomic publication. Two fresh complete-cache
+The retained hardened APT stage used by the current composition contains
+12,449 entries and 709,614,523 file bytes; its tree/receipt SHA-256 values are
+`5ed7511b...6f7e0` / `6a4929a9...b5cae`. Earlier pre-hardening reproducibility
+measurements are superseded by these current bound values. The locked Android
+SDK/NDK and Meson wheel can also be projected directly, without `sdkmanager`,
+`pip`, or network access, into a fresh Linux/ext4 tree. The projection preserves
+the NDK's audited symlinks and case-sensitive headers, validates the wheel
+RECORD, and writes an independently verifiable receipt before atomic
+publication. Two fresh complete-cache
 inspection runs produced byte-identical receipts (SHA-256
 `7f9bf9d6...6e544`) and the same 25,286-entry, 2,913,084,578-byte tree
 (`dac18763...1c5a4`; projection digest `d5becfde...6ef3c`).
@@ -88,7 +90,11 @@ manifest and the composed toolchain to an API-26, `arm64-v8a`/`x86_64`,
 16-KiB libmpv-stack profile. Its two reviewed overlays remove ambient SDK/NDK
 selection and accept only the two fixed `mpv` commands. The profile preflight
 passed against the retained preserve-mode source tree and locked composition.
-It did not apply the overlays or compile native code.
+The preparation command now publishes a fresh root-owned ext4 workspace with an
+independent source copy, applies the two locked overlays there, and creates
+empty disjoint output, HOME, and temporary directories. Its independent
+verification passed without changing the canonical source. It did not execute
+either build command or compile native code.
 
 These WSL runs are inspection evidence rather than accepted release
 provenance. The SDK tree is deliberately marked as a standalone mountable
@@ -146,6 +152,15 @@ file with its locked archive bytes, and rejects missing or extra entries. The
 receipt is an integrity record, not a signature or a substitute for a fresh
 trusted build.
 
+```sh
+sudo python3 native/tools/materialize_sources.py \
+  --workspace /var/tmp/zivplayer-native-source \
+  --link-mode preserve
+sudo python3 native/tools/materialize_sources.py \
+  --workspace /var/tmp/zivplayer-native-source \
+  --verify-workspace
+```
+
 The separate native toolchain lock is validated and cached explicitly. `fetch`
 downloads only the locked artifact/OCI roots; APT preparation is a distinct
 networked pre-build step on the pinned Ubuntu preparation environment. The
@@ -174,6 +189,8 @@ sudo python3 native/tools/composition_tool.py compose-and-smoke
 sudo python3 native/tools/composition_tool.py verify
 python3 native/tools/native_build_tool.py validate
 sudo python3 native/tools/native_build_tool.py preflight
+sudo python3 native/tools/native_build_tool.py prepare
+sudo python3 native/tools/native_build_tool.py verify-preparation
 python3 native/tools/toolchain_tool.py check-lock
 ```
 
@@ -203,10 +220,22 @@ device release. Consequently `check-lock` intentionally remains closed.
 overlay replacement bytes. Its Linux-root-only `preflight` additionally
 requires a verified preserve-mode ext4 source workspace, checks the untouched
 upstream overlay origins, rehashes the two exact NDK `libc++_shared.so` runtime
-inputs, and re-verifies the composition receipt. It currently has no build,
-artifact-staging, ELF-audit, JNI-wrapper, Gradle, or release-receipt command.
-Success therefore means only that the locked inputs are ready for the next
-M7E implementation slice.
+inputs, and re-verifies the composition receipt. `prepare` repeats those gates,
+copies every ordinary source file to an independent private workspace while
+preserving the two locked symlink texts, rejects hardlinks and nested mounts,
+applies the overlays atomically, normalizes metadata, and publishes only after
+a canonical preparation receipt passes verification. `verify-preparation`
+recomputes that contract from the current locked inputs and published tree.
+There is still no native execution namespace, command execution,
+artifact-staging, ELF audit, JNI wrapper, Gradle integration, or build receipt.
+
+The complete WSL inspection preparation at
+`/var/tmp/zivplayer-native-build` produced a 5,378-byte receipt with SHA-256
+`eff4993d2c1a079564f8da458eb2fc3bb7ee234716d8ce2380ee4c5e59de49f5`.
+The prepared post-overlay source retains 30,436 entries and has tree SHA-256
+`bdabef1dc6032963422aad7576ab8ea45a5f5393d5a304b5273f94fbaabb2d2d`.
+An independent `verify-preparation` run passed. The receipt explicitly records
+`buildExecuted=false`, `ready=false`, and `releaseInput=false`.
 
 Two final WSL inspection runs of the fixed composition profile produced
 byte-identical receipts with SHA-256

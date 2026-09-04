@@ -6,7 +6,9 @@ import contextlib
 import copy
 import hashlib
 import io
+import json
 import os
+import stat
 import sys
 import tempfile
 import tomllib
@@ -25,6 +27,7 @@ import source_tool  # noqa: E402
 COMMITTED_PROFILE = REPOSITORY_ROOT / "native" / "native-build-profile.toml"
 COMMITTED_SOURCE_MANIFEST = REPOSITORY_ROOT / "native" / "source-manifest.toml"
 COMMITTED_TOOLCHAIN_MANIFEST = REPOSITORY_ROOT / "native" / "toolchain-manifest.toml"
+LINUX_ROOT = sys.platform == "linux" and hasattr(os, "geteuid") and os.geteuid() == 0
 
 
 def committed_data() -> dict[str, object]:
@@ -365,6 +368,523 @@ class NativeBuildProfileTest(unittest.TestCase):
                 result = native_build_tool.main(["preflight"])
         self.assertEqual(source_tool.EXIT_SCHEMA, result)
         self.assertIn("requires Linux root", error.getvalue())
+
+        for command in ("prepare", "verify-preparation"):
+            with self.subTest(command=command), patch.object(
+                native_build_tool.sys,
+                "platform",
+                "win32",
+            ):
+                error = io.StringIO()
+                with contextlib.redirect_stderr(error):
+                    result = native_build_tool.main([command])
+            self.assertEqual(source_tool.EXIT_SCHEMA, result)
+            self.assertIn("requires Linux root", error.getvalue())
+
+    def test_preparation_receipt_is_deterministic_and_explicitly_not_a_build(self) -> None:
+        loaded = native_build_tool.load_profile(
+            COMMITTED_PROFILE,
+            COMMITTED_SOURCE_MANIFEST,
+            COMMITTED_TOOLCHAIN_MANIFEST,
+        )
+        tree = {
+            "format": native_build_tool.materialize_sources.TREE_DIGEST_FORMAT,
+            "sha256": "1" * 64,
+            "entryCount": 1,
+            "fileCount": 1,
+            "directoryCount": 0,
+            "symlinkCount": 0,
+        }
+        snapshot = native_build_tool.TreePolicySnapshot(
+            tree=tree,
+            file_bytes=3,
+            symlinks=(),
+            identities={".": (1, 1), "file": (1, 2)},
+        )
+        source_receipt = {"linkMode": "preserve", "tree": tree}
+        composition_receipt = {
+            "composition": {"sha256": "2" * 64},
+            "inputs": {"apt": {"tree": "apt"}, "sdk": {"tree": "sdk"}},
+        }
+        inputs = native_build_tool.PreparationInputs(
+            profile=loaded,
+            source_receipt=source_receipt,
+            source_receipt_raw=native_build_tool._canonical_json(source_receipt),  # noqa: SLF001
+            composition_receipt=composition_receipt,
+            composition_receipt_raw=native_build_tool._canonical_json(  # noqa: SLF001
+                composition_receipt
+            ),
+            overlay_raws=tuple(
+                (REPOSITORY_ROOT / str(overlay["replacement"])).read_bytes()
+                for overlay in loaded.overlays
+            ),
+            canonical_source=snapshot,
+        )
+        first = native_build_tool._preparation_receipt_data(inputs, snapshot)  # noqa: SLF001
+        second = native_build_tool._preparation_receipt_data(inputs, snapshot)  # noqa: SLF001
+        self.assertEqual(first, second)
+        self.assertEqual(
+            native_build_tool._canonical_json(first),  # noqa: SLF001
+            native_build_tool._canonical_json(second),  # noqa: SLF001
+        )
+        self.assertEqual(native_build_tool.PREPARATION_RECEIPT_KIND, first["kind"])
+        self.assertEqual("prepared", first["phase"])
+        self.assertIs(first["buildExecuted"], False)
+        self.assertIs(first["ready"], False)
+        self.assertIs(first["releaseInput"], False)
+        self.assertEqual(
+            {
+                "source": "/build/source",
+                "output": "/build/output",
+                "home": "/build/home",
+                "temporary": "/build/tmp",
+            },
+            first["mounts"],
+        )
+        self.assertEqual(
+            ["source", "output", "home", "tmp"],
+            first["policy"]["freshPaths"],
+        )
+        raw = native_build_tool._canonical_json(first)  # noqa: SLF001
+        self.assertNotIn(b"/var/tmp", raw)
+        self.assertNotIn(str(REPOSITORY_ROOT).encode("utf-8"), raw)
+
+    def test_nested_mounts_are_rejected_and_never_recursively_cleaned(self) -> None:
+        mount_record = b"/var/tmp/staging/source\text4\trw,bind"
+        with patch.object(
+            native_build_tool,
+            "_mounts_below",
+            return_value=mount_record,
+        ), self.assertRaises(source_tool.SourceToolError) as raised:
+            native_build_tool._require_no_nested_mounts(  # noqa: SLF001
+                Path("/var/tmp/staging"),
+                "test workspace",
+            )
+        self.assertEqual(source_tool.EXIT_INTEGRITY, raised.exception.exit_code)
+        self.assertIn("nested mount", str(raised.exception))
+
+        with patch.object(
+            native_build_tool,
+            "_mounts_below",
+            return_value=mount_record,
+        ), patch.object(
+            native_build_tool.materialize_sources,
+            "_remove_tree",
+        ) as remove_tree:
+            cleanup_error = native_build_tool._remove_preparation_staging(  # noqa: SLF001
+                Path("/var/tmp/staging"),
+                (1, 2),
+            )
+        remove_tree.assert_not_called()
+        self.assertIsNotNone(cleanup_error)
+        self.assertIn("refusing recursive cleanup", cleanup_error)
+
+    def test_mount_inventory_rejects_malformed_records(self) -> None:
+        inventory_root = (
+            Path("//var/tmp/root") if os.name == "nt" else Path("/var/tmp/root")
+        )
+        child_target = inventory_root.joinpath("child").as_posix()
+        valid_result = type(
+            "Result",
+            (),
+            {
+                "returncode": 0,
+                "stdout": json.dumps(
+                    {
+                        "filesystems": [
+                            {"target": "/", "fstype": "ext4", "options": "rw"},
+                            {
+                                "target": child_target,
+                                "fstype": "tmpfs",
+                                "options": "rw,nosuid",
+                            },
+                        ]
+                    }
+                ).encode("utf-8"),
+                "stderr": b"",
+            },
+        )()
+        with patch.object(native_build_tool.subprocess, "run", return_value=valid_result):
+            mounts = native_build_tool._mounts_below(inventory_root)  # noqa: SLF001
+        self.assertEqual(f"{child_target}\ttmpfs\trw,nosuid".encode("utf-8"), mounts)
+
+        malformed_items = (
+            {"fstype": "ext4", "options": "rw"},
+            {"target": 1, "fstype": "ext4", "options": "rw"},
+            {"target": "/", "options": "rw"},
+            {"target": "/", "fstype": "ext4", "options": None},
+            {"target": "relative", "fstype": "ext4", "options": "rw"},
+            {"target": "/bad\nmount", "fstype": "ext4", "options": "rw"},
+            {"target": "/", "fstype": "ext4", "options": "rw", "extra": True},
+            {"target": "/", "fstype": "ext4", "options": "rw", "children": None},
+        )
+        for item in malformed_items:
+            with self.subTest(item=item):
+                result = type(
+                    "Result",
+                    (),
+                    {
+                        "returncode": 0,
+                        "stdout": json.dumps({"filesystems": [item]}).encode("utf-8"),
+                        "stderr": b"",
+                    },
+                )()
+                with patch.object(native_build_tool.subprocess, "run", return_value=result):
+                    with self.assertRaises(source_tool.SourceToolError) as raised:
+                        native_build_tool._mounts_below(inventory_root)  # noqa: SLF001
+                self.assertEqual(source_tool.EXIT_INTEGRITY, raised.exception.exit_code)
+
+        duplicate_result = type(
+            "Result",
+            (),
+            {
+                "returncode": 0,
+                "stdout": (
+                    b'{"filesystems":[{"target":"/","target":"/var",'
+                    b'"fstype":"ext4","options":"rw"}]}'
+                ),
+                "stderr": b"",
+            },
+        )()
+        with patch.object(native_build_tool.subprocess, "run", return_value=duplicate_result):
+            with self.assertRaises(source_tool.SourceToolError) as raised:
+                native_build_tool._mounts_below(inventory_root)  # noqa: SLF001
+        self.assertEqual(source_tool.EXIT_INTEGRITY, raised.exception.exit_code)
+
+        recursion_result = type(
+            "Result",
+            (),
+            {
+                "returncode": 0,
+                "stdout": b"{}",
+                "stderr": b"",
+            },
+        )()
+        with patch.object(
+            native_build_tool.subprocess,
+            "run",
+            return_value=recursion_result,
+        ), patch.object(
+            native_build_tool.json,
+            "loads",
+            side_effect=RecursionError("maximum recursion depth exceeded"),
+        ):
+            with self.assertRaises(source_tool.SourceToolError) as raised:
+                native_build_tool._mounts_below(inventory_root)  # noqa: SLF001
+        self.assertEqual(source_tool.EXIT_INTEGRITY, raised.exception.exit_code)
+
+    def test_independent_copy_rejects_cross_path_identity_aliases(self) -> None:
+        canonical = native_build_tool.TreePolicySnapshot(
+            tree={},
+            file_bytes=2,
+            symlinks=(),
+            identities={"a": (1, 10), "b": (1, 20)},
+        )
+        prepared = native_build_tool.TreePolicySnapshot(
+            tree={},
+            file_bytes=2,
+            symlinks=(),
+            identities={"a": (1, 20), "b": (1, 10)},
+        )
+        with self.assertRaises(source_tool.SourceToolError) as raised:
+            native_build_tool._assert_independent_copy(canonical, prepared)  # noqa: SLF001
+        self.assertEqual(source_tool.EXIT_INTEGRITY, raised.exception.exit_code)
+        self.assertIn("across paths", str(raised.exception))
+
+    @unittest.skipUnless(LINUX_ROOT, "requires Linux root")
+    def test_source_copy_is_independent_and_preserves_symlink_text(self) -> None:
+        loaded = native_build_tool.load_profile(
+            COMMITTED_PROFILE,
+            COMMITTED_SOURCE_MANIFEST,
+            COMMITTED_TOOLCHAIN_MANIFEST,
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "source"
+            (source / "buildscripts" / "include").mkdir(parents=True)
+            original_buildall = b"#!/bin/sh\nold buildall\n"
+            original_path = b"#!/bin/sh\nold path\n"
+            buildall = source / "buildscripts" / "buildall.sh"
+            path_script = source / "buildscripts" / "include" / "path.sh"
+            buildall.write_bytes(original_buildall)
+            path_script.write_bytes(original_path)
+            (source / "target").write_bytes(b"payload")
+            (source / "link").symlink_to("target")
+            (source / "dangling").symlink_to("missing")
+            (source / native_build_tool.materialize_sources.RECEIPT_NAME).write_bytes(b"{}\n")
+            for directory in (
+                source / "buildscripts" / "include",
+                source / "buildscripts",
+                source,
+            ):
+                os.chown(directory, 0, 0)
+                os.chmod(directory, 0o755)
+                os.utime(
+                    directory,
+                    ns=(native_build_tool.NORMALIZED_MTIME_NS,) * 2,
+                )
+            for file_path, mode in (
+                (buildall, 0o755),
+                (path_script, 0o755),
+                (source / "target", 0o644),
+                (source / native_build_tool.materialize_sources.RECEIPT_NAME, 0o644),
+            ):
+                os.chown(file_path, 0, 0)
+                os.chmod(file_path, mode)
+                os.utime(
+                    file_path,
+                    ns=(native_build_tool.NORMALIZED_MTIME_NS,) * 2,
+                )
+            for link in (source / "link", source / "dangling"):
+                os.lchown(link, 0, 0)
+                os.utime(
+                    link,
+                    ns=(native_build_tool.NORMALIZED_MTIME_NS,) * 2,
+                    follow_symlinks=False,
+                )
+
+            canonical = native_build_tool._scan_policy_tree(  # noqa: SLF001
+                source,
+                "test canonical source",
+                skip_materialization_receipt=True,
+            )
+            workspace = root / "workspace"
+            workspace.mkdir(mode=0o700)
+            copied_root = workspace / "source"
+            native_build_tool._copy_source_tree(source, copied_root)  # noqa: SLF001
+            copied = native_build_tool._scan_policy_tree(  # noqa: SLF001
+                copied_root,
+                "test copied source",
+                skip_materialization_receipt=False,
+            )
+            self.assertEqual(canonical.tree, copied.tree)
+            self.assertEqual(canonical.file_bytes, copied.file_bytes)
+            self.assertEqual(canonical.symlinks, copied.symlinks)
+            self.assertEqual("target", os.readlink(copied_root / "link"))
+            self.assertEqual("missing", os.readlink(copied_root / "dangling"))
+            self.assertFalse(
+                (copied_root / native_build_tool.materialize_sources.RECEIPT_NAME).exists()
+            )
+            native_build_tool._assert_independent_copy(canonical, copied)  # noqa: SLF001
+
+            replacement_buildall = b"#!/bin/sh\nnew buildall\n"
+            replacement_path = b"#!/bin/sh\nnew path\n"
+            overlays = (
+                {
+                    "destination": "buildscripts/buildall.sh",
+                    "replacement": "unused/buildall.sh",
+                    "originalSize": len(original_buildall),
+                    "originalSha256": hashlib.sha256(original_buildall).hexdigest(),
+                    "replacementSize": len(replacement_buildall),
+                    "replacementSha256": hashlib.sha256(replacement_buildall).hexdigest(),
+                    "originalMode": 0o755,
+                    "replacementMode": 0o755,
+                },
+                {
+                    "destination": "buildscripts/include/path.sh",
+                    "replacement": "unused/path.sh",
+                    "originalSize": len(original_path),
+                    "originalSha256": hashlib.sha256(original_path).hexdigest(),
+                    "replacementSize": len(replacement_path),
+                    "replacementSha256": hashlib.sha256(replacement_path).hexdigest(),
+                    "originalMode": 0o755,
+                    "replacementMode": 0o755,
+                },
+            )
+            test_profile = replace(loaded, overlays=overlays)
+            replacement_raws = (replacement_buildall, replacement_path)
+            with patch.object(
+                native_build_tool,
+                "_write_all",
+                side_effect=OSError("injected overlay write failure"),
+            ), self.assertRaises(source_tool.SourceToolError):
+                native_build_tool._apply_overlays(  # noqa: SLF001
+                    test_profile,
+                    copied_root,
+                    replacement_raws,
+                )
+            self.assertEqual(
+                original_buildall,
+                (copied_root / "buildscripts/buildall.sh").read_bytes(),
+            )
+            self.assertFalse(
+                list((copied_root / "buildscripts").glob(".buildall.sh.*.overlay"))
+            )
+            native_build_tool._apply_overlays(  # noqa: SLF001
+                test_profile,
+                copied_root,
+                replacement_raws,
+            )
+            native_build_tool._verify_applied_overlays(  # noqa: SLF001
+                test_profile,
+                copied_root,
+                replacement_raws,
+            )
+            self.assertEqual(original_buildall, buildall.read_bytes())
+            self.assertEqual(
+                replacement_buildall,
+                (copied_root / "buildscripts/buildall.sh").read_bytes(),
+            )
+            self.assertEqual(
+                0o755,
+                stat.S_IMODE((copied_root / "buildscripts/buildall.sh").stat().st_mode),
+            )
+            prepared = native_build_tool._scan_policy_tree(  # noqa: SLF001
+                copied_root,
+                "test prepared source after overlays",
+                skip_materialization_receipt=False,
+            )
+
+            source_receipt = {"linkMode": "preserve", "tree": canonical.tree}
+            composition_receipt = {
+                "composition": {"sha256": "2" * 64},
+                "inputs": {},
+            }
+            inputs = native_build_tool.PreparationInputs(
+                profile=test_profile,
+                source_receipt=source_receipt,
+                source_receipt_raw=native_build_tool._canonical_json(  # noqa: SLF001
+                    source_receipt
+                ),
+                composition_receipt=composition_receipt,
+                composition_receipt_raw=native_build_tool._canonical_json(  # noqa: SLF001
+                    composition_receipt
+                ),
+                overlay_raws=replacement_raws,
+                canonical_source=canonical,
+            )
+            for name in ("output", "home", "tmp"):
+                native_build_tool._create_empty_prepared_directory(  # noqa: SLF001
+                    workspace / name
+                )
+            receipt = native_build_tool._preparation_receipt_data(  # noqa: SLF001
+                inputs,
+                prepared,
+            )
+            native_build_tool._write_preparation_receipt(  # noqa: SLF001
+                workspace / native_build_tool.PREPARATION_RECEIPT_NAME,
+                receipt,
+            )
+            os.chown(workspace, 0, 0)
+            os.chmod(workspace, 0o700)
+            os.utime(workspace, ns=(native_build_tool.NORMALIZED_MTIME_NS,) * 2)
+            native_build_tool._clear_xattrs(workspace)  # noqa: SLF001
+            native_build_tool.materialize_sources._fsync_workspace_directories(  # noqa: SLF001
+                workspace
+            )
+            verified_receipt, verified_raw = (
+                native_build_tool._verify_prepared_workspace(  # noqa: SLF001
+                    workspace,
+                    inputs,
+                )
+            )
+            self.assertEqual(receipt, verified_receipt)
+            self.assertEqual(
+                native_build_tool._canonical_json(receipt),  # noqa: SLF001
+                verified_raw,
+            )
+
+    @unittest.skipUnless(LINUX_ROOT, "requires Linux root")
+    def test_policy_scan_rejects_hardlinked_source_files(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary) / "source"
+            source.mkdir()
+            first = source / "first"
+            second = source / "second"
+            first.write_bytes(b"same inode")
+            os.link(first, second)
+            for path, mode in ((first, 0o644), (source, 0o755)):
+                os.chown(path, 0, 0)
+                os.chmod(path, mode)
+                os.utime(path, ns=(native_build_tool.NORMALIZED_MTIME_NS,) * 2)
+            with self.assertRaises(source_tool.SourceToolError) as raised:
+                native_build_tool._scan_policy_tree(  # noqa: SLF001
+                    source,
+                    "test source",
+                    skip_materialization_receipt=False,
+                )
+            self.assertEqual(source_tool.EXIT_INTEGRITY, raised.exception.exit_code)
+            self.assertIn("hard-linked", str(raised.exception))
+
+    @unittest.skipUnless(LINUX_ROOT, "requires Linux root")
+    def test_failed_root_setup_closes_descriptors(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "source"
+            destination = root / "destination"
+            source.mkdir()
+            destination.mkdir()
+            os.chown(source, 0, 0)
+            os.chmod(source, 0o700)
+            os.utime(source, ns=(native_build_tool.NORMALIZED_MTIME_NS,) * 2)
+            before = len(os.listdir("/proc/self/fd"))
+            for _attempt in range(8):
+                with self.assertRaises(source_tool.SourceToolError):
+                    native_build_tool._scan_policy_tree(  # noqa: SLF001
+                        source,
+                        "invalid-mode source",
+                        skip_materialization_receipt=False,
+                    )
+            self.assertEqual(before, len(os.listdir("/proc/self/fd")))
+
+            os.chmod(source, 0o755)
+            before = len(os.listdir("/proc/self/fd"))
+            for _attempt in range(8):
+                with self.assertRaises(source_tool.SourceToolError):
+                    native_build_tool._copy_source_tree(  # noqa: SLF001
+                        source,
+                        destination,
+                    )
+            self.assertEqual(before, len(os.listdir("/proc/self/fd")))
+
+    @unittest.skipUnless(LINUX_ROOT, "requires Linux root")
+    def test_staging_identity_is_rechecked_before_publication(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            parent = Path(temporary)
+            staging = parent / "staging"
+            displaced = parent / "displaced"
+            staging.mkdir(mode=0o700)
+            os.chown(staging, 0, 0)
+            os.utime(staging, ns=(native_build_tool.NORMALIZED_MTIME_NS,) * 2)
+            identity = (staging.stat().st_dev, staging.stat().st_ino)
+            staging.rename(displaced)
+            staging.mkdir(mode=0o700)
+            os.chown(staging, 0, 0)
+            os.utime(staging, ns=(native_build_tool.NORMALIZED_MTIME_NS,) * 2)
+            parent_fd = os.open(parent, native_build_tool._directory_flags())  # noqa: SLF001
+            try:
+                with self.assertRaises(source_tool.SourceToolError) as raised:
+                    native_build_tool._assert_staging_identity_at(  # noqa: SLF001
+                        parent_fd,
+                        staging.name,
+                        identity,
+                    )
+            finally:
+                os.close(parent_fd)
+            self.assertEqual(source_tool.EXIT_INTEGRITY, raised.exception.exit_code)
+            self.assertIn("identity changed", str(raised.exception))
+
+    @unittest.skipUnless(LINUX_ROOT, "requires Linux root")
+    def test_workspace_publication_is_no_replace(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            parent = Path(temporary)
+            staging = parent / "staging"
+            destination = parent / "destination"
+            staging.mkdir()
+            destination.mkdir()
+            parent_fd = os.open(parent, native_build_tool._directory_flags())  # noqa: SLF001
+            try:
+                with self.assertRaises(source_tool.SourceToolError) as raised:
+                    native_build_tool._rename_workspace_no_replace_at(  # noqa: SLF001
+                        parent_fd,
+                        staging.name,
+                        destination.name,
+                    )
+            finally:
+                os.close(parent_fd)
+            self.assertEqual(source_tool.EXIT_INTEGRITY, raised.exception.exit_code)
+            self.assertTrue(staging.is_dir())
+            self.assertTrue(destination.is_dir())
 
 
 if __name__ == "__main__":

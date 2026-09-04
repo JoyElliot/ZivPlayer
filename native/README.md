@@ -85,19 +85,23 @@ manifest. In particular, it maps `freetype` to the upstream `freetype2`
 directory, `libunibreak` to `unibreak`, and places the pinned
 `gas-preprocessor.pl` in the upstream SDK helper path.
 
-On a Linux builder that can preserve symbolic links, create the canonical
-ignored workspace with:
+On the Linux builder, create the root-owned canonical workspace consumed by the
+native-build profile with:
 
 ```sh
-python3 native/tools/materialize_sources.py
+sudo python3 native/tools/materialize_sources.py \
+  --workspace /var/tmp/zivplayer-native-source \
+  --link-mode preserve
 ```
 
 The full closure is assembled under a random sibling `.part` directory and
-renamed to `native/out/workspace` only after every source and recorded license
-path passes. Its output parent must be a trusted real directory, not a symlink
-or junction. The final workspace is never overwritten. Remove an old ignored
-workspace explicitly before requesting a fresh one; a build-mutated directory
-is not silently reused as pristine source. The resulting
+renamed to the selected workspace only after every source and recorded license
+path passes. The generic tool default remains `native/out/workspace`; the
+native-build profile default is the explicit ext4 path above. Its output parent
+must be a trusted real directory, not a symlink or junction. The final workspace
+is never overwritten. Remove an old ignored workspace explicitly before
+requesting a fresh one; a build-mutated directory is not silently reused as
+pristine source. The resulting
 `ziv-native-materialization.json` records the manifest digest, every source
 revision/digest/destination, selected Android tuple, link mode, and a canonical
 tree digest over entry types, paths, modes, file bytes, and symbolic-link
@@ -112,7 +116,9 @@ and derives the link topology later checked by the verifier.
 Immediately verify a canonical workspace and the still-locked cache with:
 
 ```sh
-python3 native/tools/materialize_sources.py --verify-workspace
+sudo python3 native/tools/materialize_sources.py \
+  --workspace /var/tmp/zivplayer-native-source \
+  --verify-workspace
 ```
 
 The locked archives contain two safe relative symbolic links. Windows often
@@ -308,19 +314,17 @@ written only after independent verification; file data and metadata are synced
 before the no-replace rename, and the output parent is synced before success is
 reported.
 
-The final frozen implementation was run twice from fresh roots in WSL
-Ubuntu-24.04. Both runs produced 12,449 entries, 709,614,000 physical file
-bytes, tree SHA-256
-`b584b9cfb5c497f865a7b40efac2b5db8c95f772438655298766bb3601f10426`,
-and byte-identical receipt SHA-256
-`4ece2c1c82ea421d1f41ad48e70a34a5d1ec00624816dd75e47960832b2aeb91`.
-The complete directories and evidence compared equal; normalized Java cacerts
-were `e8077b51dce7bd5435c56d160298bc5b0f44b1465111d51bb3fc5488d5a34c24`.
-These WSL runs are reproducibility inspection evidence, not accepted release
-provenance. The trusted boundary remains the exclusive host process,
-repository, cache, output parent, and cgroup hierarchy; a host hard kill may
-leave a precisely named empty cgroup that requires operator cleanup after its
-population is checked.
+The retained hardened stage used by the current composition contains 12,449
+entries and 709,614,523 file bytes. Its tree SHA-256 is
+`5ed7511bcb6f9d9cc5a2a966f54495b243135a2f9de469e1e7a4c5850406f7e0`, and its
+receipt SHA-256 is
+`6a4929a97403cf8058a3b02c36dc5ba5d30e262f44472520b3b8061ede9b5cae`.
+Earlier pre-hardening WSL reproducibility measurements are superseded by these
+current bound values. This remains inspection evidence, not accepted release
+provenance. The trusted boundary remains the exclusive host process, repository,
+cache, output parent, and cgroup hierarchy; a host hard kill may leave a
+precisely named empty cgroup that requires operator cleanup after its population
+is checked.
 
 The final fail-closed gate is:
 
@@ -404,7 +408,7 @@ It explicitly retains `ready=false` and `releaseInput=false`. These measurements
 assume an exclusive trusted root-controlled host; they do not claim protection
 from a concurrent hostile root process and remain WSL inspection evidence only.
 
-## Locked libmpv-stack profile and preflight
+## Locked libmpv-stack profile, preflight, and preparation
 
 `native-build-profile.toml` is the fail-closed input contract for the first
 source-built libmpv-stack slice. It binds the source and toolchain manifest byte
@@ -414,8 +418,8 @@ allowlist, NDK runtime-library bytes, and both original/replacement overlay
 hashes. The desired applied overlay mode is explicitly `0755`; it is not
 inferred from Git file-mode behavior on Windows.
 
-The profile keeps the verified preserve-mode source tree read-only and requires
-each build to receive a fresh writable source copy plus disjoint fresh output,
+The profile keeps the verified preserve-mode source tree read-only. `prepare`
+creates a fresh writable independent source copy plus disjoint fresh output,
 HOME, and temporary directories. This distinction is required because the
 reviewed upstream dependency scripts generate Autotools files and build Lua and
 mbedTLS in their source directories. The eventual executor must start from an
@@ -455,6 +459,22 @@ sudo python3 native/tools/native_build_tool.py preflight \
   --source-workspace /var/tmp/zivplayer-native-source
 ```
 
+Prepare and then independently verify the default build workspace without
+executing either locked build command:
+
+```sh
+sudo python3 native/tools/native_build_tool.py prepare
+sudo python3 native/tools/native_build_tool.py verify-preparation
+```
+
+Preparation requires an absent destination. It publishes
+`/var/tmp/zivplayer-native-build` only after a fresh root-owned same-filesystem
+tree passes full verification. Ordinary files have independent identities,
+hardlinks and nested mounts are rejected, the two symlink texts are preserved,
+the byte-locked overlays are applied atomically only to the copy, and
+`output`/`home`/`tmp` remain empty. The canonical source is re-verified before
+publication and is never overlaid or mutated.
+
 Two fresh WSL preserve-mode materializations produced byte-identical receipts
 with SHA-256
 `e2ea14b6eea0c2f692a321853473f04dad2f1f3199d017bfffc733a858523c04`
@@ -465,10 +485,22 @@ The retained tree then passed the locked preflight with profile SHA-256
 `538fe37887840c4e23acdb189d3464878dd006dfc42f6e4c4565490f88252413`.
 These remain WSL inspection results, not accepted release provenance.
 
-There is still no native build executor, overlay application, output staging,
-ELF/JNI audit, canonical build receipt, offline Gradle/AAR integration, or
-compliance bundle. No libmpv library was produced by this preflight, and its
-success must not be reported as an M7E build.
+One complete WSL preparation produced a 5,378-byte canonical receipt with
+SHA-256
+`eff4993d2c1a079564f8da458eb2fc3bb7ee234716d8ce2380ee4c5e59de49f5`.
+The post-overlay source has 30,436 entries, 408,191,312 regular-file bytes, and
+tree SHA-256
+`bdabef1dc6032963422aad7576ab8ea45a5f5393d5a304b5273f94fbaabb2d2d`.
+An independent verification command passed; the original overlay destinations
+still match their upstream hashes. The receipt records `phase=prepared`,
+`buildExecuted=false`, `ready=false`, and `releaseInput=false`.
+
+There is still no native execution namespace, build command execution, output
+staging, ELF/JNI audit, canonical build receipt, offline Gradle/AAR integration,
+or compliance bundle. No libmpv library was produced by preparation, and its
+success must not be reported as an M7E build. These checks assume the ADR's
+exclusive trusted root-controlled builder boundary and do not claim protection
+against a concurrent hostile root process.
 
 ## Locked build baseline
 
@@ -504,9 +536,9 @@ implemented and have been run against the complete locked cache in inspection
 mode. The next native milestones must:
 
 1. implement the Linux namespace executor that verifies the preserve source,
-   creates fresh writable source/output/HOME/TMP trees, applies the two locked
-   overlays at mode `0755`, runs the exact commands offline, and publishes a
-   no-replace canonical receipt;
+   consumes a verified fresh preparation, binds its source/output/HOME/TMP
+   paths, enforces the empty-environment/no-network policy, runs the exact
+   commands offline, and publishes a no-replace canonical build receipt;
 2. close the portable offline Gradle artifact set before any Android wrapper
    build;
 3. adapt and harden the Kotlin/JNI wrapper inside `platform:libmpv-android`;

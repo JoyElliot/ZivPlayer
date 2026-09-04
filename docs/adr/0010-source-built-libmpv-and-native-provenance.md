@@ -176,13 +176,15 @@ owners, modes, safe user xattrs, timestamps, file bytes, and symlink targets are
 rechecked under explicit resource budgets. Publication is a no-replace rename
 after filesystem synchronization, followed by output-parent synchronization.
 
-Two fresh WSL inspection runs of the frozen implementation produced identical
-12,449-entry trees containing 709,614,000 physical file bytes, with SHA-256
-`b584b9cfb5c497f865a7b40efac2b5db8c95f772438655298766bb3601f10426`
-and byte-identical receipts with SHA-256
-`4ece2c1c82ea421d1f41ad48e70a34a5d1ec00624816dd75e47960832b2aeb91`.
-This closes offline base-plus-APT installation ambiguity under the stated
-trusted-host boundary, but not the installed container.
+The retained hardened stage used by the current composition contains 12,449
+entries and 709,614,523 file bytes. Its tree SHA-256 is
+`5ed7511bcb6f9d9cc5a2a966f54495b243135a2f9de469e1e7a4c5850406f7e0`, and its
+receipt SHA-256 is
+`6a4929a97403cf8058a3b02c36dc5ba5d30e262f44472520b3b8061ede9b5cae`.
+Earlier pre-hardening WSL reproducibility measurements are superseded by these
+current bound values. This closes the current offline base-plus-APT installation
+ambiguity under the stated trusted-host boundary, but not the installed
+container or cross-run binary reproducibility.
 
 `native/tools/sdk_tool.py` separately closes the archive-to-filesystem
 ambiguity for the locked Android SDK/NDK and Meson wheel. It verifies immutable
@@ -248,7 +250,7 @@ These results assume the ADR's exclusive trusted root-controlled builder
 boundary; they do not claim safety against a concurrent hostile root process,
 and WSL remains an inspection rather than release-provenance environment.
 
-### Native build profile and inspection preflight
+### Native build profile, inspection preflight, and preparation
 
 `native/native-build-profile.toml` now locks the first libmpv-stack execution
 contract without claiming that the stack has been built. It binds the source
@@ -291,9 +293,14 @@ manifests, and overlay replacement bytes without executing a build. Its
 Linux-root-only `preflight` additionally re-verifies the preserve-mode source
 workspace on ext4, the untouched upstream bytes/modes at both overlay
 destinations, the exact per-ABI NDK `libc++_shared.so` inputs, and the existing
-toolchain-composition receipt. It does not yet copy or mutate source, apply the
-overlays, execute compilation, stage outputs, audit ELF/JNI, integrate Gradle,
-or publish a native-build receipt.
+toolchain-composition receipt. The Linux-root-only `prepare` command repeats
+those gates, creates a fresh independent root-owned source copy, preserves the
+locked symlink texts while rejecting hardlinks and nested mounts, atomically
+applies both overlays only to that copy, and creates disjoint empty output,
+HOME, and temporary trees. It then publishes the complete workspace with
+no-replace semantics only after its canonical preparation receipt verifies.
+`verify-preparation` independently recomputes the receipt from the current
+locked inputs and published tree.
 
 Two fresh WSL ext4 preserve-mode source materializations produced identical
 30,436-entry trees (29,238 files, 1,196 directories, and two symlinks), tree
@@ -305,6 +312,20 @@ The retained tree passed the above preflight with profile SHA-256
 `538fe37887840c4e23acdb189d3464878dd006dfc42f6e4c4565490f88252413`.
 These are inspection results only. No native library was built, and WSL remains
 outside accepted release provenance.
+
+One complete WSL preparation published `/var/tmp/zivplayer-native-build` with a
+5,378-byte receipt whose SHA-256 is
+`eff4993d2c1a079564f8da458eb2fc3bb7ee234716d8ce2380ee4c5e59de49f5`.
+The post-overlay source retained 30,436 entries and 408,191,312 regular-file
+bytes; its tree SHA-256 is
+`bdabef1dc6032963422aad7576ab8ea45a5f5393d5a304b5273f94fbaabb2d2d`.
+An independent verification run passed, and the canonical source/overlay-origin
+hashes remained unchanged. This receipt is only a preparation record:
+`buildExecuted=false`, `ready=false`, and `releaseInput=false`. The executor,
+compilation, output staging, ELF/JNI audits, Gradle integration, compliance
+bundles, and native-build receipt remain pending. This mechanism assumes the
+exclusive trusted root-controlled builder boundary stated above; it is not a
+defense against a concurrent hostile root process.
 
 The environment status therefore remains
 `roots-and-apt-locked-container-pending`: accepted Android license files,
@@ -356,8 +377,9 @@ ZivPlayer now has independently verifiable native source and builder-input
 baselines, a reproducible offline base-plus-APT materialization stage, and a
 separate reproducible Android/Python tool projection whose fixed read-only
 composition has passed an isolated inspection smoke. A byte-locked API-26
-libmpv-stack profile and preserve-source preflight now make the next execution
-boundary explicit without treating it as a build result.
+libmpv-stack profile, preserve-source preflight, and verified independent
+prepared workspace now make the next execution boundary explicit without
+treating preparation as a build result.
 Complete local source and toolchain/APT caches can be prepared without trusting
 mutable Git branches, floating container tags, or moving APT repositories, and
 the release-input gate fails closed while compliance, canonical native-build,
