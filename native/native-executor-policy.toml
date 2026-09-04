@@ -1,0 +1,87 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Isolation policy for the pre-build namespace probe. This policy is separate
+# from native-build-profile.toml so the already-published preparation receipt
+# remains valid. It deliberately forbids build commands and artifact output.
+
+schemaVersion = 1
+kind = "ziv-native-executor-policy-v1"
+
+[binding]
+profileName = "ziv-libmpv-stack-api26-v1"
+profileSha256 = "538fe37887840c4e23acdb189d3464878dd006dfc42f6e4c4565490f88252413"
+preparationReceiptKind = "ziv-native-build-preparation-v1"
+hostPlatform = "linux/amd64"
+toolchainMount = "/opt/zivplayer/toolchain"
+sourceMount = "/build/source"
+outputMount = "/build/output"
+homeMount = "/build/home"
+temporaryMount = "/build/tmp"
+
+[gate]
+phase = "namespace-probe"
+buildCommands = false
+artifactStaging = false
+buildReceipt = false
+ready = false
+releaseInput = false
+
+[process]
+environmentMode = "empty"
+probeTimeoutSeconds = 180
+stdoutLimitBytes = 1048576
+stderrLimitBytes = 1048576
+stderrAllowed = false
+parentDeathSignal = "SIGKILL"
+newSession = true
+rlimitNoFile = 4096
+rlimitFileSizeBytes = 2147483648
+rlimitCoreBytes = 0
+
+[cgroup]
+version = 2
+controllers = ["cpu", "io", "memory", "pids"]
+pidsMax = 512
+memoryMaxBytes = 2147483648
+memorySwapMaxBytes = 0
+cpuQuotaMicros = 200000
+cpuPeriodMicros = 100000
+ioReadBytesPerSecond = 8388608
+ioWriteBytesPerSecond = 8388608
+ioReadOperationsPerSecond = 2048
+ioWriteOperationsPerSecond = 2048
+
+[filesystem]
+minimumFreeBytes = 8589934592
+reserveFreeBytes = 4294967296
+minimumFreeInodes = 250000
+reserveFreeInodes = 100000
+maximumEntryDelta = 104096
+
+[namespace]
+profile = "ziv-native-build-namespace-probe-v1"
+unshare = ["mount", "net", "pid", "uts", "ipc"]
+propagation = "private"
+network = "loopback-device-only-no-external-routes"
+root = "overlay:ro,nosuid,nodev,exec"
+aptLower = "ext4:immutable"
+buildRoot = "tmpfs:ro,nosuid,nodev,noexec:size=16777216:mode=0755"
+toolchain = "ext4:ro,nosuid,nodev,exec"
+source = "ext4:rw,nosuid,nodev,exec"
+output = "ext4:rw,nosuid,nodev,noexec"
+home = "ext4:rw,nosuid,nodev,noexec"
+temporary = "ext4:rw,nosuid,nodev,exec"
+transientTmpfsBytes = 67108864
+expectedMountCount = 15
+capabilities = "none"
+noNewPrivileges = true
+seccomp = true
+oldRootDetached = true
+
+[helpers]
+namespacePath = "native/toolchain/native-build-namespace.bash"
+namespaceSha256 = "8a5177f0664b2909dd75e922843c3f430b36f495c7ea9ef38e85d54173485959"
+probePath = "native/toolchain/native-build-probe.bash"
+probeSha256 = "3efa8bffa6dbe38c7264a1ae3b1aa8ebf0f00a1e07bbebf5df0172e58a5b4485"
+seccompPath = "native/toolchain/install-seccomp.pl"
+seccompSha256 = "ab2e6d21a2768a585b2bc53a2495c78f46ab9a4dbac32d09bf58e311091c597d"

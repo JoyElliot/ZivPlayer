@@ -191,6 +191,7 @@ python3 native/tools/native_build_tool.py validate
 sudo python3 native/tools/native_build_tool.py preflight
 sudo python3 native/tools/native_build_tool.py prepare
 sudo python3 native/tools/native_build_tool.py verify-preparation
+python3 native/tools/native_executor_tool.py validate
 python3 native/tools/toolchain_tool.py check-lock
 ```
 
@@ -226,8 +227,13 @@ preserving the two locked symlink texts, rejects hardlinks and nested mounts,
 applies the overlays atomically, normalizes metadata, and publishes only after
 a canonical preparation receipt passes verification. `verify-preparation`
 recomputes that contract from the current locked inputs and published tree.
-There is still no native execution namespace, command execution,
-artifact-staging, ELF audit, JNI wrapper, Gradle integration, or build receipt.
+`native_executor_tool.py validate` checks a separate exact namespace-probe
+policy, its build-profile binding, and the three byte-locked helpers. That
+policy keeps build commands, artifact staging, build receipts, readiness, and
+release input explicitly disabled. No canonical Python namespace launcher
+exists and no accepted executor-probe result has been recorded; there is still
+no build-command execution, artifact staging, ELF audit, JNI wrapper, Gradle
+integration, or build receipt.
 
 The complete WSL inspection preparation at
 `/var/tmp/zivplayer-native-build` produced a 5,378-byte receipt with SHA-256

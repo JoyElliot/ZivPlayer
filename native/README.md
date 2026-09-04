@@ -495,12 +495,42 @@ An independent verification command passed; the original overlay destinations
 still match their upstream hashes. The receipt records `phase=prepared`,
 `buildExecuted=false`, `ready=false`, and `releaseInput=false`.
 
-There is still no native execution namespace, build command execution, output
-staging, ELF/JNI audit, canonical build receipt, offline Gradle/AAR integration,
-or compliance bundle. No libmpv library was produced by preparation, and its
-success must not be reported as an M7E build. These checks assume the ADR's
-exclusive trusted root-controlled builder boundary and do not claim protection
-against a concurrent hostile root process.
+There is still no accepted native executor run, build command execution,
+output staging, ELF/JNI audit, canonical build receipt, offline Gradle/AAR
+integration, or compliance bundle. No libmpv library was produced by
+preparation, and its success must not be reported as an M7E build. These checks
+assume the ADR's exclusive trusted root-controlled builder boundary and do not
+claim protection against a concurrent hostile root process.
+
+## Locked namespace-probe policy
+
+`native-executor-policy.toml` is a separate, exact contract for the next
+executor step. Keeping it separate from `native-build-profile.toml` preserves
+the already-published preparation receipt while binding that profile's exact
+SHA-256, logical mount paths, empty inherited environment, timeout and output
+limits, cgroup/resource envelope, namespace properties, and three helper byte
+digests. Its current phase is only `namespace-probe`; `buildCommands`,
+`artifactStaging`, `buildReceipt`, `ready`, and `releaseInput` are all `false`.
+
+Validate this contract without entering a namespace or executing a build:
+
+```sh
+python3 native/tools/native_executor_tool.py validate
+```
+
+The locked namespace helper describes an ephemeral overlay root over the APT
+stage, a separate read-only SDK mount, and distinct source/output/HOME/TMP
+binds. The locked probe checks the exact mount set, detached old root,
+loopback-only network, empty/fixed environment, zero capabilities,
+`no_new_privs`, seccomp, descriptor cleanup, and root/SDK write protection. The
+temporary build bind deliberately remains executable until real upstream build
+behavior proves a stricter setting is compatible.
+
+This step only establishes and statically validates that contract. The Python
+launcher does not yet expose a probe or build subcommand, and no accepted
+executor-probe result has been recorded. Implementation-only WSL helper checks
+do not change that boundary and did not execute a compiler or `buildall.sh`.
+Consequently the verified preparation and all release gates remain unchanged.
 
 ## Locked build baseline
 
@@ -533,12 +563,13 @@ be accepted.
 
 Traversal-safe offline materialization and fixed toolchain composition are now
 implemented and have been run against the complete locked cache in inspection
-mode. The next native milestones must:
+mode. A separate namespace-probe policy is also byte-locked but has not yet
+been launched by the canonical executor. The next native milestones must:
 
-1. implement the Linux namespace executor that verifies the preserve source,
-   consumes a verified fresh preparation, binds its source/output/HOME/TMP
-   paths, enforces the empty-environment/no-network policy, runs the exact
-   commands offline, and publishes a no-replace canonical build receipt;
+1. finish the Linux namespace executor: pin and re-verify every immutable input,
+   run the harmless namespace probe, then separately authorize and run the two
+   exact offline build commands before publishing a no-replace canonical build
+   receipt;
 2. close the portable offline Gradle artifact set before any Android wrapper
    build;
 3. adapt and harden the Kotlin/JNI wrapper inside `platform:libmpv-android`;

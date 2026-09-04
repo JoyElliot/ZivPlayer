@@ -327,6 +327,27 @@ bundles, and native-build receipt remain pending. This mechanism assumes the
 exclusive trusted root-controlled builder boundary stated above; it is not a
 defense against a concurrent hostile root process.
 
+The executor isolation contract is intentionally stored separately in
+`native/native-executor-policy.toml`, so locking it does not invalidate the
+existing preparation receipt. Its first phase is `namespace-probe` and binds
+the exact native-build profile SHA-256, logical mount paths, empty inherited
+environment, process/cgroup/filesystem limits, namespace properties, and the
+byte digests of the namespace, probe, and seccomp helpers. The schema fixes
+`buildCommands=false`, `artifactStaging=false`, `buildReceipt=false`,
+`ready=false`, and `releaseInput=false`; changing any of those values is not an
+extension of this phase.
+
+The locked namespace design uses the APT stage only as an overlay lower,
+creates `/build` in the ephemeral upper rather than modifying the APT tree,
+binds separately pinned source/output/HOME/TMP directories, remounts the
+composed root read-only, pivots away from and detaches the host root, then drops
+all capabilities and applies the existing seccomp helper. The probe is limited
+to mount, environment, network, privilege, descriptor, and write-protection
+checks. `native/tools/native_executor_tool.py validate` currently performs only
+static policy/profile/helper validation: it has no launch or build subcommand,
+no accepted executor-probe result has been recorded, and implementation-only
+helper checks have not executed a compiler or upstream build command.
+
 The environment status therefore remains
 `roots-and-apt-locked-container-pending`: accepted Android license files,
 redistribution inputs, an accepted release-builder materialization/run, and the
@@ -378,8 +399,9 @@ baselines, a reproducible offline base-plus-APT materialization stage, and a
 separate reproducible Android/Python tool projection whose fixed read-only
 composition has passed an isolated inspection smoke. A byte-locked API-26
 libmpv-stack profile, preserve-source preflight, and verified independent
-prepared workspace now make the next execution boundary explicit without
-treating preparation as a build result.
+prepared workspace, plus a closed namespace-probe policy, now make the next
+execution boundary explicit without treating preparation or static validation
+as a build result.
 Complete local source and toolchain/APT caches can be prepared without trusting
 mutable Git branches, floating container tags, or moving APT repositories, and
 the release-input gate fails closed while compliance, canonical native-build,
