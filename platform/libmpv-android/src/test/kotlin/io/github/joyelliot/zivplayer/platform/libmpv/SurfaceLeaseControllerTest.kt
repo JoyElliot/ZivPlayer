@@ -104,6 +104,29 @@ class SurfaceLeaseControllerTest {
     }
 
     @Test
+    fun `native destruction finalizes a failed close without another detach`() {
+        val operations = mutableListOf<String>()
+        val controller = SurfaceLeaseController<String>(
+            attachNative = { operations += "attach:$it" },
+            detachNative = {
+                operations += "detach"
+                error("detach failed")
+            },
+        )
+        val lease = controller.attach("surface")
+
+        assertThrows(IllegalStateException::class.java, controller::close)
+        controller.completeAfterNativeDestroy()
+        controller.detach(lease)
+        controller.close()
+
+        assertEquals(listOf("attach:surface", "detach"), operations)
+        assertThrows(IllegalStateException::class.java) {
+            controller.attach("late")
+        }
+    }
+
+    @Test
     fun `close detaches once and invalidates outstanding leases`() {
         val operations = mutableListOf<String>()
         val controller = controller(operations)

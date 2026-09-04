@@ -58,4 +58,14 @@ internal class SurfaceLeaseController<SurfaceType>(
         }
         closed = true
     }
+
+    /**
+     * Finalizes lease state after the caller has successfully destroyed the
+     * native owner. No native detach is attempted because that owner no longer
+     * exists; any prior detach failure has been superseded by destruction.
+     */
+    fun completeAfterNativeDestroy() {
+        currentToken = null
+        closed = true
+    }
 }

@@ -345,6 +345,7 @@ class LibmpvBackend internal constructor(
             if (destroyFailure == null) {
                 nativeGate.withLock {
                     if (pendingDestroy === player) {
+                        surfaceController.completeAfterNativeDestroy()
                         pendingDestroy = null
                         pendingObserverRemoval = false
                         surfaceAttachmentAttempted = false
