@@ -69,8 +69,29 @@ BUILD_RECEIPT_FIELDS = (
     "resourceOutcome",
     "schemaVersion",
 )
+ARTIFACT_AUDIT_FIELDS = (
+    "androidIdent",
+    "elfClass",
+    "elfMachine",
+    "elfType",
+    "jniExports",
+    "loadSegments",
+    "needed",
+    "neededProviders",
+    "readelfSha256",
+    "readelfSizeBytes",
+    "resolvedSymbolProviders",
+    "soname",
+    "strongUndefinedSymbolCount",
+    "strongUndefinedSymbolsSha256",
+    "undefinedSymbolCount",
+    "undefinedSymbolsSha256",
+    "unresolvedWeakSymbols",
+    "weakUndefinedSymbolCount",
+    "weakUndefinedSymbolsSha256",
+)
 EXPECTED_POLICY_SHA256 = (
-    "eb671c17e47b4fc34b2d1974d0b5cbcb7fe8d24975b46100f606f61f559b91a3"
+    "f9d7c4afe5cdf3ff701a9281c4ba92134a3c21512fb8f18e8ecc1addef9feafc"
 )
 HELPER_KEYS = (
     ("launcherPath", "launcherSha256"),
@@ -298,9 +319,13 @@ EXPECTED_POLICY: dict[str, object] = json.loads(
             "--program-headers",
             "--dynamic-table",
             "--dyn-symbols",
+            "--relocations",
             "--notes",
             "--wide"
         ],
+        "dynamicSymbolTablePolicy": "require-one-complete-dynsym-table-with-contiguous-zero-based-indices",
+        "symbolNamePolicy": "preserve-version-and-reject-whitespace-except-readelf-version-index",
+        "dynamicNamePolicy": "require-whitespace-free-bracket-free-soname-and-needed-with-no-trailing-data",
         "elfType": "ET_DYN",
         "pageSizeBytes": 16384,
         "loadSegmentPolicy": "require-one-or-more-load-segments-each-align-16384-and-offset-vaddr-congruent",
@@ -308,7 +333,7 @@ EXPECTED_POLICY: dict[str, object] = json.loads(
         "neededPolicy": "require-basename-and-resolve-to-staged-soname-or-api26-platform-stub",
         "dependencyClosurePolicy": "per-abi-complete-no-unknown-needed",
         "jniExportPolicy": "record-java-prefix-and-require-none",
-        "nativeApiEvidence": "locked-api26-driver-plus-api26-platform-stub-symbol-closure",
+        "nativeApiEvidence": "locked-api26-driver-plus-api26-version-aware-strong-symbol-closure-and-weak-artifact-symbol-type-relocation-allowlist",
         "platformStubRootTemplate": "/opt/zivplayer/toolchain/android-sdk/ndk/29.0.14206865/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/{ndkRuntimeDirectory}/26",
         "platformSonameAllowlist": [
             "libOpenSLES.so",
@@ -326,7 +351,95 @@ EXPECTED_POLICY: dict[str, object] = json.loads(
             "libvulkan.so",
             "libz.so"
         ],
-        "platformSymbolPolicy": "resolve-each-undefined-platform-symbol-at-api26",
+        "platformSymbolPolicy": "resolve-each-strong-undefined-platform-symbol-at-api26",
+        "symbolVersionPolicy": "resolve-exact-version-or-default-version-alias",
+        "unresolvedWeakSymbolPolicy": "allow-only-locked-abi-library-symbol-type-visibility-and-relocation-set",
+        "allowedUnresolvedWeakSymbols": [
+            {
+                "abi": "arm64-v8a",
+                "library": "libavcodec.so",
+                "symbol": "memfd_create",
+                "symbolTypes": [
+                    "NOTYPE"
+                ],
+                "symbolVisibilities": [
+                    "DEFAULT"
+                ],
+                "relocationTypes": [
+                    "R_AARCH64_GLOB_DAT"
+                ]
+            },
+            {
+                "abi": "arm64-v8a",
+                "library": "libavfilter.so",
+                "symbol": "memfd_create",
+                "symbolTypes": [
+                    "NOTYPE"
+                ],
+                "symbolVisibilities": [
+                    "DEFAULT"
+                ],
+                "relocationTypes": [
+                    "R_AARCH64_GLOB_DAT"
+                ]
+            },
+            {
+                "abi": "arm64-v8a",
+                "library": "libavformat.so",
+                "symbol": "memfd_create",
+                "symbolTypes": [
+                    "NOTYPE"
+                ],
+                "symbolVisibilities": [
+                    "DEFAULT"
+                ],
+                "relocationTypes": [
+                    "R_AARCH64_GLOB_DAT"
+                ]
+            },
+            {
+                "abi": "arm64-v8a",
+                "library": "libavutil.so",
+                "symbol": "memfd_create",
+                "symbolTypes": [
+                    "NOTYPE"
+                ],
+                "symbolVisibilities": [
+                    "DEFAULT"
+                ],
+                "relocationTypes": [
+                    "R_AARCH64_GLOB_DAT"
+                ]
+            },
+            {
+                "abi": "arm64-v8a",
+                "library": "libmpv.so",
+                "symbol": "memfd_create",
+                "symbolTypes": [
+                    "NOTYPE"
+                ],
+                "symbolVisibilities": [
+                    "DEFAULT"
+                ],
+                "relocationTypes": [
+                    "R_AARCH64_GLOB_DAT"
+                ]
+            },
+            {
+                "abi": "arm64-v8a",
+                "library": "libswscale.so",
+                "symbol": "memfd_create",
+                "symbolTypes": [
+                    "NOTYPE"
+                ],
+                "symbolVisibilities": [
+                    "DEFAULT"
+                ],
+                "relocationTypes": [
+                    "R_AARCH64_GLOB_DAT"
+                ]
+            }
+        ],
         "androidIdentNotePolicy": "record-all-and-require-built-artifact-ndk-major-29-if-present",
         "abi": [
             {
@@ -369,7 +482,7 @@ EXPECTED_POLICY: dict[str, object] = json.loads(
             "per-artifact-size-and-sha256",
             "elf-class-machine-type-and-load-segments",
             "soname-and-needed-resolution-closure",
-            "api26-platform-stub-symbol-closure",
+            "api26-version-aware-strong-symbol-closure-and-locked-weak-artifact-symbol-types-visibilities-and-relocations",
             "jni-export-observation",
             "build-options-and-overlay-hashes",
             "pending-release-blockers"
@@ -486,10 +599,18 @@ class ParsedElf:
     soname: str
     needed: tuple[str, ...]
     exports: frozenset[str]
-    undefined: frozenset[str]
+    strong_undefined: frozenset[str]
+    weak_undefined: frozenset[str]
+    weak_undefined_symbol_types: tuple[tuple[str, str], ...]
+    weak_undefined_symbol_visibilities: tuple[tuple[str, str], ...]
+    symbol_relocations: tuple[tuple[str, str], ...]
     android_ident: dict[str, object] | None
     readelf_size: int
     readelf_sha256: str
+
+    @property
+    def undefined(self) -> frozenset[str]:
+        return self.strong_undefined | self.weak_undefined
 
 
 def _schema(message: str) -> NoReturn:
@@ -2618,8 +2739,25 @@ def _single_readelf_field(lines: list[str], prefix: str, label: str) -> str:
 
 
 def _normalized_symbol(name: str) -> str:
-    value = name.split()[0] if name.split() else ""
-    return value.split("@", 1)[0]
+    value = name.strip()
+    if not value:
+        return ""
+    match = re.fullmatch(r"(\S+)(?:\s+\(\d+\))?", value)
+    if match is None:
+        _integrity("ELF audit has a malformed whitespace-bearing symbol name")
+    return match.group(1)
+
+
+def _provider_exports_symbol(exports: frozenset[str], reference: str) -> bool:
+    if reference in exports:
+        return True
+    for exported in exports:
+        if "@@" not in exported:
+            continue
+        base, version = exported.split("@@", 1)
+        if reference == base or reference == f"{base}@{version}":
+            return True
+    return False
 
 
 def _android_ident_from_readelf(lines: list[str], label: str) -> dict[str, object] | None:
@@ -2684,38 +2822,112 @@ def _parse_readelf_output(raw: bytes, label: str) -> ParsedElf:
                     "virtualAddress": virtual_address,
                 }
             )
-    sonames = []
-    needed = []
+    soname_pattern = re.compile(
+        r"^\s*0x[0-9a-fA-F]+\s+\(SONAME\)\s+Library soname:\s+"
+        r"\[([^\[\]\s]+)\]\s*$"
+    )
+    needed_pattern = re.compile(
+        r"^\s*0x[0-9a-fA-F]+\s+\(NEEDED\)\s+Shared library:\s+"
+        r"\[([^\[\]\s]+)\]\s*$"
+    )
+    sonames: list[str] = []
+    needed: list[str] = []
     for line in lines:
-        soname_match = re.search(r"\(SONAME\).*\[([^\]]+)\]", line)
-        needed_match = re.search(r"\(NEEDED\).*\[([^\]]+)\]", line)
-        if soname_match:
+        if "(SONAME)" in line:
+            soname_match = soname_pattern.fullmatch(line)
+            if soname_match is None:
+                _integrity(f"{label} has a malformed SONAME dynamic entry")
             sonames.append(soname_match.group(1))
-        if needed_match:
+        if "(NEEDED)" in line:
+            needed_match = needed_pattern.fullmatch(line)
+            if needed_match is None:
+                _integrity(f"{label} has a malformed NEEDED dynamic entry")
             needed.append(needed_match.group(1))
     if len(sonames) != 1:
         _integrity(f"{label} must contain exactly one SONAME")
     if len(set(needed)) != len(needed):
         _integrity(f"{label} repeats a NEEDED entry")
+    symbol_header_pattern = re.compile(
+        r"^\s*Symbol table '\.dynsym' contains (\d+) entries:\s*$"
+    )
+    symbol_headers = [
+        (index, match)
+        for index, line in enumerate(lines)
+        if (match := symbol_header_pattern.match(line)) is not None
+    ]
+    if len(symbol_headers) != 1:
+        _integrity(f"{label} ELF audit must contain exactly one .dynsym table")
+    symbol_header_index, symbol_header_match = symbol_headers[0]
+    expected_symbol_rows = int(symbol_header_match.group(1))
+    if expected_symbol_rows <= 0:
+        _integrity(f"{label} ELF audit .dynsym table must not be empty")
+    symbol_row_prefix = re.compile(r"^\s*\d+:")
+    symbol_rows: list[str] = []
+    for line in lines[symbol_header_index + 1 :]:
+        if not symbol_rows:
+            if symbol_row_prefix.match(line) is None:
+                continue
+        elif symbol_row_prefix.match(line) is None:
+            _integrity(f"{label} ELF audit .dynsym rows ended before declared count")
+        symbol_rows.append(line)
+        if len(symbol_rows) == expected_symbol_rows:
+            break
+    if len(symbol_rows) != expected_symbol_rows:
+        _integrity(f"{label} ELF audit .dynsym row count differs from its header")
     symbol_pattern = re.compile(
-        r"^\s*\d+:\s+[0-9a-fA-F]+\s+\d+\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)(?:\s+(.*?))?\s*$"
+        r"^\s*(\d+):\s+[0-9a-fA-F]+\s+\d+\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)(?:\s+(.*?))?\s*$"
     )
     exports: set[str] = set()
-    undefined: set[str] = set()
-    for line in lines:
+    strong_undefined: set[str] = set()
+    weak_undefined: set[str] = set()
+    weak_undefined_symbol_types: set[tuple[str, str]] = set()
+    weak_undefined_symbol_visibilities: set[tuple[str, str]] = set()
+    for expected_index, line in enumerate(symbol_rows):
         match = symbol_pattern.match(line)
         if match is None:
-            continue
-        _symbol_type, binding, visibility, index, raw_name = match.groups()
-        if binding not in {"GLOBAL", "WEAK"} or visibility not in {"DEFAULT", "PROTECTED"}:
-            continue
+            _integrity(f"{label} ELF audit has a malformed .dynsym row")
+        row_index, _symbol_type, binding, visibility, index, raw_name = match.groups()
+        if int(row_index) != expected_index:
+            _integrity(f"{label} ELF audit .dynsym row indices are not contiguous")
         name = _normalized_symbol(raw_name or "")
         if not name:
             continue
         if index == "UND":
-            undefined.add(name)
-        else:
+            if binding == "WEAK":
+                weak_undefined.add(name)
+                weak_undefined_symbol_types.add((name, _symbol_type))
+                weak_undefined_symbol_visibilities.add((name, visibility))
+            else:
+                strong_undefined.add(name)
+        elif binding in {"GLOBAL", "WEAK"} and visibility in {
+            "DEFAULT",
+            "PROTECTED",
+        }:
             exports.add(name)
+    weak_undefined.difference_update(strong_undefined)
+    weak_undefined_symbol_types = {
+        (name, symbol_type)
+        for name, symbol_type in weak_undefined_symbol_types
+        if name in weak_undefined
+    }
+    weak_undefined_symbol_visibilities = {
+        (name, visibility)
+        for name, visibility in weak_undefined_symbol_visibilities
+        if name in weak_undefined
+    }
+    relocation_pattern = re.compile(
+        r"^\s*[0-9a-fA-F]+\s+[0-9a-fA-F]+\s+(R_\S+)\s+"
+        r"[0-9a-fA-F]+\s+(\S+)(?:\s+\+\s+.*)?\s*$"
+    )
+    symbol_relocations: set[tuple[str, str]] = set()
+    for line in lines:
+        match = relocation_pattern.match(line)
+        if match is None:
+            continue
+        relocation_type, raw_name = match.groups()
+        name = _normalized_symbol(raw_name)
+        if name:
+            symbol_relocations.add((name, relocation_type))
     return ParsedElf(
         elf_class=int(class_value.removeprefix("ELF")),
         machine=machine,
@@ -2724,7 +2936,13 @@ def _parse_readelf_output(raw: bytes, label: str) -> ParsedElf:
         soname=sonames[0],
         needed=tuple(needed),
         exports=frozenset(exports),
-        undefined=frozenset(undefined),
+        strong_undefined=frozenset(strong_undefined),
+        weak_undefined=frozenset(weak_undefined),
+        weak_undefined_symbol_types=tuple(sorted(weak_undefined_symbol_types)),
+        weak_undefined_symbol_visibilities=tuple(
+            sorted(weak_undefined_symbol_visibilities)
+        ),
+        symbol_relocations=tuple(sorted(symbol_relocations)),
         android_ident=_android_ident_from_readelf(lines, label),
         readelf_size=len(raw),
         readelf_sha256=hashlib.sha256(raw).hexdigest(),
@@ -2817,6 +3035,140 @@ def _validate_android_ident(artifact: PinnedArtifact, parsed: ParsedElf) -> None
         _integrity(
             f"{artifact.abi} {artifact.library} Android ident does not report NDK r29"
         )
+
+
+def _allowed_unresolved_weak_symbols(
+    audit_policy: dict[str, object],
+    abi: str,
+    library: str,
+) -> dict[
+    str,
+    tuple[frozenset[str], frozenset[str], frozenset[str]],
+]:
+    allowed: dict[
+        str,
+        tuple[frozenset[str], frozenset[str], frozenset[str]],
+    ] = {}
+    for record in audit_policy["allowedUnresolvedWeakSymbols"]:
+        assert isinstance(record, dict)
+        if record["abi"] != abi or record["library"] != library:
+            continue
+        symbol = str(record["symbol"])
+        if symbol in allowed:
+            _integrity(
+                f"{abi} {library} repeats unresolved weak-symbol policy for {symbol}"
+            )
+        allowed[symbol] = (
+            frozenset(str(value) for value in record["symbolTypes"]),
+            frozenset(str(value) for value in record["symbolVisibilities"]),
+            frozenset(str(value) for value in record["relocationTypes"]),
+        )
+    return allowed
+
+
+def _resolve_artifact_symbols(
+    parsed: ParsedElf,
+    provider_exports: dict[str, frozenset[str]],
+    allowed_unresolved_weak: dict[
+        str, tuple[frozenset[str], frozenset[str], frozenset[str]]
+    ],
+    label: str,
+) -> tuple[dict[str, int], list[dict[str, object]]]:
+    resolved_counts = {soname: 0 for soname in provider_exports}
+
+    def providers_for(symbol: str) -> list[str]:
+        return sorted(
+            soname
+            for soname, exports in provider_exports.items()
+            if _provider_exports_symbol(exports, symbol)
+        )
+
+    unresolved_strong = {
+        symbol for symbol in parsed.strong_undefined if not providers_for(symbol)
+    }
+    if unresolved_strong:
+        sample = ", ".join(sorted(unresolved_strong)[:8])
+        _integrity(
+            f"{label} has strong undefined symbols absent from its API 26 dependency "
+            f"closure: {sample}"
+        )
+
+    for symbol in sorted(parsed.strong_undefined):
+        providers = providers_for(symbol)
+        if providers:
+            resolved_counts[providers[0]] += 1
+
+    relocation_types_by_symbol: dict[str, set[str]] = {}
+    for symbol, relocation_type in parsed.symbol_relocations:
+        relocation_types_by_symbol.setdefault(symbol, set()).add(relocation_type)
+    symbol_types_by_weak_symbol: dict[str, set[str]] = {}
+    for symbol, symbol_type in parsed.weak_undefined_symbol_types:
+        symbol_types_by_weak_symbol.setdefault(symbol, set()).add(symbol_type)
+    symbol_visibilities_by_weak_symbol: dict[str, set[str]] = {}
+    for symbol, visibility in parsed.weak_undefined_symbol_visibilities:
+        symbol_visibilities_by_weak_symbol.setdefault(symbol, set()).add(visibility)
+
+    weak_evidence: list[dict[str, object]] = []
+    unexpected_weak: set[str] = set()
+    for symbol in sorted(parsed.weak_undefined):
+        providers = providers_for(symbol)
+        if providers:
+            resolved_counts[providers[0]] += 1
+            continue
+        actual_relocations = frozenset(relocation_types_by_symbol.get(symbol, set()))
+        actual_symbol_types = frozenset(
+            symbol_types_by_weak_symbol.get(symbol, set())
+        )
+        actual_symbol_visibilities = frozenset(
+            symbol_visibilities_by_weak_symbol.get(symbol, set())
+        )
+        allowed_evidence = allowed_unresolved_weak.get(symbol)
+        if allowed_evidence is None:
+            unexpected_weak.add(symbol)
+            continue
+        (
+            allowed_symbol_types,
+            allowed_symbol_visibilities,
+            allowed_relocations,
+        ) = allowed_evidence
+        if not actual_symbol_types or actual_symbol_types != allowed_symbol_types:
+            actual = ", ".join(sorted(actual_symbol_types)) or "none"
+            expected = ", ".join(sorted(allowed_symbol_types))
+            _integrity(
+                f"{label} unresolved weak symbol {symbol} has symbol types "
+                f"{actual}; expected exactly {expected}"
+            )
+        if (
+            not actual_symbol_visibilities
+            or actual_symbol_visibilities != allowed_symbol_visibilities
+        ):
+            actual = ", ".join(sorted(actual_symbol_visibilities)) or "none"
+            expected = ", ".join(sorted(allowed_symbol_visibilities))
+            _integrity(
+                f"{label} unresolved weak symbol {symbol} has symbol visibilities "
+                f"{actual}; expected exactly {expected}"
+            )
+        if not actual_relocations or actual_relocations != allowed_relocations:
+            actual = ", ".join(sorted(actual_relocations)) or "none"
+            expected = ", ".join(sorted(allowed_relocations))
+            _integrity(
+                f"{label} unresolved weak symbol {symbol} has relocation types "
+                f"{actual}; expected exactly {expected}"
+            )
+        weak_evidence.append(
+            {
+                "relocationTypes": sorted(actual_relocations),
+                "symbol": symbol,
+                "symbolTypes": sorted(actual_symbol_types),
+                "symbolVisibilities": sorted(actual_symbol_visibilities),
+            }
+        )
+    if unexpected_weak:
+        sample = ", ".join(sorted(unexpected_weak)[:8])
+        _integrity(
+            f"{label} has unresolved weak symbols outside the locked allowlist: {sample}"
+        )
+    return resolved_counts, weak_evidence
 
 
 def _audit_artifacts(
@@ -2913,21 +3265,16 @@ def _audit_artifacts(
                     _integrity(
                         f"{abi} {artifact.library} NEEDED entry is outside the closed set: {needed}"
                     )
-            unresolved: set[str] = set()
-            resolved_counts = {soname: 0 for soname in provider_exports}
-            for symbol in parsed.undefined:
-                providers = [
-                    soname for soname, exports in provider_exports.items() if symbol in exports
-                ]
-                if not providers:
-                    unresolved.add(symbol)
-                else:
-                    resolved_counts[sorted(providers)[0]] += 1
-            if unresolved:
-                sample = ", ".join(sorted(unresolved)[:8])
-                _integrity(
-                    f"{abi} {artifact.library} has undefined symbols absent from its API 26 dependency closure: {sample}"
-                )
+            resolved_counts, unresolved_weak_evidence = _resolve_artifact_symbols(
+                parsed,
+                provider_exports,
+                _allowed_unresolved_weak_symbols(
+                    audit_policy,
+                    abi,
+                    artifact.library,
+                ),
+                f"{abi} {artifact.library}",
+            )
             artifact.audit = {
                 "androidIdent": parsed.android_ident,
                 "elfClass": parsed.elf_class,
@@ -2944,8 +3291,13 @@ def _audit_artifacts(
                     for soname, count in sorted(resolved_counts.items())
                 ],
                 "soname": parsed.soname,
+                "strongUndefinedSymbolCount": len(parsed.strong_undefined),
+                "strongUndefinedSymbolsSha256": _symbol_set_digest(parsed.strong_undefined),
                 "undefinedSymbolCount": len(parsed.undefined),
                 "undefinedSymbolsSha256": _symbol_set_digest(parsed.undefined),
+                "unresolvedWeakSymbols": unresolved_weak_evidence,
+                "weakUndefinedSymbolCount": len(parsed.weak_undefined),
+                "weakUndefinedSymbolsSha256": _symbol_set_digest(parsed.weak_undefined),
             }
         if staged_sonames != set(str(value) for value in artifact_policy["expectedLibraries"]):
             _integrity(f"{abi} staged SONAME set differs from the exact allowlist")
@@ -3057,8 +3409,10 @@ def _build_receipt_data(
         }
         for artifact in artifacts
     ]
-    if any(not record["audit"] for record in artifact_records):
-        _integrity("native build receipt cannot record an unaudited artifact")
+    for record in artifact_records:
+        audit = record["audit"]
+        if not isinstance(audit, dict) or tuple(sorted(audit)) != ARTIFACT_AUDIT_FIELDS:
+            _integrity("native build receipt artifact audit fields differ from policy")
     overlay_records = [
         {
             "destination": str(overlay["destination"]),

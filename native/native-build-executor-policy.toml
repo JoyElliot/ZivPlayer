@@ -196,9 +196,13 @@ elfToolArguments = [
     "--program-headers",
     "--dynamic-table",
     "--dyn-symbols",
+    "--relocations",
     "--notes",
     "--wide",
 ]
+dynamicSymbolTablePolicy = "require-one-complete-dynsym-table-with-contiguous-zero-based-indices"
+symbolNamePolicy = "preserve-version-and-reject-whitespace-except-readelf-version-index"
+dynamicNamePolicy = "require-whitespace-free-bracket-free-soname-and-needed-with-no-trailing-data"
 elfType = "ET_DYN"
 pageSizeBytes = 16384
 loadSegmentPolicy = "require-one-or-more-load-segments-each-align-16384-and-offset-vaddr-congruent"
@@ -206,7 +210,7 @@ sonamePolicy = "require-one-basename-per-artifact-and-unique-within-abi"
 neededPolicy = "require-basename-and-resolve-to-staged-soname-or-api26-platform-stub"
 dependencyClosurePolicy = "per-abi-complete-no-unknown-needed"
 jniExportPolicy = "record-java-prefix-and-require-none"
-nativeApiEvidence = "locked-api26-driver-plus-api26-platform-stub-symbol-closure"
+nativeApiEvidence = "locked-api26-driver-plus-api26-version-aware-strong-symbol-closure-and-weak-artifact-symbol-type-relocation-allowlist"
 platformStubRootTemplate = "/opt/zivplayer/toolchain/android-sdk/ndk/29.0.14206865/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/{ndkRuntimeDirectory}/26"
 platformSonameAllowlist = [
     "libOpenSLES.so",
@@ -224,7 +228,17 @@ platformSonameAllowlist = [
     "libvulkan.so",
     "libz.so",
 ]
-platformSymbolPolicy = "resolve-each-undefined-platform-symbol-at-api26"
+platformSymbolPolicy = "resolve-each-strong-undefined-platform-symbol-at-api26"
+symbolVersionPolicy = "resolve-exact-version-or-default-version-alias"
+unresolvedWeakSymbolPolicy = "allow-only-locked-abi-library-symbol-type-visibility-and-relocation-set"
+allowedUnresolvedWeakSymbols = [
+    { abi = "arm64-v8a", library = "libavcodec.so", symbol = "memfd_create", symbolTypes = ["NOTYPE"], symbolVisibilities = ["DEFAULT"], relocationTypes = ["R_AARCH64_GLOB_DAT"] },
+    { abi = "arm64-v8a", library = "libavfilter.so", symbol = "memfd_create", symbolTypes = ["NOTYPE"], symbolVisibilities = ["DEFAULT"], relocationTypes = ["R_AARCH64_GLOB_DAT"] },
+    { abi = "arm64-v8a", library = "libavformat.so", symbol = "memfd_create", symbolTypes = ["NOTYPE"], symbolVisibilities = ["DEFAULT"], relocationTypes = ["R_AARCH64_GLOB_DAT"] },
+    { abi = "arm64-v8a", library = "libavutil.so", symbol = "memfd_create", symbolTypes = ["NOTYPE"], symbolVisibilities = ["DEFAULT"], relocationTypes = ["R_AARCH64_GLOB_DAT"] },
+    { abi = "arm64-v8a", library = "libmpv.so", symbol = "memfd_create", symbolTypes = ["NOTYPE"], symbolVisibilities = ["DEFAULT"], relocationTypes = ["R_AARCH64_GLOB_DAT"] },
+    { abi = "arm64-v8a", library = "libswscale.so", symbol = "memfd_create", symbolTypes = ["NOTYPE"], symbolVisibilities = ["DEFAULT"], relocationTypes = ["R_AARCH64_GLOB_DAT"] },
+]
 androidIdentNotePolicy = "record-all-and-require-built-artifact-ndk-major-29-if-present"
 
 [[audit.abi]]
@@ -265,7 +279,7 @@ records = [
     "per-artifact-size-and-sha256",
     "elf-class-machine-type-and-load-segments",
     "soname-and-needed-resolution-closure",
-    "api26-platform-stub-symbol-closure",
+    "api26-version-aware-strong-symbol-closure-and-locked-weak-artifact-symbol-types-visibilities-and-relocations",
     "jni-export-observation",
     "build-options-and-overlay-hashes",
     "pending-release-blockers",

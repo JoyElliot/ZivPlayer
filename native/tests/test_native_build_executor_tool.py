@@ -402,10 +402,17 @@ class NativeBuildExecutorPolicyTest(unittest.TestCase):
             "Dynamic section contains 3 entries:\n"
             "  0x1 (NEEDED) Shared library: [libc.so]\n"
             "  0xe (SONAME) Library soname: [libfixture.so]\n"
-            "Symbol table '.dynsym' contains 3 entries:\n"
+            "Relocation section '.rela.dyn' at offset 0x100 contains 1 entries:\n"
+            "    Offset             Info             Type               Symbol's Value  Symbol's Name + Addend\n"
+            "0000000000004010  0000000300000401 R_AARCH64_GLOB_DAT     0000000000000000 memfd_create + 0\n"
+            "Symbol table '.dynsym' contains 6 entries:\n"
             "  Num: Value Size Type Bind Vis Ndx Name\n"
+            "  0: 0000000000000000 0 NOTYPE LOCAL DEFAULT UND\n"
             "  1: 0000000000000000 0 FUNC GLOBAL DEFAULT UND memcpy@LIBC\n"
             "  2: 0000000000004000 8 FUNC GLOBAL DEFAULT 7 fixture_export\n"
+            "  3: 0000000000000000 0 NOTYPE WEAK DEFAULT UND memfd_create\n"
+            "  4: 0000000000000000 0 FUNC GLOBAL HIDDEN UND hidden_missing\n"
+            "  5: 0000000000000000 0 NOTYPE UNIQUE DEFAULT UND unique_missing\n"
             "Displaying notes found in: .note.android.ident\n"
             " description data: "
             + android_note.hex(" ")
@@ -420,9 +427,235 @@ class NativeBuildExecutorPolicyTest(unittest.TestCase):
         self.assertEqual("AArch64", parsed.machine)
         self.assertEqual("libfixture.so", parsed.soname)
         self.assertEqual(("libc.so",), parsed.needed)
-        self.assertEqual(frozenset({"memcpy"}), parsed.undefined)
+        self.assertEqual(
+            frozenset({"hidden_missing", "memcpy@LIBC", "unique_missing"}),
+            parsed.strong_undefined,
+        )
+        self.assertEqual(frozenset({"memfd_create"}), parsed.weak_undefined)
+        self.assertEqual(
+            (("memfd_create", "NOTYPE"),),
+            parsed.weak_undefined_symbol_types,
+        )
+        self.assertEqual(
+            (("memfd_create", "DEFAULT"),),
+            parsed.weak_undefined_symbol_visibilities,
+        )
+        self.assertEqual(
+            frozenset(
+                {
+                    "hidden_missing",
+                    "memcpy@LIBC",
+                    "memfd_create",
+                    "unique_missing",
+                }
+            ),
+            parsed.undefined,
+        )
+        self.assertEqual(
+            (("memfd_create", "R_AARCH64_GLOB_DAT"),),
+            parsed.symbol_relocations,
+        )
         self.assertEqual(frozenset({"fixture_export"}), parsed.exports)
         self.assertEqual("r29", parsed.android_ident["ndkVersion"])  # type: ignore[index]
+        header = b"Symbol table '.dynsym' contains 6 entries:\n"
+        malformed_cases = {
+            "missing header": raw.replace(header, b""),
+            "duplicate header": raw + header,
+            "declared row mismatch": raw.replace(
+                header,
+                b"Symbol table '.dynsym' contains 7 entries:\n",
+            ),
+            "noncontiguous index": raw.replace(
+                b"5: 0000000000000000 0 NOTYPE UNIQUE DEFAULT UND unique_missing",
+                b"6: 0000000000000000 0 NOTYPE UNIQUE DEFAULT UND unique_missing",
+            ),
+            "malformed row": raw.replace(
+                    b"4: 0000000000000000 0 FUNC GLOBAL HIDDEN UND hidden_missing",
+                    b"4: malformed",
+                ),
+            "whitespace-bearing name": raw.replace(
+                b"UND hidden_missing",
+                b"UND hidden_missing alias",
+            ),
+            "trailing SONAME data": raw.replace(
+                b"Library soname: [libfixture.so]",
+                b"Library soname: [libfixture.so]evil]",
+            ),
+            "trailing NEEDED data": raw.replace(
+                b"Shared library: [libc.so]",
+                b"Shared library: [libc.so]evil]",
+            ),
+        }
+        for case, malformed in malformed_cases.items():
+            with self.subTest(case=case):
+                with self.assertRaises(source_tool.SourceToolError):
+                    native_build_executor_tool._parse_readelf_output(  # noqa: SLF001
+                        malformed,
+                        f"{case} fixture",
+                    )
+
+    def test_symbol_resolution_only_allows_locked_weak_relocation(self) -> None:
+        providers = {"libc.so": frozenset({"memcpy@@LIBC"})}
+        allowed = {
+            "memfd_create": (
+                frozenset({"NOTYPE"}),
+                frozenset({"DEFAULT"}),
+                frozenset({"R_AARCH64_GLOB_DAT"}),
+            )
+        }
+        parsed = SimpleNamespace(
+            strong_undefined=frozenset({"memcpy@LIBC"}),
+            weak_undefined=frozenset({"memfd_create"}),
+            weak_undefined_symbol_types=(("memfd_create", "NOTYPE"),),
+            weak_undefined_symbol_visibilities=(("memfd_create", "DEFAULT"),),
+            symbol_relocations=(("memfd_create", "R_AARCH64_GLOB_DAT"),),
+        )
+        counts, evidence = native_build_executor_tool._resolve_artifact_symbols(  # noqa: SLF001
+            parsed,
+            providers,
+            allowed,
+            "fixture",
+        )
+        self.assertEqual({"libc.so": 1}, counts)
+        self.assertEqual(
+            [
+                {
+                    "relocationTypes": ["R_AARCH64_GLOB_DAT"],
+                    "symbol": "memfd_create",
+                    "symbolTypes": ["NOTYPE"],
+                    "symbolVisibilities": ["DEFAULT"],
+                }
+            ],
+            evidence,
+        )
+
+        for rejected in (
+            SimpleNamespace(
+                strong_undefined=frozenset({"memfd_create"}),
+                weak_undefined=frozenset(),
+                weak_undefined_symbol_types=(),
+                weak_undefined_symbol_visibilities=(),
+                symbol_relocations=(("memfd_create", "R_AARCH64_GLOB_DAT"),),
+            ),
+            SimpleNamespace(
+                strong_undefined=frozenset(),
+                weak_undefined=frozenset({"unexpected"}),
+                weak_undefined_symbol_types=(("unexpected", "NOTYPE"),),
+                weak_undefined_symbol_visibilities=(("unexpected", "DEFAULT"),),
+                symbol_relocations=(("unexpected", "R_AARCH64_GLOB_DAT"),),
+            ),
+            SimpleNamespace(
+                strong_undefined=frozenset(),
+                weak_undefined=frozenset({"memfd_create"}),
+                weak_undefined_symbol_types=(("memfd_create", "NOTYPE"),),
+                weak_undefined_symbol_visibilities=(("memfd_create", "DEFAULT"),),
+                symbol_relocations=(("memfd_create", "R_AARCH64_JUMP_SLOT"),),
+            ),
+            SimpleNamespace(
+                strong_undefined=frozenset(),
+                weak_undefined=frozenset({"memfd_create"}),
+                weak_undefined_symbol_types=(("memfd_create", "FUNC"),),
+                weak_undefined_symbol_visibilities=(("memfd_create", "DEFAULT"),),
+                symbol_relocations=(("memfd_create", "R_AARCH64_GLOB_DAT"),),
+            ),
+            SimpleNamespace(
+                strong_undefined=frozenset(),
+                weak_undefined=frozenset({"memfd_create"}),
+                weak_undefined_symbol_types=(("memfd_create", "NOTYPE"),),
+                weak_undefined_symbol_visibilities=(("memfd_create", "HIDDEN"),),
+                symbol_relocations=(("memfd_create", "R_AARCH64_GLOB_DAT"),),
+            ),
+        ):
+            with self.assertRaises(source_tool.SourceToolError):
+                native_build_executor_tool._resolve_artifact_symbols(  # noqa: SLF001
+                    rejected,
+                    providers,
+                    allowed,
+                    "fixture",
+                )
+
+        audit_policy = native_build_executor_tool.EXPECTED_POLICY["audit"]
+        self.assertEqual(
+            allowed,
+            native_build_executor_tool._allowed_unresolved_weak_symbols(  # noqa: SLF001
+                audit_policy,
+                "arm64-v8a",
+                "libavcodec.so",
+            ),
+        )
+        self.assertEqual(
+            {},
+            native_build_executor_tool._allowed_unresolved_weak_symbols(  # noqa: SLF001
+                audit_policy,
+                "arm64-v8a",
+                "libavdevice.so",
+            ),
+        )
+
+        version_mismatch = SimpleNamespace(
+            strong_undefined=frozenset({"memcpy@LIBC_N"}),
+            weak_undefined=frozenset(),
+            weak_undefined_symbol_types=(),
+            weak_undefined_symbol_visibilities=(),
+            symbol_relocations=(),
+        )
+        with self.assertRaises(source_tool.SourceToolError):
+            native_build_executor_tool._resolve_artifact_symbols(  # noqa: SLF001
+                version_mismatch,
+                providers,
+                {},
+                "fixture",
+            )
+
+        unversioned_reference = SimpleNamespace(
+            strong_undefined=frozenset({"memcpy"}),
+            weak_undefined=frozenset(),
+            weak_undefined_symbol_types=(),
+            weak_undefined_symbol_visibilities=(),
+            symbol_relocations=(),
+        )
+        counts, evidence = native_build_executor_tool._resolve_artifact_symbols(  # noqa: SLF001
+            unversioned_reference,
+            providers,
+            {},
+            "fixture",
+        )
+        self.assertEqual({"libc.so": 1}, counts)
+        self.assertEqual([], evidence)
+
+    def test_symbol_version_matching_distinguishes_default_and_nondefault(self) -> None:
+        default = frozenset({"memcpy@@LIBC"})
+        nondefault = frozenset({"memcpy@LIBC"})
+        self.assertTrue(
+            native_build_executor_tool._provider_exports_symbol(  # noqa: SLF001
+                default,
+                "memcpy@LIBC",
+            )
+        )
+        self.assertTrue(
+            native_build_executor_tool._provider_exports_symbol(  # noqa: SLF001
+                default,
+                "memcpy",
+            )
+        )
+        self.assertTrue(
+            native_build_executor_tool._provider_exports_symbol(  # noqa: SLF001
+                nondefault,
+                "memcpy@LIBC",
+            )
+        )
+        self.assertFalse(
+            native_build_executor_tool._provider_exports_symbol(  # noqa: SLF001
+                nondefault,
+                "memcpy",
+            )
+        )
+        self.assertFalse(
+            native_build_executor_tool._provider_exports_symbol(  # noqa: SLF001
+                default,
+                "memcpy@LIBC_N",
+            )
+        )
 
     def test_android_ident_requires_r29_only_for_built_artifacts(self) -> None:
         parsed = SimpleNamespace(android_ident={"ndkVersion": "r28"})
@@ -512,6 +745,29 @@ class NativeBuildExecutorPolicyTest(unittest.TestCase):
             abi = str(abi_record["name"])
             for library in loaded.profile.build["expectedLibraries"]:
                 name = str(library)
+                audit = {
+                    field: None
+                    for field in native_build_executor_tool.ARTIFACT_AUDIT_FIELDS
+                }
+                audit.update(
+                    {
+                        "soname": name,
+                        "strongUndefinedSymbolCount": 1,
+                        "strongUndefinedSymbolsSha256": "1" * 64,
+                        "undefinedSymbolCount": 2,
+                        "undefinedSymbolsSha256": "2" * 64,
+                        "unresolvedWeakSymbols": [
+                            {
+                                "relocationTypes": ["R_AARCH64_GLOB_DAT"],
+                                "symbol": "memfd_create",
+                                "symbolTypes": ["NOTYPE"],
+                                "symbolVisibilities": ["DEFAULT"],
+                            }
+                        ],
+                        "weakUndefinedSymbolCount": 1,
+                        "weakUndefinedSymbolsSha256": "3" * 64,
+                    }
+                )
                 artifacts.append(
                     native_build_executor_tool.PinnedArtifact(
                         abi=abi,
@@ -527,7 +783,7 @@ class NativeBuildExecutorPolicyTest(unittest.TestCase):
                         logical_path=Path("/fixture") / name,
                         resolved_path=Path("/fixture") / name,
                         logical_signature=(),
-                        audit={"soname": name},
+                        audit=audit,
                     )
                 )
         inputs = SimpleNamespace(
@@ -566,6 +822,34 @@ class NativeBuildExecutorPolicyTest(unittest.TestCase):
         self.assertIs(receipt["artifactAudited"], True)
         self.assertIs(receipt["ready"], False)
         self.assertIs(receipt["releaseInput"], False)
+        first_audit = receipt["artifacts"][0]["audit"]
+        self.assertEqual(
+            native_build_executor_tool.ARTIFACT_AUDIT_FIELDS,
+            tuple(sorted(first_audit)),
+        )
+        self.assertEqual(
+            [
+                {
+                    "relocationTypes": ["R_AARCH64_GLOB_DAT"],
+                    "symbol": "memfd_create",
+                    "symbolTypes": ["NOTYPE"],
+                    "symbolVisibilities": ["DEFAULT"],
+                }
+            ],
+            first_audit["unresolvedWeakSymbols"],
+        )
+
+        complete_audit = artifacts[0].audit
+        artifacts[0].audit = {"soname": artifacts[0].library}
+        with self.assertRaises(source_tool.SourceToolError):
+            native_build_executor_tool._build_receipt_data(  # noqa: SLF001
+                inputs,
+                "a" * 64,
+                execution,
+                artifacts,
+                [],
+            )
+        artifacts[0].audit = complete_audit
 
     def test_build_process_arguments_preserve_exact_descriptor_contract(self) -> None:
         loaded = self.load_policy()

@@ -313,9 +313,10 @@ The retained tree passed the above preflight with the current profile SHA-256
 These are source-materialization inspection results only; WSL remains outside
 accepted release provenance.
 
-The current complete WSL preparation published the fresh, unconsumed workspace
-`/var/tmp/zivplayer-native-build-298845ca4076` with a 5,378-byte receipt whose
-SHA-256 is
+The current complete WSL preparation published the fresh, unconsumed fourth
+workspace
+`/var/tmp/zivplayer-native-build-298845ca4076-weak-audit` with a 5,378-byte
+receipt whose SHA-256 is
 `e51e2e706c3488feabbe1b5482b4d0433db8c823a6a659f2b2483b25b5ff7116`.
 The post-overlay source retained 30,436 entries and 408,192,579 regular-file
 bytes; its tree SHA-256 is
@@ -323,11 +324,11 @@ bytes; its tree SHA-256 is
 An independent verification run passed, and the canonical source/overlay-origin
 hashes remained unchanged. This receipt is only a preparation record:
 `buildExecuted=false`, `ready=false`, and `releaseInput=false`. For this fresh
-preparation, the executor,
-compilation, output staging, ELF/JNI audits, Gradle integration, compliance
-bundles, and native-build receipt remain pending. This mechanism assumes the
-exclusive trusted root-controlled builder boundary stated above; it is not a
-defense against a concurrent hostile root process.
+preparation, build-command execution, compilation, output staging, ELF/JNI
+audits, Gradle integration, compliance bundles, and native-build receipt remain
+pending. This mechanism assumes the exclusive trusted root-controlled builder
+boundary stated above; it is not a defense against a concurrent hostile root
+process.
 
 The executor isolation contract is intentionally stored separately in
 `native/native-executor-policy.toml`, so locking it does not invalidate the
@@ -380,7 +381,7 @@ namespace-probe policy and unchanged transcript, the exact
 native-build profile, the deterministic preparation and composition receipts,
 and four byte-locked launcher/namespace/runner/seccomp helpers. Its policy
 SHA-256 is
-`eb671c17e47b4fc34b2d1974d0b5cbcb7fe8d24975b46100f606f61f559b91a3`.
+`f9d7c4afe5cdf3ff701a9281c4ba92134a3c21512fb8f18e8ecc1addef9feafc`.
 
 This new policy defines build commands, exact allowlist staging, structural
 artifact audit, and canonical build-receipt publication as one closed loop.
@@ -433,16 +434,45 @@ The current path overlay instead pins `INSTALL=/usr/bin/install`, an absolute
 GNU coreutils binary inside the locked APT tree. A disposable configure probe
 against the exact libunibreak source confirmed that both the root and nested
 Makefiles retain this absolute path. This changed the current profile SHA-256
-to `298845ca407684b0ec073036a78602972cbf971d8b9642a19476bf1c1f6ad4cc`;
-the fresh third workspace above has no attempt marker and remains unconsumed.
+to `298845ca407684b0ec073036a78602972cbf971d8b9642a19476bf1c1f6ad4cc`.
 
-The complete WSL `verify-inputs` run passed with preparation receipt
+The third one-shot execution consumed
+`/var/tmp/zivplayer-native-build-298845ca4076` under build policy
+`eb671c17e47b4fc34b2d1974d0b5cbcb7fe8d24975b46100f606f61f559b91a3`.
+Its retained root-owned mode-0600 marker has SHA-256
+`681a0de50104d6a02378d7df13e5fd56e026d4e3cc924de1f8993b8a622aba91`.
+Both ABI commands completed, and staging published the exact 18-library output
+set with 243,407,008 regular-file bytes. The post-build API-26 audit then
+rejected the first affected AArch64 DSO's weak undefined `memfd_create`. The
+executor published neither a build receipt nor a temporary receipt, cleaned
+its processes and cgroup, retained the consumed workspace and non-release
+staged artifacts, and did not rerun it.
+
+The retained ELF and compiler-runtime evidence identifies the reference as an
+NDK 29 `aarch64.c.o` availability probe, not an unguarded libmpv or FFmpeg
+call. It is `NOTYPE WEAK DEFAULT UND` with only `R_AARCH64_GLOB_DAT` in six
+AArch64 DSOs. The resolver checks the GOT entry and returns when it is zero; Android
+8.1's linker zero-fills this unresolved weak relocation. The revised audit
+therefore preserves the API-26 closure requirement for every strong undefined
+symbol, including its requested ELF version. It permits
+`NOTYPE WEAK DEFAULT UND memfd_create` only in AArch64 `libavcodec.so`,
+`libavfilter.so`, `libavformat.so`, `libavutil.so`, `libmpv.so`, and
+`libswscale.so`, and only with the exact `R_AARCH64_GLOB_DAT` relocation set.
+It records each accepted case per artifact and rejects every other library,
+symbol type, unresolved weak symbol, or relocation.
+
+The fresh fourth workspace above has no attempt marker and remains unconsumed.
+
+The complete WSL `verify-inputs` run for that fourth workspace passed with
+preparation receipt
 `e51e2e706c3488feabbe1b5482b4d0433db8c823a6a659f2b2483b25b5ff7116`,
 composition receipt
 `e9b88860b8e6d043a80a7f3d6aa7e3e641574e7da4c66a0541db129a4e081989`,
 and resolved ELF-tool digest
 `5104576a3518575cf1887c2afa9249bbd0dc175cb9dc0f2af0d430fe0cb20bbe`.
-This was still a read-only input check, not an execution attempt.
+Its namespace probe also reproduced the accepted transcript
+`fd251aeb116fd8ced374df5c9887af8dcc3bde03002b4968181421a1682b9f81`.
+These were still read-only checks, not an execution attempt.
 
 A conforming executor consumes a prepared workspace exactly once by
 publishing and syncing a canonical, bounded, root-owned, metadata-normalized,
@@ -472,16 +502,24 @@ reported forms. The policy also requires APT, SDK, canonical source, and
 workspace roots to share the single mapped block device used by the cgroup I/O
 controller.
 
-The artifact audit requires the selected ELF64 machine and `ET_DYN`, one or
-more `PT_LOAD` segments all using `p_align=0x4000` with offset/address
-congruence, unique basename SONAME identities, and a complete `DT_NEEDED`
-resolution over staged SONAMEs or an exact API-26 platform-stub allowlist.
-Undefined platform symbols must resolve against the API-26 NDK stubs. Because
-this profile deliberately excludes the JNI wrapper, any exported `Java_`
-symbol is rejected. Observed SONAME/NEEDED, hashes, sizes, logs, build options,
-overlay hashes, and pending release blockers belong in the non-release receipt;
-they are not guessed in advance. Android ident notes are recorded for all
-artifacts. A note on a newly built library must report NDK major r29; the
+The artifact audit requires exactly one complete `.dynsym` table whose declared
+rows have contiguous zero-based indices. It also requires the selected ELF64
+machine and `ET_DYN`, one or more `PT_LOAD` segments all using
+`p_align=0x4000` with offset/address congruence, unique basename SONAME
+identities, strict whole-line SONAME/NEEDED names without whitespace, brackets,
+or trailing data, and a complete `DT_NEEDED` resolution over staged SONAMEs or
+an exact API-26 platform-stub allowlist. Every strong undefined symbol,
+including its requested ELF version, must resolve through that closure. An
+unresolved weak symbol is accepted only when
+its ABI, library, symbol name, complete symbol-type set, complete visibility
+set, and complete relocation-type set exactly match the locked compiler-runtime
+exception above; each accepted case is recorded per artifact. Because this profile deliberately
+excludes the JNI wrapper, any exported `Java_` symbol is rejected. Observed
+SONAME/NEEDED,
+hashes, sizes, logs, build options, overlay hashes, and pending release blockers
+belong in the non-release receipt; they are not guessed in advance. Android
+ident notes are recorded for all artifacts. A note on a newly built library
+must report NDK major r29; the
 byte-locked prebuilt `libc++_shared.so` carried by the selected NDK 29 package
 reports r28 and remains classified as a locked runtime input, not as a newly
 built library.
@@ -489,7 +527,7 @@ built library.
 The environment status therefore remains
 `roots-and-apt-locked-container-pending`: accepted Android license files,
 redistribution inputs, an accepted release-builder materialization/run, and the
-actual native build/audits are still required. A successful build on an
+successful native build/audits are still required. A successful build on an
 arbitrary workstation or floating hosted runner is not release provenance.
 Windows and the currently configured WSL environment are evidence/inspection
 environments, not accepted native release builders.

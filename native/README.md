@@ -464,9 +464,9 @@ without executing either locked build command:
 
 ```sh
 sudo python3 native/tools/native_build_tool.py prepare \
-  --build-workspace /var/tmp/zivplayer-native-build-298845ca4076
+  --build-workspace /var/tmp/zivplayer-native-build-298845ca4076-weak-audit
 sudo python3 native/tools/native_build_tool.py verify-preparation \
-  --build-workspace /var/tmp/zivplayer-native-build-298845ca4076
+  --build-workspace /var/tmp/zivplayer-native-build-298845ca4076-weak-audit
 ```
 
 Preparation requires an absent destination. It publishes
@@ -488,8 +488,8 @@ The retained tree then passed the locked preflight with profile SHA-256
 These remain WSL inspection results, not accepted release provenance.
 
 The current fresh WSL preparation at
-`/var/tmp/zivplayer-native-build-298845ca4076` produced a 5,378-byte canonical
-receipt with SHA-256
+`/var/tmp/zivplayer-native-build-298845ca4076-weak-audit` produced a 5,378-byte
+canonical receipt with SHA-256
 `e51e2e706c3488feabbe1b5482b4d0433db8c823a6a659f2b2483b25b5ff7116`.
 The post-overlay source has 30,436 entries, 408,192,579 regular-file bytes, and
 tree SHA-256
@@ -499,11 +499,13 @@ still match their upstream hashes. The receipt records `phase=prepared`,
 `buildExecuted=false`, `ready=false`, and `releaseInput=false`.
 
 An accepted namespace-only executor run now exists in the WSL inspection
-environment. Two separate build attempts also exist, but both failed before
-output staging and neither published an ELF/JNI audit or canonical build receipt.
-There is no successful two-command native build, offline Gradle/AAR integration,
-or compliance bundle. Preparation and the probe produced no libmpv library,
-and neither may be reported as an M7E build. These checks assume the ADR's
+environment. Three separate build attempts also exist. The first two failed
+before output staging; the third completed both ABI commands and staging, then
+failed the API-26 symbol audit. None published a canonical build receipt.
+There is no successful closed-loop two-command native build, offline Gradle/AAR
+integration, or compliance bundle. Preparation and the probe produced no
+libmpv library, and neither may be reported as an M7E build. These checks assume
+the ADR's
 exclusive trusted root-controlled builder boundary and do not claim protection
 against a concurrent hostile root process.
 
@@ -528,7 +530,7 @@ build:
 
 ```sh
 sudo python3 native/tools/native_executor_tool.py probe \
-  --build-workspace /var/tmp/zivplayer-native-build-298845ca4076
+  --build-workspace /var/tmp/zivplayer-native-build-298845ca4076-weak-audit
 ```
 
 The locked namespace helper describes an ephemeral overlay root over the APT
@@ -573,7 +575,7 @@ all build/release gates remain unchanged.
 the accepted namespace-probe policy. It binds the exact profile and prepared
 workspace receipt, the current composition receipt, and the accepted probe
 policy/transcript. Its SHA-256 is
-`eb671c17e47b4fc34b2d1974d0b5cbcb7fe8d24975b46100f606f61f559b91a3`.
+`f9d7c4afe5cdf3ff701a9281c4ba92134a3c21512fb8f18e8ecc1addef9feafc`.
 
 Validate this contract without creating an attempt marker, entering a
 namespace, or executing a build:
@@ -581,7 +583,7 @@ namespace, or executing a build:
 ```sh
 python3 native/tools/native_build_executor_tool.py validate
 sudo python3 native/tools/native_build_executor_tool.py verify-inputs \
-  --build-workspace /var/tmp/zivplayer-native-build-298845ca4076
+  --build-workspace /var/tmp/zivplayer-native-build-298845ca4076-weak-audit
 ```
 
 The policy and executor treat build execution, exact allowlist staging,
@@ -596,7 +598,7 @@ consume the prepared workspace:
 
 ```sh
 sudo python3 native/tools/native_build_executor_tool.py execute \
-  --build-workspace /var/tmp/zivplayer-native-build-298845ca4076
+  --build-workspace /var/tmp/zivplayer-native-build-298845ca4076-weak-audit
 ```
 
 The CLI default deliberately remains the original consumed workspace path, so
@@ -638,8 +640,38 @@ The current path overlay pins `INSTALL=/usr/bin/install`, the absolute GNU
 coreutils binary in the locked APT tree. A disposable Autoconf probe against
 the exact libunibreak source confirmed that both top-level and nested Makefiles
 retain the absolute path. The current profile SHA-256 is
-`298845ca407684b0ec073036a78602972cbf971d8b9642a19476bf1c1f6ad4cc`;
-the third workspace above remains unconsumed.
+`298845ca407684b0ec073036a78602972cbf971d8b9642a19476bf1c1f6ad4cc`.
+
+The third invocation consumed
+`/var/tmp/zivplayer-native-build-298845ca4076` under build policy SHA-256
+`eb671c17e47b4fc34b2d1974d0b5cbcb7fe8d24975b46100f606f61f559b91a3`.
+Its retained root-owned mode-0600 marker SHA-256 is
+`681a0de50104d6a02378d7df13e5fd56e026d4e3cc924de1f8993b8a622aba91`.
+Both ABI commands completed, and staging published the exact 18-library output
+set with 243,407,008 regular-file bytes. The API-26 audit then rejected a weak
+undefined `memfd_create` in the first affected AArch64 artifact. No build
+receipt or temporary receipt was published, and process/cgroup cleanup
+completed. The consumed workspace and its non-release staged artifacts remain
+retained and were not rerun.
+
+The retained ELF evidence traces that symbol to the locked NDK 29
+compiler-runtime `aarch64.c.o` availability probe, not an unguarded libmpv or
+FFmpeg call. It is `NOTYPE WEAK DEFAULT UND` with only
+`R_AARCH64_GLOB_DAT` in six
+AArch64 DSOs. The local resolver tests the GOT entry and returns when it is
+zero; the Android 8.1 linker zero-fills this unresolved weak relocation. The
+revised audit still requires every strong undefined symbol to resolve through
+the version-aware staged/API-26 closure. It permits
+`NOTYPE WEAK DEFAULT UND memfd_create` only in AArch64 `libavcodec.so`,
+`libavfilter.so`, `libavformat.so`, `libavutil.so`, `libmpv.so`, and
+`libswscale.so`, and only with the exact `R_AARCH64_GLOB_DAT` relocation set.
+Each accepted case is recorded per artifact; any other library, symbol type,
+weak symbol, or relocation remains an error.
+
+The fresh fourth workspace at
+`/var/tmp/zivplayer-native-build-298845ca4076-weak-audit` remains unconsumed.
+Its preparation, independent preparation verification, namespace probe, and
+build-executor input verification have passed without running a build command.
 
 The complete WSL read-only check passed for preparation receipt
 `e51e2e706c3488feabbe1b5482b4d0433db8c823a6a659f2b2483b25b5ff7116`,
@@ -682,13 +714,21 @@ but only within its pinned directory and the policy's bounded filesystem delta.
 
 Staging resolves each source symlink inside its locked prefix and copies only
 the nine expected regular-library bytes per ABI into no-replace output trees.
-The audit requires ELF64 `ET_DYN` and the profile machine for each
-ABI; at least one `PT_LOAD`, with every `PT_LOAD` aligned to exactly `0x4000`
-and `p_offset`/`p_vaddr` congruent; a unique basename SONAME per artifact; and a
-complete per-ABI `DT_NEEDED` closure over staged SONAMEs or the locked API-26
-platform-stub allowlist. Undefined platform symbols must resolve against the
-API-26 NDK stubs. This stack-only phase also records `Java_` exports and rejects
-any such export because the ZivPlayer JNI wrapper is still absent. Android
+The audit requires exactly one complete `.dynsym` table whose declared rows
+have contiguous zero-based indices. It also requires ELF64 `ET_DYN` and the
+profile machine for each ABI; at least one `PT_LOAD`, with every `PT_LOAD`
+aligned to exactly `0x4000` and `p_offset`/`p_vaddr` congruent; a unique basename
+SONAME per artifact; strict whole-line SONAME/NEEDED names without whitespace,
+brackets, or trailing data; and a complete per-ABI `DT_NEEDED` closure over
+staged SONAMEs or the locked API-26 platform-stub allowlist. Every strong
+undefined symbol, including its requested ELF version, must resolve through
+that closure. An unresolved weak symbol is
+accepted only when its ABI, library, symbol name, complete symbol-type set,
+complete visibility set, and complete relocation-type set exactly match the
+locked compiler-runtime exception described above; the receipt records each
+accepted weak reference.
+This stack-only phase also records `Java_` exports and rejects any such export
+because the ZivPlayer JNI wrapper is still absent. Android
 ident notes are recorded for every artifact; an ident on a newly built library
 must report NDK major r29. The byte-locked NDK 29 package's prebuilt
 `libc++_shared.so` reports r28 and is accepted as a locked runtime input rather
@@ -700,8 +740,8 @@ hashes, ELF/SONAME/NEEDED/API-26
 observations, overlay/build options, and explicit pending release blockers. It
 remains a non-release inspection receipt even after successful execution. No
 attempt marker, build, staging, ELF/JNI audit, or receipt publication has yet
-occurred on the third workspace. The two older failed attempts are retained as
-described above; the third workspace has passed preparation, namespace, and
+occurred on the fourth workspace. All three failed attempts are retained as
+described above; the fourth workspace has passed preparation, namespace, and
 input verification without being consumed.
 
 ## Locked build baseline

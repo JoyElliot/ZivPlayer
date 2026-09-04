@@ -190,15 +190,15 @@ sudo python3 native/tools/composition_tool.py verify
 python3 native/tools/native_build_tool.py validate
 sudo python3 native/tools/native_build_tool.py preflight
 sudo python3 native/tools/native_build_tool.py prepare \
-  --build-workspace /var/tmp/zivplayer-native-build-298845ca4076
+  --build-workspace /var/tmp/zivplayer-native-build-298845ca4076-weak-audit
 sudo python3 native/tools/native_build_tool.py verify-preparation \
-  --build-workspace /var/tmp/zivplayer-native-build-298845ca4076
+  --build-workspace /var/tmp/zivplayer-native-build-298845ca4076-weak-audit
 python3 native/tools/native_executor_tool.py validate
 sudo python3 native/tools/native_executor_tool.py probe \
-  --build-workspace /var/tmp/zivplayer-native-build-298845ca4076
+  --build-workspace /var/tmp/zivplayer-native-build-298845ca4076-weak-audit
 python3 native/tools/native_build_executor_tool.py validate
 sudo python3 native/tools/native_build_executor_tool.py verify-inputs \
-  --build-workspace /var/tmp/zivplayer-native-build-298845ca4076
+  --build-workspace /var/tmp/zivplayer-native-build-298845ca4076-weak-audit
 python3 native/tools/toolchain_tool.py check-lock
 ```
 
@@ -246,8 +246,8 @@ authorizes build-command execution, artifact staging, ELF audit, JNI wrapper,
 Gradle integration, or a build receipt.
 
 The current fresh WSL inspection preparation at
-`/var/tmp/zivplayer-native-build-298845ca4076` produced a 5,378-byte receipt
-with SHA-256
+`/var/tmp/zivplayer-native-build-298845ca4076-weak-audit` produced a
+5,378-byte receipt with SHA-256
 `e51e2e706c3488feabbe1b5482b4d0433db8c823a6a659f2b2483b25b5ff7116`.
 The prepared post-overlay source retains 30,436 entries and has tree SHA-256
 `72678d1096e844777a6bb7008fee5e3dd1690c0612a6854cdb293b10001d1602`.
@@ -298,18 +298,45 @@ that both root and nested Makefiles preserve this absolute path. The current
 profile SHA-256 is
 `298845ca407684b0ec073036a78602972cbf971d8b9642a19476bf1c1f6ad4cc`.
 
+The third one-shot attempt consumed
+`/var/tmp/zivplayer-native-build-298845ca4076` under build policy
+`eb671c17e47b4fc34b2d1974d0b5cbcb7fe8d24975b46100f606f61f559b91a3`.
+Its retained mode-0600 attempt marker has SHA-256
+`681a0de50104d6a02378d7df13e5fd56e026d4e3cc924de1f8993b8a622aba91`.
+Both ABI commands completed and staging published the exact 18-library output
+set (243,407,008 regular-file bytes), proving the Git and recursive-install
+repairs. The post-build API-26 audit then stopped at the first AArch64 DSO
+because the then-current policy required the weak undefined `memfd_create`
+probe from NDK 29 compiler-rt to resolve through the API-26 closure. The
+workspace retains those non-release staged artifacts, but no build receipt or
+temporary receipt was published and all executor processes and cgroups were
+removed.
+
+The retained ELF evidence identifies `memfd_create` as
+`NOTYPE WEAK DEFAULT UND` with
+only `R_AARCH64_GLOB_DAT` in six AArch64 DSOs. The locked compiler-rt resolver
+loads that GOT entry and branches away when it is zero; the Android 8.1 linker
+contract zero-fills this unresolved weak relocation on API 26. The revised
+audit therefore still resolves every strong undefined symbol through the
+version-aware staged/API-26 closure, but permits
+`NOTYPE WEAK DEFAULT UND memfd_create` only in AArch64 `libavcodec.so`,
+`libavfilter.so`, `libavformat.so`, `libavutil.so`, `libmpv.so`, and
+`libswscale.so`, and only with the exact `R_AARCH64_GLOB_DAT` relocation set.
+Each accepted case is recorded per artifact; any other library, symbol type,
+unresolved weak symbol, or relocation remains an error.
+
 The refreshed closed-loop inspection-build contract remains separate from the
 accepted probe policy. `native-build-executor-policy.toml` binds the exact
 profile, preparation/composition receipts, accepted probe policy/transcript,
 one-shot workspace state, two-command order, bounded logs, exact artifact
 allowlist, API-26/ELF/16-KiB audits, and a canonical non-release build receipt.
 Its policy SHA-256 is
-`eb671c17e47b4fc34b2d1974d0b5cbcb7fe8d24975b46100f606f61f559b91a3`.
+`f9d7c4afe5cdf3ff701a9281c4ba92134a3c21512fb8f18e8ecc1addef9feafc`.
 The tool exposes read-only `validate` and Linux-root `verify-inputs`, plus an
 explicit one-shot `execute` that implements the complete marker, two-command
-lifecycle, staging, audit, and non-release receipt transaction. The refreshed
-workspace has not yet been consumed: no build attempt marker, command,
-artifact, audit result, or build receipt has been created.
+lifecycle, staging, audit, and non-release receipt transaction. The fourth
+workspace has not yet been consumed: no build attempt marker, build-command
+execution, artifact, audit result, or build receipt has been created.
 The complete WSL input check passed with preparation receipt
 `e51e2e706c3488feabbe1b5482b4d0433db8c823a6a659f2b2483b25b5ff7116`,
 composition receipt
