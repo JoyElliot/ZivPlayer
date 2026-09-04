@@ -369,10 +369,10 @@ The smoke transcript SHA-256 was
 These are inspection results under an exclusive root-controlled host boundary,
 not accepted release provenance.
 
-See [`native/README.md`](native/README.md) and
-[`ADR 0010`](docs/adr/0010-source-built-libmpv-and-native-provenance.md). The
-native cache is ignored; source identity remains reviewable in the committed
-manifest.
+See [`native/README.md`](native/README.md),
+[`ADR 0010`](docs/adr/0010-source-built-libmpv-and-native-provenance.md), and
+[`ADR 0011`](docs/adr/0011-typed-per-instance-libmpv-jni-bridge.md). The native
+cache is ignored; source identity remains reviewable in the committed manifest.
 
 The local M0-M6 quality gate is:
 

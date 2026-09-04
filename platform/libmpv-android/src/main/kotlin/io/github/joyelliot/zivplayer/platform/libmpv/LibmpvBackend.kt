@@ -4,7 +4,6 @@ package io.github.joyelliot.zivplayer.platform.libmpv
 
 import android.content.Context
 import android.view.Surface
-import dev.jdtech.mpv.MPVLib
 import io.github.joyelliot.zivplayer.core.model.Milliseconds
 import io.github.joyelliot.zivplayer.core.model.PlaybackRatePermille
 import io.github.joyelliot.zivplayer.core.model.TrackId
@@ -30,14 +29,19 @@ import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
 /**
- * Android-only bootstrap adapter for the reviewed libmpv AAR.
+ * Android-only adapter from the typed ZivPlayer player port to [MpvClient].
  *
  * The player session serializes backend commands. Native callbacks and Surface
- * lifecycle calls may arrive on other threads, so every MPVLib call also passes
+ * lifecycle calls may arrive on other threads, so every client call also passes
  * through [nativeGate]. Events enter one lossless channel so seek completion
  * cannot overtake an earlier position sample.
  */
-class LibmpvBackend(context: Context) : PlayerBackend, LibmpvSurfacePort {
+class LibmpvBackend internal constructor(
+    context: Context,
+    private val clientFactory: MpvClientFactory,
+) : PlayerBackend, LibmpvSurfacePort {
+    constructor(context: Context) : this(context, BootstrapMpvClient)
+
     private val applicationContext = context.applicationContext
     private val nativeEvents = Channel<BackendEvent>(capacity = Channel.UNLIMITED)
 
@@ -65,7 +69,7 @@ class LibmpvBackend(context: Context) : PlayerBackend, LibmpvSurfacePort {
     private var lastBufferedPosition: Milliseconds? = null
 
     @Volatile
-    private var instance: MPVLib? = null
+    private var instance: MpvClient? = null
 
     @Volatile
     private var closed = false
@@ -73,12 +77,30 @@ class LibmpvBackend(context: Context) : PlayerBackend, LibmpvSurfacePort {
     @Volatile
     private var nativeUnusable = false
 
-    private val observer = object : MPVLib.EventObserver {
-        override fun eventProperty(property: String) = Unit
+    /** Guarded by [nativeGate]; retained until native teardown succeeds. */
+    private var pendingDestroy: MpvClient? = null
 
-        override fun eventProperty(property: String, value: Long) = Unit
+    /** Guarded by [lifecycleGate]; paired with [pendingDestroy]. */
+    private var pendingObserverRemoval = false
 
-        override fun eventProperty(property: String, value: Double) {
+    /** Guarded by [nativeGate]; true once a native Surface attach was attempted. */
+    private var surfaceAttachmentAttempted = false
+
+    private val observer = object : MpvClient.Observer {
+        override fun onPropertyChanged(change: MpvPropertyChange) {
+            val property = change.name
+            when (val value = change.value) {
+                is MpvPropertyValue.DoubleValue -> onDoubleProperty(property, value.value)
+                is MpvPropertyValue.Flag -> onFlagProperty(property, value.value)
+                is MpvPropertyValue.Int64,
+                is MpvPropertyValue.StringValue,
+                is MpvPropertyValue.Unsupported,
+                MpvPropertyValue.Unavailable,
+                -> Unit
+            }
+        }
+
+        private fun onDoubleProperty(property: String, value: Double) {
             when (property) {
                 PROPERTY_POSITION -> lastPosition = value.toMilliseconds() ?: return
                 PROPERTY_DURATION -> lastDuration = value.toMilliseconds()
@@ -88,7 +110,7 @@ class LibmpvBackend(context: Context) : PlayerBackend, LibmpvSurfacePort {
             emitPosition()
         }
 
-        override fun eventProperty(property: String, value: Boolean) {
+        private fun onFlagProperty(property: String, value: Boolean) {
             val generation = generationFence.activeGeneration() ?: return
             when (property) {
                 PROPERTY_PAUSED -> emitActiveSemantic(
@@ -110,16 +132,15 @@ class LibmpvBackend(context: Context) : PlayerBackend, LibmpvSurfacePort {
             }
         }
 
-        override fun eventProperty(property: String, value: String) = Unit
-
-        override fun event(eventId: Int) {
-            when (eventId) {
-                MPVLib.MpvEvent.MPV_EVENT_START_FILE -> {
+        override fun onEvent(event: MpvClientEvent) {
+            when (event.type) {
+                MpvEventType.START_FILE -> {
                     if (generationFence.onStartFile() != null) {
                         fileLoadedGeneration = null
                     }
                 }
-                MPVLib.MpvEvent.MPV_EVENT_FILE_LOADED -> {
+
+                MpvEventType.FILE_LOADED -> {
                     val generation = generationFence.activeGeneration() ?: return
                     fileLoadedGeneration = generation
                     val duration = readPropertyDouble(PROPERTY_DURATION)?.toMilliseconds()
@@ -133,7 +154,7 @@ class LibmpvBackend(context: Context) : PlayerBackend, LibmpvSurfacePort {
                     )
                 }
 
-                MPVLib.MpvEvent.MPV_EVENT_PLAYBACK_RESTART -> {
+                MpvEventType.PLAYBACK_RESTART -> {
                     val generation = generationFence.activeGeneration() ?: return
                     armSeekCompletion(generation)
                     if (readPropertyBoolean(PROPERTY_PAUSED) == false) {
@@ -141,30 +162,17 @@ class LibmpvBackend(context: Context) : PlayerBackend, LibmpvSurfacePort {
                     }
                 }
 
-                MPVLib.MpvEvent.MPV_EVENT_END_FILE -> {
+                MpvEventType.END_FILE -> {
                     val generation = generationFence.onEndFile()
                     val fileWasLoaded = generation != null && fileLoadedGeneration == generation
                     fileLoadedGeneration = null
                     resetSeekCorrelation()
                     if (generation != null) {
-                        emitSemantic(
-                            if (fileWasLoaded) {
-                                BackendEvent.Ended(generation)
-                            } else {
-                                BackendEvent.Failure(
-                                    generation = generation,
-                                    error = PlayerError(
-                                        kind = PlayerErrorKind.SOURCE_UNAVAILABLE,
-                                        message = "libmpv ended before the media was prepared.",
-                                        recovery = ErrorRecovery.RETRY,
-                                    ),
-                                )
-                            },
-                        )
+                        emitSemantic(endFileEvent(generation, fileWasLoaded, event))
                     }
                 }
 
-                MPVLib.MpvEvent.MPV_EVENT_QUEUE_OVERFLOW -> {
+                MpvEventType.QUEUE_OVERFLOW -> {
                     val generation = generationFence.failCurrent() ?: return
                     fileLoadedGeneration = null
                     resetSeekCorrelation()
@@ -179,6 +187,8 @@ class LibmpvBackend(context: Context) : PlayerBackend, LibmpvSurfacePort {
                         ),
                     )
                 }
+
+                else -> Unit
             }
         }
     }
@@ -206,7 +216,7 @@ class LibmpvBackend(context: Context) : PlayerBackend, LibmpvSurfacePort {
         } catch (failure: Throwable) {
             generationFence.cancelLoad(request.generation)
             resetSeekCorrelation()
-            runCatching { withPlayer { it.command(arrayOf(COMMAND_STOP)) } }
+            runCatching { withExistingPlayer { it.command(arrayOf(COMMAND_STOP)) } }
             throw failure
         }
     }
@@ -280,90 +290,141 @@ class LibmpvBackend(context: Context) : PlayerBackend, LibmpvSurfacePort {
     }
 
     override fun detachSurface(lease: LibmpvSurfaceLease) = nativeGate.withLock {
-        surfaceController.detach(lease)
+        if (!closed) {
+            surfaceController.detach(lease)
+        }
     }
 
-    override suspend fun close() = lifecycleGate.withLock {
-        var playerToDestroy: MPVLib? = null
-        var closeFailure: Throwable? = null
-        var didClose = false
+    override suspend fun close() = lifecycleGate.withLock closeLock@{
+        var playerToDestroy: MpvClient? = null
+        var surfaceFailure: Throwable? = null
+        var firstClose = false
 
         nativeGate.withLock {
-            if (closed) {
-                return@withLock
+            if (closed && pendingDestroy == null) {
+                return@closeLock
             }
-            didClose = true
+
+            if (!closed) {
+                firstClose = true
+                closed = true
+                pendingDestroy = instance
+                pendingObserverRemoval = instance != null
+                instance = null
+            }
+
             runCatching { surfaceController.close() }
                 .exceptionOrNull()
-                ?.let { closeFailure = it }
-            closed = true
-            playerToDestroy = instance
-            instance = null
-        }
-        if (!didClose) {
-            return@withLock
+                ?.let { surfaceFailure = it }
+            playerToDestroy = pendingDestroy
         }
 
-        generationFence.close()
-        resetSeekCorrelation()
-        resetPlaybackState(Milliseconds.ZERO)
+        if (firstClose) {
+            generationFence.close()
+            resetSeekCorrelation()
+            resetPlaybackState(Milliseconds.ZERO)
+        }
 
-        // removeObserver() takes the same Java monitor that libmpv holds while
-        // invoking this observer, and destroy() joins that event thread. The
-        // adapter is first quiesced under nativeGate; both calls then run
-        // outside it so callbacks can observe `closed` and leave without a
-        // monitor/nativeGate or join/nativeGate cycle.
+        // A client may synchronize observer removal with its event pump, and
+        // destroy() may join that thread. Quiesce under nativeGate, then run
+        // both operations outside it so callbacks can observe `closed` and
+        // leave without a callback/nativeGate or join/nativeGate cycle.
+        var teardownFailure: Throwable? = surfaceFailure
         playerToDestroy?.let { player ->
-            runCatching { player.removeObserver(observer) }
-                .exceptionOrNull()
-                ?.let { failure ->
-                    closeFailure?.addSuppressed(failure) ?: run { closeFailure = failure }
+            val observerFailure = if (pendingObserverRemoval) {
+                runCatching { player.removeObserver(observer) }
+                    .onSuccess { pendingObserverRemoval = false }
+                    .exceptionOrNull()
+            } else {
+                null
+            }
+            observerFailure?.let {
+                teardownFailure = combineFailures(teardownFailure, it)
+            }
+            val destroyFailure = runCatching { player.destroy() }.exceptionOrNull()
+            if (destroyFailure == null) {
+                nativeGate.withLock {
+                    if (pendingDestroy === player) {
+                        pendingDestroy = null
+                        pendingObserverRemoval = false
+                        surfaceAttachmentAttempted = false
+                    }
                 }
-            runCatching { player.destroy() }
-                .exceptionOrNull()
-                ?.let { failure ->
-                    closeFailure?.addSuppressed(failure) ?: run { closeFailure = failure }
-                }
+            } else {
+                teardownFailure = combineFailures(teardownFailure, destroyFailure)
+            }
         }
-        nativeEvents.close()
-        closeFailure?.let { throw it }
+
+        if (firstClose) {
+            nativeEvents.close()
+        }
+        teardownFailure?.let { throw it }
         Unit
     }
 
-    private inline fun <Result> withPlayer(block: (MPVLib) -> Result): Result =
+    private inline fun <Result> withPlayer(block: (MpvClient) -> Result): Result =
         nativeGate.withLock {
             check(!closed) { "The libmpv backend is closed." }
             check(!nativeUnusable) { "The libmpv backend requires recreation." }
             block(requireInstanceLocked())
         }
 
-    private fun requireInstanceLocked(): MPVLib {
+    private inline fun <Result> withExistingPlayer(block: (MpvClient) -> Result): Result? =
+        nativeGate.withLock {
+            if (closed || nativeUnusable) {
+                null
+            } else {
+                instance?.let(block)
+            }
+        }
+
+    private fun requireInstanceLocked(): MpvClient {
         check(!closed) { "The libmpv backend is closed." }
         instance?.let { return it }
 
-        val player = checkNotNull(MPVLib.create(applicationContext)) {
+        val player = checkNotNull(clientFactory.create(applicationContext)) {
             "The libmpv instance could not be created."
         }
         try {
             player.addObserver(observer)
-            check(player.setOptionString(OPTION_CONFIG, OPTION_DISABLED) >= 0) {
-                "The libmpv configuration policy could not be applied."
-            }
-            check(player.setOptionString(OPTION_FORCE_WINDOW, OPTION_ENABLED) >= 0) {
-                "The libmpv render policy could not be applied."
-            }
-            player.init()
-            player.observeProperty(PROPERTY_POSITION, MPVLib.MpvFormat.MPV_FORMAT_DOUBLE)
-            player.observeProperty(PROPERTY_DURATION, MPVLib.MpvFormat.MPV_FORMAT_DOUBLE)
-            player.observeProperty(PROPERTY_BUFFERED_POSITION, MPVLib.MpvFormat.MPV_FORMAT_DOUBLE)
-            player.observeProperty(PROPERTY_PAUSED, MPVLib.MpvFormat.MPV_FORMAT_FLAG)
-            player.observeProperty(PROPERTY_BUFFERING, MPVLib.MpvFormat.MPV_FORMAT_FLAG)
-            player.observeProperty(PROPERTY_SEEKING, MPVLib.MpvFormat.MPV_FORMAT_FLAG)
+            player.setOptionString(OPTION_CONFIG, OPTION_DISABLED)
+            player.setOptionString(OPTION_FORCE_WINDOW, OPTION_ENABLED)
+            player.initialize()
+            player.observeProperty(
+                PROPERTY_POSITION,
+                MpvPropertyFormat.DOUBLE,
+                OBSERVER_POSITION,
+            )
+            player.observeProperty(
+                PROPERTY_DURATION,
+                MpvPropertyFormat.DOUBLE,
+                OBSERVER_DURATION,
+            )
+            player.observeProperty(
+                PROPERTY_BUFFERED_POSITION,
+                MpvPropertyFormat.DOUBLE,
+                OBSERVER_BUFFERED_POSITION,
+            )
+            player.observeProperty(
+                PROPERTY_PAUSED,
+                MpvPropertyFormat.FLAG,
+                OBSERVER_PAUSED,
+            )
+            player.observeProperty(
+                PROPERTY_BUFFERING,
+                MpvPropertyFormat.FLAG,
+                OBSERVER_BUFFERING,
+            )
+            player.observeProperty(
+                PROPERTY_SEEKING,
+                MpvPropertyFormat.FLAG,
+                OBSERVER_SEEKING,
+            )
         } catch (failure: Throwable) {
-            // Cleanup cannot safely run while nativeGate is held: MPVLib keeps
-            // its observer monitor during callbacks and destroy joins that
-            // event thread. Retain the partial instance as unusable; close()
-            // performs the two-phase cleanup after the caller receives RESET.
+            // Cleanup cannot safely run while nativeGate is held: a client may
+            // synchronize observer callbacks and join its event pump during
+            // destroy. Retain the partial instance as unusable; close()
+            // performs two-phase cleanup after the caller receives RESET.
             instance = player
             nativeUnusable = true
             throw failure
@@ -445,6 +506,49 @@ class LibmpvBackend(context: Context) : PlayerBackend, LibmpvSurfacePort {
         }
     }
 
+    private fun endFileEvent(
+        generation: LoadGeneration,
+        fileWasLoaded: Boolean,
+        event: MpvClientEvent,
+    ): BackendEvent = when (event.endReason) {
+        MpvEndFileReason.ERROR -> BackendEvent.Failure(
+            generation = generation,
+            error = PlayerError(
+                kind = PlayerErrorKind.SOURCE_UNAVAILABLE,
+                message = "libmpv could not play the media (error ${event.endErrorCode}).",
+                recovery = ErrorRecovery.RETRY,
+            ),
+        )
+
+        MpvEndFileReason.QUIT,
+        MpvEndFileReason.REDIRECT,
+        MpvEndFileReason.UNKNOWN,
+        -> BackendEvent.Failure(
+            generation = generation,
+            error = PlayerError(
+                kind = PlayerErrorKind.BACKEND_OPERATION_FAILED,
+                message = "libmpv ended playback for an unsupported reason.",
+                recovery = ErrorRecovery.RESET,
+            ),
+        )
+
+        MpvEndFileReason.EOF,
+        MpvEndFileReason.STOP,
+        null,
+        -> if (fileWasLoaded) {
+            BackendEvent.Ended(generation)
+        } else {
+            BackendEvent.Failure(
+                generation = generation,
+                error = PlayerError(
+                    kind = PlayerErrorKind.SOURCE_UNAVAILABLE,
+                    message = "libmpv ended before the media was prepared.",
+                    recovery = ErrorRecovery.RETRY,
+                ),
+            )
+        }
+    }
+
     private fun readPropertyDouble(property: String): Double? = nativeGate.withLock {
         if (closed || nativeUnusable) null else instance?.getPropertyDouble(property)
     }
@@ -454,11 +558,18 @@ class LibmpvBackend(context: Context) : PlayerBackend, LibmpvSurfacePort {
     }
 
     private fun attachSurfaceLocked(surface: Surface) {
-        requireInstanceLocked().attachSurface(surface)
+        val player = requireInstanceLocked()
+        surfaceAttachmentAttempted = true
+        player.attachSurface(surface)
     }
 
     private fun detachSurfaceLocked() {
-        instance?.detachSurface()
+        if (!surfaceAttachmentAttempted) {
+            return
+        }
+        val player = instance ?: pendingDestroy ?: return
+        player.detachSurface()
+        surfaceAttachmentAttempted = false
     }
 
     private fun Double.toMilliseconds(): Milliseconds? {
@@ -471,10 +582,26 @@ class LibmpvBackend(context: Context) : PlayerBackend, LibmpvSurfacePort {
     private fun Milliseconds.toSecondsString(): String =
         (value.toDouble() / MILLIS_PER_SECOND).toString()
 
+    private fun Throwable.addSuppressedDistinct(failure: Throwable) {
+        if (failure !== this) {
+            addSuppressed(failure)
+        }
+    }
+
+    private fun combineFailures(primary: Throwable?, additional: Throwable): Throwable =
+        primary?.also { it.addSuppressedDistinct(additional) } ?: additional
+
     private companion object {
         const val MILLIS_PER_SECOND = 1_000.0
         const val PERMILLE_DIVISOR = 1_000.0
         const val NATIVE_STOP_TIMEOUT_MILLIS = 5_000L
+
+        const val OBSERVER_POSITION = 1L
+        const val OBSERVER_DURATION = 2L
+        const val OBSERVER_BUFFERED_POSITION = 3L
+        const val OBSERVER_PAUSED = 4L
+        const val OBSERVER_BUFFERING = 5L
+        const val OBSERVER_SEEKING = 6L
 
         const val COMMAND_LOAD_FILE = "loadfile"
         const val COMMAND_SEEK = "seek"
