@@ -117,8 +117,8 @@ destination = "buildscripts/buildall.sh"
 replacement = "native/overlays/mpv-android-api26/buildscripts/buildall.sh"
 originalSize = 4679
 originalSha256 = "9e8b09babfe6f191811b7af371e025b16b56684aaaf58703248d69480b8bd308"
-replacementSize = 4183
-replacementSha256 = "0920060842c7ec763cae80a5d1b054446377f02055359d2b76a24d1c954d3920"
+replacementSize = 5441
+replacementSha256 = "787fce5ab83b2043ddfa42548599ab533869e1c348e3ee2a7fb583fd91e7227a"
 originalMode = 493
 replacementMode = 493
 

@@ -98,7 +98,7 @@ The source-built pipeline must build native code with Android API 26 and
 package only `arm64-v8a` and `x86_64`. This deliberately raises the still
 unmodified upstream native API 23 baseline to the application's minimum API
 and does not add compatibility work for lower Android releases. The adaptation
-has not yet been built or accepted.
+has not yet completed a successful build or been accepted.
 
 The native linker baseline requires 16 KiB maximum page-size alignment and the
 adapted JNI build must enable flexible page sizes. NDK behavior or flags alone
@@ -308,20 +308,22 @@ SHA-256
 `05a19a0fc8d11c88903c663783ebca00c0201f656fa54b580ab47a75fa746ee6`,
 and byte-identical receipt SHA-256
 `e2ea14b6eea0c2f692a321853473f04dad2f1f3199d017bfffc733a858523c04`.
-The retained tree passed the above preflight with profile SHA-256
-`538fe37887840c4e23acdb189d3464878dd006dfc42f6e4c4565490f88252413`.
-These are inspection results only. No native library was built, and WSL remains
-outside accepted release provenance.
+The retained tree passed the above preflight with the current profile SHA-256
+`ac17ad61199c3761d5cc484f5ec258a55912981f2d1af83ce7587ee91e013915`.
+These are source-materialization inspection results only; WSL remains outside
+accepted release provenance.
 
-One complete WSL preparation published `/var/tmp/zivplayer-native-build` with a
-5,378-byte receipt whose SHA-256 is
-`eff4993d2c1a079564f8da458eb2fc3bb7ee234716d8ce2380ee4c5e59de49f5`.
-The post-overlay source retained 30,436 entries and 408,191,312 regular-file
+The current complete WSL preparation published the fresh, unconsumed workspace
+`/var/tmp/zivplayer-native-build-ac17ad61199c` with a 5,378-byte receipt whose
+SHA-256 is
+`e6417aed653b9056f580dd1c46a8b6b1e043a11695ddd99010aa243e62d4a4f6`.
+The post-overlay source retained 30,436 entries and 408,192,570 regular-file
 bytes; its tree SHA-256 is
-`bdabef1dc6032963422aad7576ab8ea45a5f5393d5a304b5273f94fbaabb2d2d`.
+`82d2873588c7669bb8e51dfe87934e366d527dba09fd73f5db59529f506e2874`.
 An independent verification run passed, and the canonical source/overlay-origin
 hashes remained unchanged. This receipt is only a preparation record:
-`buildExecuted=false`, `ready=false`, and `releaseInput=false`. The executor,
+`buildExecuted=false`, `ready=false`, and `releaseInput=false`. For this fresh
+preparation, the executor,
 compilation, output staging, ELF/JNI audits, Gradle integration, compliance
 bundles, and native-build receipt remain pending. This mechanism assumes the
 exclusive trusted root-controlled builder boundary stated above; it is not a
@@ -355,7 +357,7 @@ the child sets a parent-death signal before validating and entering its cgroup.
 
 The canonical executor passed this namespace-only probe in the current WSL
 inspection environment with policy SHA-256
-`fe3db9f8397e2cacd96077228b5dabc8fb9fa788492d523beea62da0530b17b9`
+`c270ab6ca37ae9d19d4c7dc1bde172f7194258c7eb5647d58f9dae84532370de`
 and exact six-record transcript SHA-256
 `fd251aeb116fd8ced374df5c9887af8dcc3bde03002b4968181421a1682b9f81`.
 Pre/post identities were unchanged, the output/HOME/temporary trees remained
@@ -372,13 +374,13 @@ after proving `populated 0` and zero descendants. Stronger protection against
 hostile root or host-binary replacement would require a separately reviewed
 native trampoline and host-image identity and is outside this phase.
 
-The actual inspection-build contract is now stored separately in
-`native/native-build-executor-policy.toml`; it does not revise the accepted
-namespace-probe bytes or transcript. It binds that probe evidence, the exact
+The actual inspection-build contract is stored separately in
+`native/native-build-executor-policy.toml`. It binds the current accepted
+namespace-probe policy and unchanged transcript, the exact
 native-build profile, the deterministic preparation and composition receipts,
 and four byte-locked launcher/namespace/runner/seccomp helpers. Its policy
 SHA-256 is
-`d0cf43cedfa73a41f4a4cd0aebe144321bbd01c2d7431c7035551d87f472e329`.
+`b1b0f9499bf7452ca5228f16e2371209cfc5fb7c1f58f7299d427164fee8302d`.
 
 This new policy defines build commands, exact allowlist staging, structural
 artifact audit, and canonical build-receipt publication as one closed loop.
@@ -389,12 +391,34 @@ current `native_build_executor_tool.py` exposes static `validate`, read-only
 the complete prepared input, preparation/composition receipt bytes, and locked
 ELF audit tool without entering a namespace. The execution path implements the
 full marker, two-command lifecycle, staging, audit, and non-release receipt
-transaction, but has not yet been invoked on the retained workspace. No attempt
-marker, build command, artifact, audit result, or build receipt has yet been
-produced.
+transaction.
+
+The first one-shot execution consumed the earlier retained workspace
+`/var/tmp/zivplayer-native-build` under build policy
+`d0cf43cedfa73a41f4a4cd0aebe144321bbd01c2d7431c7035551d87f472e329`.
+Its root-owned mode-0600 attempt marker has SHA-256
+`f6e7fb1e87737c0361565f0e24a5cf43086201a2fc72a80b7f227986cb3931c8`.
+The arm64 mbedTLS and dav1d steps completed, but libxml2 Meson setup stopped at
+`buildscripts/deps/libxml2/_build_arm64/meson-logs/meson-setup.txt:19`
+because the isolated toolchain intentionally had no `git` command; x86_64 was
+never started. The executor cleaned its process and cgroup, left the output
+tree empty, published no build receipt, and retained the consumed workspace as
+failure evidence. It was not rerun.
+
+The repaired profile installs one exact fail-closed `git` stub in the locked
+source-tool directory and verifies that it resolves from the isolated `PATH`.
+Its complete bytes are `#!/bin/sh`, newline,
+`exit 127`, newline (19 bytes), its SHA-256 is
+`c07d6c0d3d6f1bcd8396ab432e050a0578f73e7e644c5c3fd230386c1294cb75`,
+and it is a root-owned, mode-0500 regular file. This lets optional upstream
+version probes observe an unavailable VCS without admitting ambient Git,
+repository discovery, or network access. The replacement changed the profile
+SHA-256 to
+`ac17ad61199c3761d5cc484f5ec258a55912981f2d1af83ce7587ee91e013915`;
+the fresh workspace above has no attempt marker and remains unconsumed.
 
 The complete WSL `verify-inputs` run passed with preparation receipt
-`eff4993d2c1a079564f8da458eb2fc3bb7ee234716d8ce2380ee4c5e59de49f5`,
+`e6417aed653b9056f580dd1c46a8b6b1e043a11695ddd99010aa243e62d4a4f6`,
 composition receipt
 `e9b88860b8e6d043a80a7f3d6aa7e3e641574e7da4c66a0541db129a4e081989`,
 and resolved ELF-tool digest

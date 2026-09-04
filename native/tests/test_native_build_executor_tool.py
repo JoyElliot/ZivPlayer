@@ -47,6 +47,17 @@ class NativeBuildExecutorPolicyTest(unittest.TestCase):
         self.assertEqual(source_tool.EXIT_SCHEMA, raised.exception.exit_code)
         self.assertIn(fragment, str(raised.exception))
 
+    def test_failure_diagnostic_tail_is_bounded_and_never_blank(self) -> None:
+        self.assertEqual("<empty>", native_build_executor_tool._diagnostic_tail(b""))  # noqa: SLF001
+        self.assertEqual(
+            "x" * 4096,
+            native_build_executor_tool._diagnostic_tail(b"prefix" + (b"x" * 4096)),  # noqa: SLF001
+        )
+        self.assertEqual(
+            "�message",
+            native_build_executor_tool._diagnostic_tail(b"\xffmessage\n"),  # noqa: SLF001
+        )
+
     def test_committed_policy_binds_closed_loop_without_release_gate(self) -> None:
         loaded = self.load_policy()
         self.assertEqual(native_build_executor_tool.EXPECTED_POLICY_SHA256, loaded.sha256)

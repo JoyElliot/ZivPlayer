@@ -85,6 +85,42 @@ loadarch () {
 	export PKG_CONFIG_LIBDIR="$PKG_CONFIG_SYSROOT_DIR/lib/pkgconfig"
 }
 
+install_git_stub () {
+	local git_stub="$source_tool_bin/git"
+	local expected_sha256=c07d6c0d3d6f1bcd8396ab432e050a0578f73e7e644c5c3fd230386c1294cb75
+	local metadata
+
+	if [[ -L "$source_tool_bin" || ! -d "$source_tool_bin" ]]; then
+		echo "locked source-tool directory is missing or unsafe: $source_tool_bin" >&2
+		return 1
+	fi
+	if [[ "$(/usr/bin/stat -c '%a:%u:%g' -- "$source_tool_bin")" != "755:0:0" ]]; then
+		echo "locked source-tool directory metadata differs: $source_tool_bin" >&2
+		return 1
+	fi
+	if [[ -L "$git_stub" || ( -e "$git_stub" && ! -f "$git_stub" ) ]]; then
+		echo "locked git stub path is unsafe: $git_stub" >&2
+		return 1
+	fi
+	if [[ ! -e "$git_stub" ]]; then
+		(umask 077; printf '#!/bin/sh\nexit 127\n' >"$git_stub")
+		chmod 0500 -- "$git_stub"
+	fi
+	metadata=$(/usr/bin/stat -c '%a:%u:%g:%h:%s' -- "$git_stub")
+	if [[ "$metadata" != "500:0:0:1:19" ]]; then
+		echo "locked git stub metadata differs: $git_stub" >&2
+		return 1
+	fi
+	if [[ "$(/usr/bin/sha256sum "$git_stub")" != "$expected_sha256  $git_stub" ]]; then
+		echo "locked git stub digest differs: $git_stub" >&2
+		return 1
+	fi
+	if [[ "$(command -v git)" != "$git_stub" ]]; then
+		echo "an unexpected git executable precedes the locked stub" >&2
+		return 1
+	fi
+}
+
 setup_prefix () {
 	local prefix_root="$PWD/prefix"
 	if [[ -L "$prefix_root" || ( -e "$prefix_root" && ! -d "$prefix_root" ) ]]; then
@@ -167,6 +203,7 @@ arch=$2
 
 loadndk
 loadarch "$arch"
+install_git_stub
 setup_prefix
 build "$target"
 

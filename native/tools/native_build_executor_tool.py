@@ -70,7 +70,7 @@ BUILD_RECEIPT_FIELDS = (
     "schemaVersion",
 )
 EXPECTED_POLICY_SHA256 = (
-    "d0cf43cedfa73a41f4a4cd0aebe144321bbd01c2d7431c7035551d87f472e329"
+    "b1b0f9499bf7452ca5228f16e2371209cfc5fb7c1f58f7299d427164fee8302d"
 )
 HELPER_KEYS = (
     ("launcherPath", "launcherSha256"),
@@ -86,12 +86,12 @@ EXPECTED_POLICY: dict[str, object] = json.loads(
     "kind": "ziv-native-build-executor-policy-v1",
     "binding": {
         "profileName": "ziv-libmpv-stack-api26-v1",
-        "profileSha256": "538fe37887840c4e23acdb189d3464878dd006dfc42f6e4c4565490f88252413",
+        "profileSha256": "ac17ad61199c3761d5cc484f5ec258a55912981f2d1af83ce7587ee91e013915",
         "namespaceProbePolicyPath": "native/native-executor-policy.toml",
-        "namespaceProbePolicySha256": "fe3db9f8397e2cacd96077228b5dabc8fb9fa788492d523beea62da0530b17b9",
+        "namespaceProbePolicySha256": "c270ab6ca37ae9d19d4c7dc1bde172f7194258c7eb5647d58f9dae84532370de",
         "namespaceProbeTranscriptSha256": "fd251aeb116fd8ced374df5c9887af8dcc3bde03002b4968181421a1682b9f81",
         "preparationReceiptKind": "ziv-native-build-preparation-v1",
-        "preparationReceiptSha256": "eff4993d2c1a079564f8da458eb2fc3bb7ee234716d8ce2380ee4c5e59de49f5",
+        "preparationReceiptSha256": "e6417aed653b9056f580dd1c46a8b6b1e043a11695ddd99010aa243e62d4a4f6",
         "toolchainCompositionReceiptSha256": "e9b88860b8e6d043a80a7f3d6aa7e3e641574e7da4c66a0541db129a4e081989",
         "hostPlatform": "linux/amd64",
         "toolchainMount": "/opt/zivplayer/toolchain",
@@ -1642,6 +1642,10 @@ def _build_process_arguments(
     return argv, pass_fds
 
 
+def _diagnostic_tail(buffer: bytes | bytearray) -> str:
+    return bytes(buffer[-4096:]).decode("utf-8", "replace").strip() or "<empty>"
+
+
 def _run_locked_build(inputs: PinnedBuildInputs) -> BuildExecutionResult:
     _assert_pinned_build_inputs(inputs, strict_workspace=False)
     _assert_host_resource_limits(inputs.policy)
@@ -1789,9 +1793,11 @@ def _run_locked_build(inputs: PinnedBuildInputs) -> BuildExecutionResult:
         if failure is None:
             return_code = process.wait(timeout=10)
             if return_code != 0:
-                tail = bytes(stderr_buffer[-4096:]).decode("utf-8", "replace").strip()
+                stdout_tail = _diagnostic_tail(stdout_buffer)
+                stderr_tail = _diagnostic_tail(stderr_buffer)
                 failure = source_tool.SourceToolError(
-                    f"locked native build exited {return_code}; stderr tail: {tail}",
+                    f"locked native build exited {return_code}; "
+                    f"stdout tail: {stdout_tail}; stderr tail: {stderr_tail}",
                     source_tool.EXIT_INTEGRITY,
                 )
             else:

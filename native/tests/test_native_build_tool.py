@@ -8,7 +8,9 @@ import hashlib
 import io
 import json
 import os
+import shutil
 import stat
+import subprocess
 import sys
 import tempfile
 import tomllib
@@ -60,6 +62,91 @@ class NativeBuildProfileTest(unittest.TestCase):
         self.assertEqual(2, len(loaded.overlays))
         self.assertFalse(loaded.project["releaseReady"])
         self.assertEqual("pending-source-wrapper", loaded.build["jniWrapperStatus"])
+
+    def test_buildall_overlay_installs_only_the_locked_fail_closed_git_stub(self) -> None:
+        buildall = (
+            REPOSITORY_ROOT
+            / "native"
+            / "overlays"
+            / "mpv-android-api26"
+            / "buildscripts"
+            / "buildall.sh"
+        ).read_bytes()
+        path_helper = (
+            REPOSITORY_ROOT
+            / "native"
+            / "overlays"
+            / "mpv-android-api26"
+            / "buildscripts"
+            / "include"
+            / "path.sh"
+        ).read_bytes()
+        stub = b"#!/bin/sh\nexit 127\n"
+        stub_sha256 = hashlib.sha256(stub).hexdigest().encode("ascii")
+
+        self.assertIn(b"printf '#!/bin/sh\\nexit 127\\n'", buildall)
+        self.assertEqual(1, buildall.count(stub_sha256))
+        self.assertIn(b'500:0:0:1:19', buildall)
+        self.assertIn(b'"$(command -v git)" != "$git_stub"', buildall)
+        self.assertIn(b"loadarch \"$arch\"\ninstall_git_stub\nsetup_prefix", buildall)
+        self.assertIn(b"$source_tool_bin:/usr/sbin:/usr/bin:/sbin:/bin", path_helper)
+
+    @unittest.skipUnless(sys.platform == "linux", "requires Meson on Linux")
+    def test_fail_closed_git_stub_allows_an_optional_meson_probe(self) -> None:
+        meson = shutil.which("meson")
+        environment = dict(os.environ)
+        if meson is not None:
+            meson_command = [meson]
+        else:
+            site_packages = (
+                native_build_tool.DEFAULT_SDK_ROOT / "python" / "site-packages"
+            )
+            try:
+                locked_meson_available = site_packages.is_dir()
+            except OSError as error:
+                self.skipTest(f"the locked Meson package cannot be inspected: {error}")
+            if not locked_meson_available:
+                self.skipTest("the locked Meson package is unavailable")
+            environment["PYTHONPATH"] = str(site_packages)
+            meson_command = [
+                sys.executable,
+                "-B",
+                "-c",
+                (
+                    "from mesonbuild.mesonmain import main; import sys; "
+                    "sys.argv[0] = 'meson'; raise SystemExit(main())"
+                ),
+            ]
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "source"
+            build = root / "build"
+            tools = root / "tools"
+            source.mkdir()
+            tools.mkdir()
+            (source / "meson.build").write_text(
+                "project('ziv-git-probe')\n"
+                "r = run_command('git', 'describe', check: false)\n"
+                "assert(r.returncode() == 127, 'git stub did not fail closed')\n",
+                encoding="utf-8",
+            )
+            git_stub = tools / "git"
+            git_stub.write_bytes(b"#!/bin/sh\nexit 127\n")
+            git_stub.chmod(0o500)
+            locked_bin = native_build_tool.DEFAULT_APT_ROOT / "usr" / "bin"
+            environment["PATH"] = f"{tools}:{locked_bin}:/usr/bin:/bin"
+            completed = subprocess.run(
+                [*meson_command, "setup", str(build), str(source)],
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=environment,
+            )
+            self.assertEqual(
+                0,
+                completed.returncode,
+                (completed.stdout + completed.stderr).decode("utf-8", "replace"),
+            )
 
     def test_top_level_and_nested_keys_are_exact(self) -> None:
         data = committed_data()

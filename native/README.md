@@ -459,17 +459,19 @@ sudo python3 native/tools/native_build_tool.py preflight \
   --source-workspace /var/tmp/zivplayer-native-source
 ```
 
-Prepare and then independently verify the default build workspace without
-executing either locked build command:
+Prepare and then independently verify the current freshly named build workspace
+without executing either locked build command:
 
 ```sh
-sudo python3 native/tools/native_build_tool.py prepare
-sudo python3 native/tools/native_build_tool.py verify-preparation
+sudo python3 native/tools/native_build_tool.py prepare \
+  --build-workspace /var/tmp/zivplayer-native-build-ac17ad61199c
+sudo python3 native/tools/native_build_tool.py verify-preparation \
+  --build-workspace /var/tmp/zivplayer-native-build-ac17ad61199c
 ```
 
 Preparation requires an absent destination. It publishes
-`/var/tmp/zivplayer-native-build` only after a fresh root-owned same-filesystem
-tree passes full verification. Ordinary files have independent identities,
+the requested workspace only after a fresh root-owned same-filesystem tree
+passes full verification. Ordinary files have independent identities,
 hardlinks and nested mounts are rejected, the two symlink texts are preserved,
 the byte-locked overlays are applied atomically only to the copy, and
 `output`/`home`/`tmp` remain empty. The canonical source is re-verified before
@@ -482,32 +484,33 @@ and the same 30,436-entry tree. That tree contains 29,238 regular files, 1,196
 directories, and two symlinks; its SHA-256 is
 `05a19a0fc8d11c88903c663783ebca00c0201f656fa54b580ab47a75fa746ee6`.
 The retained tree then passed the locked preflight with profile SHA-256
-`538fe37887840c4e23acdb189d3464878dd006dfc42f6e4c4565490f88252413`.
+`ac17ad61199c3761d5cc484f5ec258a55912981f2d1af83ce7587ee91e013915`.
 These remain WSL inspection results, not accepted release provenance.
 
-One complete WSL preparation produced a 5,378-byte canonical receipt with
-SHA-256
-`eff4993d2c1a079564f8da458eb2fc3bb7ee234716d8ce2380ee4c5e59de49f5`.
-The post-overlay source has 30,436 entries, 408,191,312 regular-file bytes, and
+The current fresh WSL preparation at
+`/var/tmp/zivplayer-native-build-ac17ad61199c` produced a 5,378-byte canonical
+receipt with SHA-256
+`e6417aed653b9056f580dd1c46a8b6b1e043a11695ddd99010aa243e62d4a4f6`.
+The post-overlay source has 30,436 entries, 408,192,570 regular-file bytes, and
 tree SHA-256
-`bdabef1dc6032963422aad7576ab8ea45a5f5393d5a304b5273f94fbaabb2d2d`.
+`82d2873588c7669bb8e51dfe87934e366d527dba09fd73f5db59529f506e2874`.
 An independent verification command passed; the original overlay destinations
 still match their upstream hashes. The receipt records `phase=prepared`,
 `buildExecuted=false`, `ready=false`, and `releaseInput=false`.
 
 An accepted namespace-only executor run now exists in the WSL inspection
-environment. There is still no build command execution, output staging,
-ELF/JNI audit, canonical build receipt, offline Gradle/AAR integration, or
-compliance bundle. No libmpv library was produced by preparation or the probe,
-and neither success may be reported as an M7E build. These checks assume the
-ADR's exclusive trusted root-controlled builder boundary and do not claim
-protection against a concurrent hostile root process.
+environment. A separate first build attempt also exists, but it failed before
+output staging and did not publish an ELF/JNI audit or canonical build receipt.
+There is no successful two-command native build, offline Gradle/AAR integration,
+or compliance bundle. Preparation and the probe produced no libmpv library,
+and neither may be reported as an M7E build. These checks assume the ADR's
+exclusive trusted root-controlled builder boundary and do not claim protection
+against a concurrent hostile root process.
 
 ## Locked namespace-probe policy
 
-`native-executor-policy.toml` is a separate, exact contract for the next
-executor step. Keeping it separate from `native-build-profile.toml` preserves
-the already-published preparation receipt while binding that profile's exact
+`native-executor-policy.toml` is a separate, exact contract for the
+namespace-only executor step. It binds the current build profile's exact
 SHA-256, logical mount paths, empty inherited environment plus fixed variables,
 timeout and output limits, cgroup/resource envelope, namespace properties, and
 four byte-locked launcher/namespace/probe/seccomp helpers. Its current phase is
@@ -524,7 +527,8 @@ Run only the namespace probe as Linux root; this still does not execute a
 build:
 
 ```sh
-sudo python3 native/tools/native_executor_tool.py probe
+sudo python3 native/tools/native_executor_tool.py probe \
+  --build-workspace /var/tmp/zivplayer-native-build-ac17ad61199c
 ```
 
 The locked namespace helper describes an ephemeral overlay root over the APT
@@ -546,7 +550,7 @@ capacity before launch and blocks `SIGINT`, `SIGTERM`, and `SIGHUP` until
 cleanup completes.
 
 The accepted WSL inspection run used policy SHA-256
-`fe3db9f8397e2cacd96077228b5dabc8fb9fa788492d523beea62da0530b17b9`
+`c270ab6ca37ae9d19d4c7dc1bde172f7194258c7eb5647d58f9dae84532370de`
 and produced the exact six-record transcript with SHA-256
 `fd251aeb116fd8ced374df5c9887af8dcc3bde03002b4968181421a1682b9f81`.
 It confirmed the private mount/network/PID/UTS/IPC namespace, declared mounts,
@@ -569,14 +573,15 @@ all build/release gates remain unchanged.
 the accepted namespace-probe policy. It binds the exact profile and prepared
 workspace receipt, the current composition receipt, and the accepted probe
 policy/transcript. Its SHA-256 is
-`d0cf43cedfa73a41f4a4cd0aebe144321bbd01c2d7431c7035551d87f472e329`.
+`b1b0f9499bf7452ca5228f16e2371209cfc5fb7c1f58f7299d427164fee8302d`.
 
 Validate this contract without creating an attempt marker, entering a
 namespace, or executing a build:
 
 ```sh
 python3 native/tools/native_build_executor_tool.py validate
-sudo python3 native/tools/native_build_executor_tool.py verify-inputs
+sudo python3 native/tools/native_build_executor_tool.py verify-inputs \
+  --build-workspace /var/tmp/zivplayer-native-build-ac17ad61199c
 ```
 
 The policy and executor treat build execution, exact allowlist staging,
@@ -590,14 +595,34 @@ target without entering a namespace. `execute` is the only command that may
 consume the prepared workspace:
 
 ```sh
-sudo python3 native/tools/native_build_executor_tool.py execute
+sudo python3 native/tools/native_build_executor_tool.py execute \
+  --build-workspace /var/tmp/zivplayer-native-build-ac17ad61199c
 ```
 
-Adding this command is not execution evidence; it has not yet been invoked on
-the retained prepared workspace.
+The CLI default deliberately remains the original consumed workspace path, so
+current prepared workspaces must be selected explicitly and cannot be consumed
+by an omitted argument.
+
+The first invocation consumed the older `/var/tmp/zivplayer-native-build`
+workspace under policy SHA-256
+`d0cf43cedfa73a41f4a4cd0aebe144321bbd01c2d7431c7035551d87f472e329`.
+Its retained marker SHA-256 is
+`f6e7fb1e87737c0361565f0e24a5cf43086201a2fc72a80b7f227986cb3931c8`.
+The arm64 command built and installed mbedTLS and dav1d, then Meson 1.11 failed
+at `libxml2/meson.build:19` because its optional `git describe` program was not
+present in the closed PATH. The x86_64 command was not started. The output tree
+remained empty, no build receipt was published, and no executor process or
+cgroup remained. That consumed workspace is retained unchanged for diagnosis.
+
+The refreshed `buildall.sh` overlay installs and re-verifies a 19-byte,
+root-owned, mode-0500, single-link `git` stub with exact SHA-256
+`c07d6c0d3d6f1bcd8396ab432e050a0578f73e7e644c5c3fd230386c1294cb75`.
+It always exits 127: optional snapshot-version probes fall back deterministically
+without importing ambient Git or network access, while required Git behavior
+still fails closed. The refreshed workspace above remains unconsumed.
 
 The complete WSL read-only check passed for preparation receipt
-`eff4993d2c1a079564f8da458eb2fc3bb7ee234716d8ce2380ee4c5e59de49f5`,
+`e6417aed653b9056f580dd1c46a8b6b1e043a11695ddd99010aa243e62d4a4f6`,
 composition receipt
 `e9b88860b8e6d043a80a7f3d6aa7e3e641574e7da4c66a0541db129a4e081989`,
 and resolved ELF-tool digest
@@ -655,8 +680,9 @@ hashes, ELF/SONAME/NEEDED/API-26
 observations, overlay/build options, and explicit pending release blockers. It
 remains a non-release inspection receipt even after successful execution. No
 attempt marker, build, staging, ELF/JNI audit, or receipt publication has yet
-occurred on the retained workspace; this step implements and tests the executor
-without consuming it.
+occurred on the refreshed workspace. The older failed attempt is retained as
+described above; the refreshed workspace has passed preparation, namespace, and
+input verification without being consumed.
 
 ## Locked build baseline
 
@@ -692,8 +718,8 @@ implemented and have been run against the complete locked cache in inspection
 mode. The separate byte-locked namespace probe has also passed through the
 canonical executor in inspection mode. The next native milestones must:
 
-1. implement the locked offline inspection-build policy to run the two exact
-   commands, audit outputs, and publish a no-replace canonical build receipt;
+1. complete the fresh workspace through the implemented locked inspection-build
+   policy, audit its outputs, and publish a no-replace canonical build receipt;
 2. close the portable offline Gradle artifact set before any Android wrapper
    build;
 3. adapt and harden the Kotlin/JNI wrapper inside `platform:libmpv-android`;
