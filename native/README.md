@@ -337,9 +337,9 @@ have a canonical standalone projection, and a separate composition receipt now
 proves its fixed ephemeral binding to the installed APT environment. The SDK
 receipt itself intentionally remains standalone with
 `aptEnvironmentBound=false`. Accepted Android license files, system notices,
-the retention bundle, canonical source build, and corresponding source-manifest
-container status remain pending. Do not change those status fields to
-`complete` without the named evidence.
+the retention bundle, an accepted release-builder source build and audit, and
+corresponding source-manifest container status remain pending. Do not change
+those status fields to `complete` without the named evidence.
 
 The standalone SDK projection is prepared and verified with:
 
@@ -459,10 +459,12 @@ sudo python3 native/tools/native_build_tool.py preflight \
   --source-workspace /var/tmp/zivplayer-native-source
 ```
 
-Prepare and then independently verify the current freshly named build workspace
-without executing either locked build command:
+The fourth workspace was prepared and independently verified with the commands
+below before it was consumed. These exact invocations are retained as
+historical evidence and must not be rerun against that path:
 
 ```sh
+# HISTORICAL - DO NOT RUN AGAINST THIS CONSUMED PATH
 sudo python3 native/tools/native_build_tool.py prepare \
   --build-workspace /var/tmp/zivplayer-native-build-298845ca4076-weak-audit
 sudo python3 native/tools/native_build_tool.py verify-preparation \
@@ -487,7 +489,7 @@ The retained tree then passed the locked preflight with profile SHA-256
 `298845ca407684b0ec073036a78602972cbf971d8b9642a19476bf1c1f6ad4cc`.
 These remain WSL inspection results, not accepted release provenance.
 
-The current fresh WSL preparation at
+The fourth WSL preparation at
 `/var/tmp/zivplayer-native-build-298845ca4076-weak-audit` produced a 5,378-byte
 canonical receipt with SHA-256
 `e51e2e706c3488feabbe1b5482b4d0433db8c823a6a659f2b2483b25b5ff7116`.
@@ -499,13 +501,15 @@ still match their upstream hashes. The receipt records `phase=prepared`,
 `buildExecuted=false`, `ready=false`, and `releaseInput=false`.
 
 An accepted namespace-only executor run now exists in the WSL inspection
-environment. Three separate build attempts also exist. The first two failed
+environment. Four separate build attempts also exist. The first two failed
 before output staging; the third completed both ABI commands and staging, then
-failed the API-26 symbol audit. None published a canonical build receipt.
-There is no successful closed-loop two-command native build, offline Gradle/AAR
-integration, or compliance bundle. Preparation and the probe produced no
-libmpv library, and neither may be reported as an M7E build. These checks assume
-the ADR's
+failed the API-26 symbol audit. The fourth completed the two-command build,
+exact staging, structural audit, and canonical non-release receipt
+publication. There is still no accepted release-builder build, offline
+Gradle/AAR integration, or compliance bundle. Preparation and the namespace
+probe alone produced no libmpv library and must not be reported as build
+evidence; only the fourth inspection receipt closes that non-release loop.
+These checks assume the ADR's
 exclusive trusted root-controlled builder boundary and do not claim protection
 against a concurrent hostile root process.
 
@@ -525,10 +529,11 @@ Validate this contract without entering a namespace or executing a build:
 python3 native/tools/native_executor_tool.py validate
 ```
 
-Run only the namespace probe as Linux root; this still does not execute a
-build:
+The fourth workspace received this namespace-only probe before execution. The
+command is historical and must not be rerun against the consumed path:
 
 ```sh
+# HISTORICAL - DO NOT RUN AGAINST THIS CONSUMED PATH
 sudo python3 native/tools/native_executor_tool.py probe \
   --build-workspace /var/tmp/zivplayer-native-build-298845ca4076-weak-audit
 ```
@@ -557,9 +562,10 @@ and produced the exact six-record transcript with SHA-256
 `fd251aeb116fd8ced374df5c9887af8dcc3bde03002b4968181421a1682b9f81`.
 It confirmed the private mount/network/PID/UTS/IPC namespace, declared mounts,
 fixed environment, loopback-only network, zero capabilities, `no_new_privs`,
-seccomp, descriptor isolation, unchanged workspace, and closed build gate. The
-run left no executor cgroup or process; the output, HOME, and temporary trees
-remained empty. It did not execute a compiler or `buildall.sh`.
+seccomp, descriptor isolation, unchanged workspace, and the namespace-probe
+policy's closed build gate. The run left no executor cgroup or process; the
+output, HOME, and temporary trees remained empty. It did not execute a compiler
+or `buildall.sh`.
 
 This remains inspection evidence, not accepted release-builder provenance.
 The host Python interpreter, system tools, kernel, and hard host termination are
@@ -567,7 +573,8 @@ inside the trusted-host boundary rather than byte-locked executor inputs. A
 hard host failure or a cgroup-removal error can retain one precisely named empty
 `.zivplayer-apt-*` cgroup; an operator must prove `populated 0` and zero
 descendants before removing that exact directory. The verified preparation and
-all build/release gates remain unchanged.
+namespace-probe gates remained unchanged by that probe. The later fourth
+one-shot inspection build is recorded separately below.
 
 ## Locked offline inspection-build contract
 
@@ -582,6 +589,13 @@ namespace, or executing a build:
 
 ```sh
 python3 native/tools/native_build_executor_tool.py validate
+```
+
+Before consumption, the fourth workspace also passed this exact read-only
+input check:
+
+```sh
+# HISTORICAL - DO NOT RUN AGAINST THIS CONSUMED PATH
 sudo python3 native/tools/native_build_executor_tool.py verify-inputs \
   --build-workspace /var/tmp/zivplayer-native-build-298845ca4076-weak-audit
 ```
@@ -594,12 +608,16 @@ closed loop. All four capabilities must succeed together; `ready` and
 `verify-inputs` rechecks the complete prepared inputs, the exact
 preparation/composition receipt bytes, and the resolved locked `llvm-readelf`
 target without entering a namespace. `execute` is the only command that may
-consume the prepared workspace:
+consume a prepared workspace. The exact fourth invocation was:
 
 ```sh
+# HISTORICAL - DO NOT RUN AGAINST THIS CONSUMED PATH
 sudo python3 native/tools/native_build_executor_tool.py execute \
   --build-workspace /var/tmp/zivplayer-native-build-298845ca4076-weak-audit
 ```
+
+That path is now permanently consumed; neither `verify-inputs` nor `execute`
+may be rerun against it.
 
 The CLI default deliberately remains the original consumed workspace path, so
 current prepared workspaces must be selected explicitly and cannot be consumed
@@ -668,18 +686,37 @@ the version-aware staged/API-26 closure. It permits
 Each accepted case is recorded per artifact; any other library, symbol type,
 weak symbol, or relocation remains an error.
 
-The fresh fourth workspace at
-`/var/tmp/zivplayer-native-build-298845ca4076-weak-audit` remains unconsumed.
-Its preparation, independent preparation verification, namespace probe, and
-build-executor input verification have passed without running a build command.
-
-The complete WSL read-only check passed for preparation receipt
+Before consumption, the complete WSL read-only check passed for preparation
+receipt
 `e51e2e706c3488feabbe1b5482b4d0433db8c823a6a659f2b2483b25b5ff7116`,
 composition receipt
 `e9b88860b8e6d043a80a7f3d6aa7e3e641574e7da4c66a0541db129a4e081989`,
 and resolved ELF-tool digest
 `5104576a3518575cf1887c2afa9249bbd0dc175cb9dc0f2af0d430fe0cb20bbe`.
 That check opened no namespace and ran no build command.
+
+The fourth invocation then consumed
+`/var/tmp/zivplayer-native-build-298845ca4076-weak-audit` under the current
+policy. Its canonical root-owned mode-0600, 1,434-byte attempt marker has
+SHA-256
+`44d94fe0c293b3480d316ca4603fc8e4842cb995a9967bcc0ad84bcf66854015`.
+Both fixed ABI commands completed in order with runner exit code 0, and staging
+published exactly 18 root-owned single-link regular libraries totalling
+243,407,008 bytes. All staged sizes and SHA-256 values match the receipt, and
+all 18 files are byte-identical to the third attempt's retained output.
+
+The complete ELF/API-26/16-KiB audit passed. It resolved every strong undefined
+symbol through the version-aware staged/platform closure and recorded exactly
+the six permitted AArch64 `memfd_create` references, each as `NOTYPE`,
+`DEFAULT`, and `R_AARCH64_GLOB_DAT`; no x86_64 exception was needed. The
+canonical root-owned mode-0644, 72,674-byte build receipt has SHA-256
+`7d5dc92f4d4ccd55f2340814d6bce071133560178f294c907a86f251dabd4d3e`.
+It records `buildExecuted=true`, `artifactStaged=true`, and
+`artifactAudited=true`, while `ready=false` and `releaseInput=false` remain
+closed. Its pending blockers are the source wrapper, offline closure, accepted
+actual build graph, and release gate. Post-run verification found exactly the
+seven expected workspace-root entries, no temporary receipt, empty HOME/TMP,
+no residual executor process, and no `.zivplayer-apt-*` cgroup.
 
 Execution is single-attempt. Before launching, it publishes and
 syncs a canonical, bounded, root-owned, metadata-normalized, no-replace attempt
@@ -738,11 +775,9 @@ The receipt records exact command order, bounded log sizes and
 digests, parent-observed command events, cgroup/filesystem outcomes, artifact
 hashes, ELF/SONAME/NEEDED/API-26
 observations, overlay/build options, and explicit pending release blockers. It
-remains a non-release inspection receipt even after successful execution. No
-attempt marker, build, staging, ELF/JNI audit, or receipt publication has yet
-occurred on the fourth workspace. All three failed attempts are retained as
-described above; the fourth workspace has passed preparation, namespace, and
-input verification without being consumed.
+remains a non-release inspection receipt after successful execution. All three
+failed attempts remain retained as described above; the consumed fourth
+workspace and its successful non-release receipt are retained without rerun.
 
 ## Locked build baseline
 
@@ -767,26 +802,28 @@ APT stage and standalone Android/Python projection now have reproducible
 offline materializers, and their exact read-only composition has passed the
 fixed isolated smoke profile in inspection mode. This is not yet a release-
 grade installed container: accepted Android license files, redistribution
-evidence, an accepted release-builder materialization/run, the actual native
-build, and its artifact audits are still required before native artifacts can
-be accepted.
+evidence, and an accepted release-builder materialization/run with native
+artifact audits are still required before native artifacts can be accepted.
+The completed fourth WSL build and audit are non-release inspection evidence.
 
 ## Remaining native gates
 
 Traversal-safe offline materialization and fixed toolchain composition are now
 implemented and have been run against the complete locked cache in inspection
 mode. The separate byte-locked namespace probe has also passed through the
-canonical executor in inspection mode. The next native milestones must:
+canonical executor in inspection mode, and the fourth WSL one-shot build has
+published its successful non-release receipt. The next native milestones must:
 
-1. complete the fresh workspace through the implemented locked inspection-build
-   policy, audit its outputs, and publish a no-replace canonical build receipt;
+1. reproduce the source build and artifact audit on the accepted release
+   builder and publish release-eligible provenance rather than reusing the
+   fourth inspection receipt;
 2. close the portable offline Gradle artifact set before any Android wrapper
    build;
 3. adapt and harden the Kotlin/JNI wrapper inside `platform:libmpv-android`;
-4. build both selected ABIs at native API 26 in that environment;
-5. record every build option and patch hash;
-6. audit ELF class, machine, SONAME/NEEDED, 16 KiB LOAD alignment, and exported
-   JNI symbols;
+4. package both selected API-26 ABIs and prove their Gradle/APK native closure;
+5. retain every release-builder option and patch hash;
+6. repeat the ELF class, machine, SONAME/NEEDED, 16 KiB LOAD-alignment, and JNI
+   export audits on the accepted wrapper-inclusive outputs;
 7. produce per-artifact hashes, SBOM, notices, and complete corresponding
    source; and
 8. prove the release APK contains no `dev.jdtech.mpv:libmpv:1.0.0` bootstrap

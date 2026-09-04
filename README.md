@@ -98,10 +98,11 @@ either build command or compile native code.
 
 These WSL runs are inspection evidence rather than accepted release
 provenance. The SDK tree is deliberately marked as a standalone mountable
-projection, not a release input: binding it to the verified APT environment,
-accepted Android license evidence, an accepted release-builder source/build
-run, source-built wrapper and libraries, ELF audit, SBOM, system notices, retention/
-corresponding-source bundles, and bootstrap-AAR retirement remain pending.
+projection, not a release input: its accepted release-input binding to the
+verified APT environment, accepted Android license evidence, an accepted
+release-builder source/build run and artifact audit, the source-built wrapper,
+SBOM, system notices, retention/corresponding-source bundles, and bootstrap-AAR
+retirement remain pending.
 
 ## Baseline
 
@@ -189,18 +190,16 @@ sudo python3 native/tools/composition_tool.py compose-and-smoke
 sudo python3 native/tools/composition_tool.py verify
 python3 native/tools/native_build_tool.py validate
 sudo python3 native/tools/native_build_tool.py preflight
-sudo python3 native/tools/native_build_tool.py prepare \
-  --build-workspace /var/tmp/zivplayer-native-build-298845ca4076-weak-audit
-sudo python3 native/tools/native_build_tool.py verify-preparation \
-  --build-workspace /var/tmp/zivplayer-native-build-298845ca4076-weak-audit
 python3 native/tools/native_executor_tool.py validate
-sudo python3 native/tools/native_executor_tool.py probe \
-  --build-workspace /var/tmp/zivplayer-native-build-298845ca4076-weak-audit
 python3 native/tools/native_build_executor_tool.py validate
-sudo python3 native/tools/native_build_executor_tool.py verify-inputs \
-  --build-workspace /var/tmp/zivplayer-native-build-298845ca4076-weak-audit
 python3 native/tools/toolchain_tool.py check-lock
 ```
+
+The retained fourth inspection workspace named below is consumed and must not
+be passed to `prepare`, `verify-preparation`, `probe`, `verify-inputs`, or
+`execute` again. Commands that create or consume another one-shot workspace
+are intentionally omitted from this reusable verification list; a later
+attempt must use a new absent path and an explicitly reviewed execution plan.
 
 The preparation script refuses to replace an existing ignored APT cache. Move
 or remove that cache deliberately before regenerating it. `check-lock` is the
@@ -245,7 +244,7 @@ readiness, and release input explicitly disabled. The probe itself never
 authorizes build-command execution, artifact staging, ELF audit, JNI wrapper,
 Gradle integration, or a build receipt.
 
-The current fresh WSL inspection preparation at
+The initial preparation of the fourth WSL inspection workspace at
 `/var/tmp/zivplayer-native-build-298845ca4076-weak-audit` produced a
 5,378-byte receipt with SHA-256
 `e51e2e706c3488feabbe1b5482b4d0433db8c823a6a659f2b2483b25b5ff7116`.
@@ -334,15 +333,33 @@ Its policy SHA-256 is
 `f9d7c4afe5cdf3ff701a9281c4ba92134a3c21512fb8f18e8ecc1addef9feafc`.
 The tool exposes read-only `validate` and Linux-root `verify-inputs`, plus an
 explicit one-shot `execute` that implements the complete marker, two-command
-lifecycle, staging, audit, and non-release receipt transaction. The fourth
-workspace has not yet been consumed: no build attempt marker, build-command
-execution, artifact, audit result, or build receipt has been created.
-The complete WSL input check passed with preparation receipt
+lifecycle, staging, audit, and non-release receipt transaction. Before the
+fourth workspace was consumed, the complete WSL input check passed with
+preparation receipt
 `e51e2e706c3488feabbe1b5482b4d0433db8c823a6a659f2b2483b25b5ff7116`,
 composition receipt
 `e9b88860b8e6d043a80a7f3d6aa7e3e641574e7da4c66a0541db129a4e081989`,
 and resolved ELF-tool digest
 `5104576a3518575cf1887c2afa9249bbd0dc175cb9dc0f2af0d430fe0cb20bbe`.
+
+The fourth one-shot attempt then completed successfully under the current
+policy. Its canonical 1,434-byte, mode-0600 attempt marker has SHA-256
+`44d94fe0c293b3480d316ca4603fc8e4842cb995a9967bcc0ad84bcf66854015`.
+Both ABI commands ran in their fixed order and exited successfully; staging
+published exactly 18 regular libraries totalling 243,407,008 bytes. The
+complete structural audit passed, including the version-aware API-26 strong
+symbol closure, 16-KiB load alignment, dependency/SONAME checks, and the six
+exact AArch64 weak-reference records described above. The resulting canonical
+72,674-byte non-release receipt has SHA-256
+`7d5dc92f4d4ccd55f2340814d6bce071133560178f294c907a86f251dabd4d3e`
+and records `buildExecuted=true`, `artifactStaged=true`, and
+`artifactAudited=true`, while retaining `ready=false` and
+`releaseInput=false`. All 18 outputs are byte-identical to the third attempt's
+retained output, and post-run checks found no temporary receipt, executor
+process, or cgroup. The receipt's exact pending blockers remain
+`pending-source-wrapper`, `pending-offline-closure`,
+`pending-actual-build-graph`, and `pending-release-gate`; these include the
+accepted release-builder and compliance work still required for publication.
 
 Two final WSL inspection runs of the fixed composition profile produced
 byte-identical receipts with SHA-256

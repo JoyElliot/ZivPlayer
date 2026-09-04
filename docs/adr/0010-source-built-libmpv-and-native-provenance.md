@@ -313,8 +313,7 @@ The retained tree passed the above preflight with the current profile SHA-256
 These are source-materialization inspection results only; WSL remains outside
 accepted release provenance.
 
-The current complete WSL preparation published the fresh, unconsumed fourth
-workspace
+The complete WSL preparation initially published the fourth workspace
 `/var/tmp/zivplayer-native-build-298845ca4076-weak-audit` with a 5,378-byte
 receipt whose SHA-256 is
 `e51e2e706c3488feabbe1b5482b4d0433db8c823a6a659f2b2483b25b5ff7116`.
@@ -323,12 +322,10 @@ bytes; its tree SHA-256 is
 `72678d1096e844777a6bb7008fee5e3dd1690c0612a6854cdb293b10001d1602`.
 An independent verification run passed, and the canonical source/overlay-origin
 hashes remained unchanged. This receipt is only a preparation record:
-`buildExecuted=false`, `ready=false`, and `releaseInput=false`. For this fresh
-preparation, build-command execution, compilation, output staging, ELF/JNI
-audits, Gradle integration, compliance bundles, and native-build receipt remain
-pending. This mechanism assumes the exclusive trusted root-controlled builder
-boundary stated above; it is not a defense against a concurrent hostile root
-process.
+`buildExecuted=false`, `ready=false`, and `releaseInput=false`; the later build
+receipt, rather than this preparation receipt, is the execution evidence. This
+mechanism assumes the exclusive trusted root-controlled builder boundary stated
+above; it is not a defense against a concurrent hostile root process.
 
 The executor isolation contract is intentionally stored separately in
 `native/native-executor-policy.toml`, so locking it does not invalidate the
@@ -364,7 +361,8 @@ and exact six-record transcript SHA-256
 Pre/post identities were unchanged, the output/HOME/temporary trees remained
 empty, and no executor process or cgroup remained. The probe did not invoke a
 compiler, `buildall.sh`, artifact staging, or a build receipt, so all build and
-release gates remain closed.
+release gates remained closed at that probe stage. The later fourth one-shot
+inspection build is recorded separately below.
 
 This launcher shares the exclusive trusted root-controlled host boundary used
 by the earlier materializers. The host Python interpreter, system binaries,
@@ -461,9 +459,8 @@ symbol, including its requested ELF version. It permits
 It records each accepted case per artifact and rejects every other library,
 symbol type, unresolved weak symbol, or relocation.
 
-The fresh fourth workspace above has no attempt marker and remains unconsumed.
-
-The complete WSL `verify-inputs` run for that fourth workspace passed with
+Before consumption, the complete WSL `verify-inputs` run for the fourth
+workspace passed with
 preparation receipt
 `e51e2e706c3488feabbe1b5482b4d0433db8c823a6a659f2b2483b25b5ff7116`,
 composition receipt
@@ -473,6 +470,29 @@ and resolved ELF-tool digest
 Its namespace probe also reproduced the accepted transcript
 `fd251aeb116fd8ced374df5c9887af8dcc3bde03002b4968181421a1682b9f81`.
 These were still read-only checks, not an execution attempt.
+
+The fourth one-shot execution then consumed that workspace under the current
+policy. Its canonical root-owned mode-0600, 1,434-byte attempt marker has
+SHA-256
+`44d94fe0c293b3480d316ca4603fc8e4842cb995a9967bcc0ad84bcf66854015`.
+Both ABI commands ran in their fixed order and the runner exited 0. Staging
+published the exact 18-library allowlist with 243,407,008 regular-file bytes;
+every actual size and SHA-256 matches the receipt, and the complete output is
+byte-identical to the third attempt's retained output.
+
+The structural audit passed the ELF64 machine/type, 16-KiB `PT_LOAD`, strict
+SONAME/NEEDED, staged/API-26 dependency, version-aware strong-symbol closure,
+Android-ident, and no-`Java_` gates. It recorded exactly the six permitted
+AArch64 `memfd_create` weak references described above and no x86_64 exception.
+The resulting canonical root-owned mode-0644, 72,674-byte non-release receipt
+has SHA-256
+`7d5dc92f4d4ccd55f2340814d6bce071133560178f294c907a86f251dabd4d3e`.
+It records `buildExecuted=true`, `artifactStaged=true`, and
+`artifactAudited=true`, but keeps `ready=false` and `releaseInput=false`. The
+pending blockers remain the source wrapper, offline closure, accepted actual
+build graph, and release gate. The workspace has exactly the seven expected
+root entries, no temporary receipt, empty HOME/TMP, and no residual executor
+process or `.zivplayer-apt-*` cgroup. It is consumed and must not be rerun.
 
 A conforming executor consumes a prepared workspace exactly once by
 publishing and syncing a canonical, bounded, root-owned, metadata-normalized,
@@ -526,8 +546,9 @@ built library.
 
 The environment status therefore remains
 `roots-and-apt-locked-container-pending`: accepted Android license files,
-redistribution inputs, an accepted release-builder materialization/run, and the
-successful native build/audits are still required. A successful build on an
+redistribution inputs, and an accepted release-builder materialization/run with
+its native audits are still required. The successful WSL inspection build is
+evidence for this contract, not release provenance. A successful build on an
 arbitrary workstation or floating hosted runner is not release provenance.
 Windows and the currently configured WSL environment are evidence/inspection
 environments, not accepted native release builders.
@@ -558,11 +579,12 @@ The source lock does not authorize public release. The bootstrap Maven AAR may
 remain for development while the source wrapper is integrated, but a public
 artifact is blocked until all of the following are true:
 
-1. both selected ABIs build from the locked sources and locked Linux toolchain;
+1. both selected ABIs build from the locked sources and locked Linux toolchain
+   on the accepted release builder;
 2. the source wrapper provides typed entry identity, end reasons, command and
    property operation results, ordered callbacks, and idempotent shutdown;
-3. JNI exports, ELF architecture, SONAME/NEEDED closure, page alignment, and
-   hashes are audited;
+3. wrapper-inclusive JNI exports, ELF architecture, SONAME/NEEDED closure,
+   page alignment, and hashes are audited on those release-builder outputs;
 4. corresponding source, exact build configuration, SBOM, licenses, and
    notices are packaged; and
 5. dependency and APK inspection proves
@@ -576,13 +598,17 @@ separate reproducible Android/Python tool projection whose fixed read-only
 composition has passed an isolated inspection smoke. A byte-locked API-26
 libmpv-stack profile, preserve-source preflight, and verified independent
 prepared workspace, plus a closed namespace-probe policy and accepted WSL
-inspection probe, now make the next execution boundary explicit without
-treating preparation or namespace validation as a build result.
+inspection probe, now make the execution boundary explicit without treating
+preparation or namespace validation as a build result. The fourth one-shot WSL
+run additionally produced a canonical non-release receipt for the two-command
+build, exact staging, and structural artifact audit; it remains inspection
+evidence rather than accepted release provenance.
 Complete local source and toolchain/APT caches can be prepared without trusting
 mutable Git branches, floating container tags, or moving APT repositories, and
-the release-input gate fails closed while compliance, canonical native-build,
-and redistribution evidence are absent. This closes source, root-object, package-
-closure, offline APT installed-state, standalone SDK projection, and fixed
+the release-input gate fails closed while compliance, accepted release-builder
+native-build/audit, and redistribution evidence are absent. This closes source,
+root-object, package-closure, offline APT installed-state, standalone SDK
+projection, and fixed
 toolchain-composition ambiguity under the trusted builder boundary, but not
 binary reproducibility, JNI correctness, device playback, or license-package
 gates. The current
