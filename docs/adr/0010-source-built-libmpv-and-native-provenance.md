@@ -309,17 +309,17 @@ SHA-256
 and byte-identical receipt SHA-256
 `e2ea14b6eea0c2f692a321853473f04dad2f1f3199d017bfffc733a858523c04`.
 The retained tree passed the above preflight with the current profile SHA-256
-`ac17ad61199c3761d5cc484f5ec258a55912981f2d1af83ce7587ee91e013915`.
+`298845ca407684b0ec073036a78602972cbf971d8b9642a19476bf1c1f6ad4cc`.
 These are source-materialization inspection results only; WSL remains outside
 accepted release provenance.
 
 The current complete WSL preparation published the fresh, unconsumed workspace
-`/var/tmp/zivplayer-native-build-ac17ad61199c` with a 5,378-byte receipt whose
+`/var/tmp/zivplayer-native-build-298845ca4076` with a 5,378-byte receipt whose
 SHA-256 is
-`e6417aed653b9056f580dd1c46a8b6b1e043a11695ddd99010aa243e62d4a4f6`.
-The post-overlay source retained 30,436 entries and 408,192,570 regular-file
+`e51e2e706c3488feabbe1b5482b4d0433db8c823a6a659f2b2483b25b5ff7116`.
+The post-overlay source retained 30,436 entries and 408,192,579 regular-file
 bytes; its tree SHA-256 is
-`82d2873588c7669bb8e51dfe87934e366d527dba09fd73f5db59529f506e2874`.
+`72678d1096e844777a6bb7008fee5e3dd1690c0612a6854cdb293b10001d1602`.
 An independent verification run passed, and the canonical source/overlay-origin
 hashes remained unchanged. This receipt is only a preparation record:
 `buildExecuted=false`, `ready=false`, and `releaseInput=false`. For this fresh
@@ -357,7 +357,7 @@ the child sets a parent-death signal before validating and entering its cgroup.
 
 The canonical executor passed this namespace-only probe in the current WSL
 inspection environment with policy SHA-256
-`c270ab6ca37ae9d19d4c7dc1bde172f7194258c7eb5647d58f9dae84532370de`
+`24a42f725bc174d41a7434d57c7078dd1f02a2cc27963202a8638909cb7276ce`
 and exact six-record transcript SHA-256
 `fd251aeb116fd8ced374df5c9887af8dcc3bde03002b4968181421a1682b9f81`.
 Pre/post identities were unchanged, the output/HOME/temporary trees remained
@@ -380,7 +380,7 @@ namespace-probe policy and unchanged transcript, the exact
 native-build profile, the deterministic preparation and composition receipts,
 and four byte-locked launcher/namespace/runner/seccomp helpers. Its policy
 SHA-256 is
-`b1b0f9499bf7452ca5228f16e2371209cfc5fb7c1f58f7299d427164fee8302d`.
+`eb671c17e47b4fc34b2d1974d0b5cbcb7fe8d24975b46100f606f61f559b91a3`.
 
 This new policy defines build commands, exact allowlist staging, structural
 artifact audit, and canonical build-receipt publication as one closed loop.
@@ -405,8 +405,8 @@ never started. The executor cleaned its process and cgroup, left the output
 tree empty, published no build receipt, and retained the consumed workspace as
 failure evidence. It was not rerun.
 
-The repaired profile installs one exact fail-closed `git` stub in the locked
-source-tool directory and verifies that it resolves from the isolated `PATH`.
+The first repair installed one exact fail-closed `git` stub in the locked
+source-tool directory and verified that it resolved from the isolated `PATH`.
 Its complete bytes are `#!/bin/sh`, newline,
 `exit 127`, newline (19 bytes), its SHA-256 is
 `c07d6c0d3d6f1bcd8396ab432e050a0578f73e7e644c5c3fd230386c1294cb75`,
@@ -414,11 +414,30 @@ and it is a root-owned, mode-0500 regular file. This lets optional upstream
 version probes observe an unavailable VCS without admitting ambient Git,
 repository discovery, or network access. The replacement changed the profile
 SHA-256 to
-`ac17ad61199c3761d5cc484f5ec258a55912981f2d1af83ce7587ee91e013915`;
-the fresh workspace above has no attempt marker and remains unconsumed.
+`ac17ad61199c3761d5cc484f5ec258a55912981f2d1af83ce7587ee91e013915`.
+
+The second one-shot execution consumed
+`/var/tmp/zivplayer-native-build-ac17ad61199c` under build policy
+`b1b0f9499bf7452ca5228f16e2371209cfc5fb7c1f58f7299d427164fee8302d`.
+Its root-owned mode-0600 attempt marker has SHA-256
+`87c30c328a24e0a4a517f4302d8267b2c82fa371b4ebcb79ae1ff9b305557af3`.
+The Git stub worked and arm64 passed libxml2, FFmpeg, FreeType, fontconfig,
+FriBidi, and HarfBuzz. Libunibreak then built its archive but failed during
+installation because the relative `INSTALL=install` value became
+`../install` in the recursive Automake subdirectory; that executable did not
+exist. x86_64 never started. The executor again cleaned its process and cgroup,
+left output empty, published no build receipt, retained the consumed workspace,
+and did not rerun it.
+
+The current path overlay instead pins `INSTALL=/usr/bin/install`, an absolute
+GNU coreutils binary inside the locked APT tree. A disposable configure probe
+against the exact libunibreak source confirmed that both the root and nested
+Makefiles retain this absolute path. This changed the current profile SHA-256
+to `298845ca407684b0ec073036a78602972cbf971d8b9642a19476bf1c1f6ad4cc`;
+the fresh third workspace above has no attempt marker and remains unconsumed.
 
 The complete WSL `verify-inputs` run passed with preparation receipt
-`e6417aed653b9056f580dd1c46a8b6b1e043a11695ddd99010aa243e62d4a4f6`,
+`e51e2e706c3488feabbe1b5482b4d0433db8c823a6a659f2b2483b25b5ff7116`,
 composition receipt
 `e9b88860b8e6d043a80a7f3d6aa7e3e641574e7da4c66a0541db129a4e081989`,
 and resolved ELF-tool digest

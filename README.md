@@ -190,15 +190,15 @@ sudo python3 native/tools/composition_tool.py verify
 python3 native/tools/native_build_tool.py validate
 sudo python3 native/tools/native_build_tool.py preflight
 sudo python3 native/tools/native_build_tool.py prepare \
-  --build-workspace /var/tmp/zivplayer-native-build-ac17ad61199c
+  --build-workspace /var/tmp/zivplayer-native-build-298845ca4076
 sudo python3 native/tools/native_build_tool.py verify-preparation \
-  --build-workspace /var/tmp/zivplayer-native-build-ac17ad61199c
+  --build-workspace /var/tmp/zivplayer-native-build-298845ca4076
 python3 native/tools/native_executor_tool.py validate
 sudo python3 native/tools/native_executor_tool.py probe \
-  --build-workspace /var/tmp/zivplayer-native-build-ac17ad61199c
+  --build-workspace /var/tmp/zivplayer-native-build-298845ca4076
 python3 native/tools/native_build_executor_tool.py validate
 sudo python3 native/tools/native_build_executor_tool.py verify-inputs \
-  --build-workspace /var/tmp/zivplayer-native-build-ac17ad61199c
+  --build-workspace /var/tmp/zivplayer-native-build-298845ca4076
 python3 native/tools/toolchain_tool.py check-lock
 ```
 
@@ -246,17 +246,17 @@ authorizes build-command execution, artifact staging, ELF audit, JNI wrapper,
 Gradle integration, or a build receipt.
 
 The current fresh WSL inspection preparation at
-`/var/tmp/zivplayer-native-build-ac17ad61199c` produced a 5,378-byte receipt
+`/var/tmp/zivplayer-native-build-298845ca4076` produced a 5,378-byte receipt
 with SHA-256
-`e6417aed653b9056f580dd1c46a8b6b1e043a11695ddd99010aa243e62d4a4f6`.
+`e51e2e706c3488feabbe1b5482b4d0433db8c823a6a659f2b2483b25b5ff7116`.
 The prepared post-overlay source retains 30,436 entries and has tree SHA-256
-`82d2873588c7669bb8e51dfe87934e366d527dba09fd73f5db59529f506e2874`.
+`72678d1096e844777a6bb7008fee5e3dd1690c0612a6854cdb293b10001d1602`.
 An independent `verify-preparation` run passed. The receipt explicitly records
 `buildExecuted=false`, `ready=false`, and `releaseInput=false`.
 
 The canonical executor then passed the namespace-only WSL inspection probe
 with policy SHA-256
-`c270ab6ca37ae9d19d4c7dc1bde172f7194258c7eb5647d58f9dae84532370de`
+`24a42f725bc174d41a7434d57c7078dd1f02a2cc27963202a8638909cb7276ce`
 and transcript SHA-256
 `fd251aeb116fd8ced374df5c9887af8dcc3bde03002b4968181421a1682b9f81`.
 The accepted run left no executor cgroup or process; the output, HOME, and
@@ -277,8 +277,26 @@ The locked `buildall.sh` overlay now installs and re-verifies a 19-byte,
 root-owned, mode-0500, single-link `git` stub whose only result is exit 127.
 This allows optional source-snapshot version probes to fall back without adding
 ambient Git or network access, while any genuinely required Git operation
-still fails closed. The refreshed profile SHA-256 is
+still fails closed. That fix produced profile SHA-256
 `ac17ad61199c3761d5cc484f5ec258a55912981f2d1af83ce7587ee91e013915`.
+
+The second one-shot attempt consumed
+`/var/tmp/zivplayer-native-build-ac17ad61199c` under build policy
+`b1b0f9499bf7452ca5228f16e2371209cfc5fb7c1f58f7299d427164fee8302d`.
+Its retained mode-0600 attempt marker has SHA-256
+`87c30c328a24e0a4a517f4302d8267b2c82fa371b4ebcb79ae1ff9b305557af3`.
+The Git stub worked and arm64 passed libxml2, FFmpeg, FreeType, fontconfig,
+FriBidi, and HarfBuzz. It then stopped while installing libunibreak because
+the relative `INSTALL=install` was rewritten to the nonexistent `../install`
+inside its recursive Automake subdirectory. x86_64 was not started; output
+remained empty, no build receipt was published, and process/cgroup cleanup
+completed. The consumed workspace remains intact and was not rerun.
+
+The path overlay now pins `INSTALL=/usr/bin/install`, the absolute GNU
+coreutils binary inside the locked APT tree. A direct Autoconf probe confirmed
+that both root and nested Makefiles preserve this absolute path. The current
+profile SHA-256 is
+`298845ca407684b0ec073036a78602972cbf971d8b9642a19476bf1c1f6ad4cc`.
 
 The refreshed closed-loop inspection-build contract remains separate from the
 accepted probe policy. `native-build-executor-policy.toml` binds the exact
@@ -286,14 +304,14 @@ profile, preparation/composition receipts, accepted probe policy/transcript,
 one-shot workspace state, two-command order, bounded logs, exact artifact
 allowlist, API-26/ELF/16-KiB audits, and a canonical non-release build receipt.
 Its policy SHA-256 is
-`b1b0f9499bf7452ca5228f16e2371209cfc5fb7c1f58f7299d427164fee8302d`.
+`eb671c17e47b4fc34b2d1974d0b5cbcb7fe8d24975b46100f606f61f559b91a3`.
 The tool exposes read-only `validate` and Linux-root `verify-inputs`, plus an
 explicit one-shot `execute` that implements the complete marker, two-command
 lifecycle, staging, audit, and non-release receipt transaction. The refreshed
 workspace has not yet been consumed: no build attempt marker, command,
 artifact, audit result, or build receipt has been created.
 The complete WSL input check passed with preparation receipt
-`e6417aed653b9056f580dd1c46a8b6b1e043a11695ddd99010aa243e62d4a4f6`,
+`e51e2e706c3488feabbe1b5482b4d0433db8c823a6a659f2b2483b25b5ff7116`,
 composition receipt
 `e9b88860b8e6d043a80a7f3d6aa7e3e641574e7da4c66a0541db129a4e081989`,
 and resolved ELF-tool digest

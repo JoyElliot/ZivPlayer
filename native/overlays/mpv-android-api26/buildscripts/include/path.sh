@@ -49,7 +49,7 @@ if [[ "$(/usr/bin/sha256sum "$gas_preprocessor")" != \
 fi
 
 export PATH="$ZIV_TOOLCHAIN_ROOT/bin:$build_tools_bin:$toolchain_bin:$source_tool_bin:/usr/sbin:/usr/bin:/sbin:/bin"
-export INSTALL=install
+export INSTALL=/usr/bin/install
 export SED=sed
 export PYTHONHASHSEED=0
 export PYTHONDONTWRITEBYTECODE=1

@@ -91,6 +91,20 @@ class NativeBuildProfileTest(unittest.TestCase):
         self.assertIn(b"loadarch \"$arch\"\ninstall_git_stub\nsetup_prefix", buildall)
         self.assertIn(b"$source_tool_bin:/usr/sbin:/usr/bin:/sbin:/bin", path_helper)
 
+    def test_path_overlay_pins_recursive_install_to_locked_absolute_binary(self) -> None:
+        path_helper = (
+            REPOSITORY_ROOT
+            / "native"
+            / "overlays"
+            / "mpv-android-api26"
+            / "buildscripts"
+            / "include"
+            / "path.sh"
+        ).read_bytes()
+
+        self.assertIn(b"export INSTALL=/usr/bin/install\n", path_helper)
+        self.assertNotIn(b"export INSTALL=install\n", path_helper)
+
     @unittest.skipUnless(sys.platform == "linux", "requires Meson on Linux")
     def test_fail_closed_git_stub_allows_an_optional_meson_probe(self) -> None:
         meson = shutil.which("meson")

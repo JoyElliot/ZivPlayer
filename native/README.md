@@ -464,9 +464,9 @@ without executing either locked build command:
 
 ```sh
 sudo python3 native/tools/native_build_tool.py prepare \
-  --build-workspace /var/tmp/zivplayer-native-build-ac17ad61199c
+  --build-workspace /var/tmp/zivplayer-native-build-298845ca4076
 sudo python3 native/tools/native_build_tool.py verify-preparation \
-  --build-workspace /var/tmp/zivplayer-native-build-ac17ad61199c
+  --build-workspace /var/tmp/zivplayer-native-build-298845ca4076
 ```
 
 Preparation requires an absent destination. It publishes
@@ -484,23 +484,23 @@ and the same 30,436-entry tree. That tree contains 29,238 regular files, 1,196
 directories, and two symlinks; its SHA-256 is
 `05a19a0fc8d11c88903c663783ebca00c0201f656fa54b580ab47a75fa746ee6`.
 The retained tree then passed the locked preflight with profile SHA-256
-`ac17ad61199c3761d5cc484f5ec258a55912981f2d1af83ce7587ee91e013915`.
+`298845ca407684b0ec073036a78602972cbf971d8b9642a19476bf1c1f6ad4cc`.
 These remain WSL inspection results, not accepted release provenance.
 
 The current fresh WSL preparation at
-`/var/tmp/zivplayer-native-build-ac17ad61199c` produced a 5,378-byte canonical
+`/var/tmp/zivplayer-native-build-298845ca4076` produced a 5,378-byte canonical
 receipt with SHA-256
-`e6417aed653b9056f580dd1c46a8b6b1e043a11695ddd99010aa243e62d4a4f6`.
-The post-overlay source has 30,436 entries, 408,192,570 regular-file bytes, and
+`e51e2e706c3488feabbe1b5482b4d0433db8c823a6a659f2b2483b25b5ff7116`.
+The post-overlay source has 30,436 entries, 408,192,579 regular-file bytes, and
 tree SHA-256
-`82d2873588c7669bb8e51dfe87934e366d527dba09fd73f5db59529f506e2874`.
+`72678d1096e844777a6bb7008fee5e3dd1690c0612a6854cdb293b10001d1602`.
 An independent verification command passed; the original overlay destinations
 still match their upstream hashes. The receipt records `phase=prepared`,
 `buildExecuted=false`, `ready=false`, and `releaseInput=false`.
 
 An accepted namespace-only executor run now exists in the WSL inspection
-environment. A separate first build attempt also exists, but it failed before
-output staging and did not publish an ELF/JNI audit or canonical build receipt.
+environment. Two separate build attempts also exist, but both failed before
+output staging and neither published an ELF/JNI audit or canonical build receipt.
 There is no successful two-command native build, offline Gradle/AAR integration,
 or compliance bundle. Preparation and the probe produced no libmpv library,
 and neither may be reported as an M7E build. These checks assume the ADR's
@@ -528,7 +528,7 @@ build:
 
 ```sh
 sudo python3 native/tools/native_executor_tool.py probe \
-  --build-workspace /var/tmp/zivplayer-native-build-ac17ad61199c
+  --build-workspace /var/tmp/zivplayer-native-build-298845ca4076
 ```
 
 The locked namespace helper describes an ephemeral overlay root over the APT
@@ -550,7 +550,7 @@ capacity before launch and blocks `SIGINT`, `SIGTERM`, and `SIGHUP` until
 cleanup completes.
 
 The accepted WSL inspection run used policy SHA-256
-`c270ab6ca37ae9d19d4c7dc1bde172f7194258c7eb5647d58f9dae84532370de`
+`24a42f725bc174d41a7434d57c7078dd1f02a2cc27963202a8638909cb7276ce`
 and produced the exact six-record transcript with SHA-256
 `fd251aeb116fd8ced374df5c9887af8dcc3bde03002b4968181421a1682b9f81`.
 It confirmed the private mount/network/PID/UTS/IPC namespace, declared mounts,
@@ -573,7 +573,7 @@ all build/release gates remain unchanged.
 the accepted namespace-probe policy. It binds the exact profile and prepared
 workspace receipt, the current composition receipt, and the accepted probe
 policy/transcript. Its SHA-256 is
-`b1b0f9499bf7452ca5228f16e2371209cfc5fb7c1f58f7299d427164fee8302d`.
+`eb671c17e47b4fc34b2d1974d0b5cbcb7fe8d24975b46100f606f61f559b91a3`.
 
 Validate this contract without creating an attempt marker, entering a
 namespace, or executing a build:
@@ -581,7 +581,7 @@ namespace, or executing a build:
 ```sh
 python3 native/tools/native_build_executor_tool.py validate
 sudo python3 native/tools/native_build_executor_tool.py verify-inputs \
-  --build-workspace /var/tmp/zivplayer-native-build-ac17ad61199c
+  --build-workspace /var/tmp/zivplayer-native-build-298845ca4076
 ```
 
 The policy and executor treat build execution, exact allowlist staging,
@@ -596,7 +596,7 @@ consume the prepared workspace:
 
 ```sh
 sudo python3 native/tools/native_build_executor_tool.py execute \
-  --build-workspace /var/tmp/zivplayer-native-build-ac17ad61199c
+  --build-workspace /var/tmp/zivplayer-native-build-298845ca4076
 ```
 
 The CLI default deliberately remains the original consumed workspace path, so
@@ -619,10 +619,30 @@ root-owned, mode-0500, single-link `git` stub with exact SHA-256
 `c07d6c0d3d6f1bcd8396ab432e050a0578f73e7e644c5c3fd230386c1294cb75`.
 It always exits 127: optional snapshot-version probes fall back deterministically
 without importing ambient Git or network access, while required Git behavior
-still fails closed. The refreshed workspace above remains unconsumed.
+still fails closed. That repair produced profile SHA-256
+`ac17ad61199c3761d5cc484f5ec258a55912981f2d1af83ce7587ee91e013915`.
+
+The second invocation consumed
+`/var/tmp/zivplayer-native-build-ac17ad61199c` under policy SHA-256
+`b1b0f9499bf7452ca5228f16e2371209cfc5fb7c1f58f7299d427164fee8302d`.
+Its retained root-owned mode-0600 marker SHA-256 is
+`87c30c328a24e0a4a517f4302d8267b2c82fa371b4ebcb79ae1ff9b305557af3`.
+The Git stub worked: arm64 passed libxml2, FFmpeg, FreeType, fontconfig,
+FriBidi, and HarfBuzz before libunibreak installation failed. The relative
+`INSTALL=install` value was rewritten by Autoconf's nested `config.status`
+handling to a nonexistent `../install`. No x86_64 build started, the output
+tree remained empty, no build receipt was published, and process/cgroup cleanup
+completed. This consumed workspace is also retained and was not rerun.
+
+The current path overlay pins `INSTALL=/usr/bin/install`, the absolute GNU
+coreutils binary in the locked APT tree. A disposable Autoconf probe against
+the exact libunibreak source confirmed that both top-level and nested Makefiles
+retain the absolute path. The current profile SHA-256 is
+`298845ca407684b0ec073036a78602972cbf971d8b9642a19476bf1c1f6ad4cc`;
+the third workspace above remains unconsumed.
 
 The complete WSL read-only check passed for preparation receipt
-`e6417aed653b9056f580dd1c46a8b6b1e043a11695ddd99010aa243e62d4a4f6`,
+`e51e2e706c3488feabbe1b5482b4d0433db8c823a6a659f2b2483b25b5ff7116`,
 composition receipt
 `e9b88860b8e6d043a80a7f3d6aa7e3e641574e7da4c66a0541db129a4e081989`,
 and resolved ELF-tool digest
@@ -630,7 +650,7 @@ and resolved ELF-tool digest
 That check opened no namespace and ran no build command.
 
 Execution is single-attempt. Before launching, it publishes and
-sync a canonical, bounded, root-owned, metadata-normalized, no-replace attempt
+syncs a canonical, bounded, root-owned, metadata-normalized, no-replace attempt
 marker through the pinned workspace descriptor. Its immutable fields bind the
 policy, profile, preparation/composition receipts, accepted probe evidence,
 helpers, exact commands, and pre-launch consumed state. Every failure retains
@@ -680,8 +700,8 @@ hashes, ELF/SONAME/NEEDED/API-26
 observations, overlay/build options, and explicit pending release blockers. It
 remains a non-release inspection receipt even after successful execution. No
 attempt marker, build, staging, ELF/JNI audit, or receipt publication has yet
-occurred on the refreshed workspace. The older failed attempt is retained as
-described above; the refreshed workspace has passed preparation, namespace, and
+occurred on the third workspace. The two older failed attempts are retained as
+described above; the third workspace has passed preparation, namespace, and
 input verification without being consumed.
 
 ## Locked build baseline
