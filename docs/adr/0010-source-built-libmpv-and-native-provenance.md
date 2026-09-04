@@ -378,17 +378,20 @@ namespace-probe bytes or transcript. It binds that probe evidence, the exact
 native-build profile, the deterministic preparation and composition receipts,
 and four byte-locked launcher/namespace/runner/seccomp helpers. Its policy
 SHA-256 is
-`a947326abe1d4d7cff9da18eb0b29cca9bbd0545c989ffdc381567a4c90727f8`.
+`d0cf43cedfa73a41f4a4cd0aebe144321bbd01c2d7431c7035551d87f472e329`.
 
 This new policy defines build commands, exact allowlist staging, structural
 artifact audit, and canonical build-receipt publication as one closed loop.
 Those four capabilities are enabled in the policy while `ready=false` and
 `releaseInput=false`; capability declaration is not execution evidence. The
-current `native_build_executor_tool.py` exposes only static `validate` and
-read-only `verify-inputs`. The latter rechecks the complete prepared input,
-preparation/composition receipt bytes, and locked ELF audit tool without
-entering a namespace. No attempt marker, build command, artifact, audit result,
-or build receipt has yet been produced.
+current `native_build_executor_tool.py` exposes static `validate`, read-only
+`verify-inputs`, and explicit one-shot `execute`. The read-only path rechecks
+the complete prepared input, preparation/composition receipt bytes, and locked
+ELF audit tool without entering a namespace. The execution path implements the
+full marker, two-command lifecycle, staging, audit, and non-release receipt
+transaction, but has not yet been invoked on the retained workspace. No attempt
+marker, build command, artifact, audit result, or build receipt has yet been
+produced.
 
 The complete WSL `verify-inputs` run passed with preparation receipt
 `eff4993d2c1a079564f8da458eb2fc3bb7ee234716d8ce2380ee4c5e59de49f5`,
@@ -398,7 +401,7 @@ and resolved ELF-tool digest
 `5104576a3518575cf1887c2afa9249bbd0dc175cb9dc0f2af0d430fe0cb20bbe`.
 This was still a read-only input check, not an execution attempt.
 
-A conforming executor must consume a prepared workspace exactly once by
+A conforming executor consumes a prepared workspace exactly once by
 publishing and syncing a canonical, bounded, root-owned, metadata-normalized,
 no-replace attempt marker through the pinned workspace descriptor before
 launch. The marker binds the policy, profile, preparation/composition receipts,
@@ -434,7 +437,11 @@ Undefined platform symbols must resolve against the API-26 NDK stubs. Because
 this profile deliberately excludes the JNI wrapper, any exported `Java_`
 symbol is rejected. Observed SONAME/NEEDED, hashes, sizes, logs, build options,
 overlay hashes, and pending release blockers belong in the non-release receipt;
-they are not guessed in advance.
+they are not guessed in advance. Android ident notes are recorded for all
+artifacts. A note on a newly built library must report NDK major r29; the
+byte-locked prebuilt `libc++_shared.so` carried by the selected NDK 29 package
+reports r28 and remains classified as a locked runtime input, not as a newly
+built library.
 
 The environment status therefore remains
 `roots-and-apt-locked-container-pending`: accepted Android license files,

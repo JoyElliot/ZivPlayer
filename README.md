@@ -263,11 +263,12 @@ profile, preparation/composition receipts, accepted probe policy/transcript,
 one-shot workspace state, two-command order, bounded logs, exact artifact
 allowlist, API-26/ELF/16-KiB audits, and a canonical non-release build receipt.
 Its policy SHA-256 is
-`a947326abe1d4d7cff9da18eb0b29cca9bbd0545c989ffdc381567a4c90727f8`.
-The new tool exposes only read-only `validate` and Linux-root `verify-inputs`;
-the latter rechecks the current preparation/composition receipt bytes and the
-locked ELF audit tool without entering a namespace. No build attempt marker,
-command, artifact, audit result, or build receipt has been created.
+`d0cf43cedfa73a41f4a4cd0aebe144321bbd01c2d7431c7035551d87f472e329`.
+The tool exposes read-only `validate` and Linux-root `verify-inputs`, plus an
+explicit one-shot `execute` that implements the complete marker, two-command
+lifecycle, staging, audit, and non-release receipt transaction. The retained
+workspace has not yet been consumed: no build attempt marker, command,
+artifact, audit result, or build receipt has been created.
 The complete WSL input check passed with preparation receipt
 `eff4993d2c1a079564f8da458eb2fc3bb7ee234716d8ce2380ee4c5e59de49f5`,
 composition receipt

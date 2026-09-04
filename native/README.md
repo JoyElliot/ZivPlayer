@@ -569,7 +569,7 @@ all build/release gates remain unchanged.
 the accepted namespace-probe policy. It binds the exact profile and prepared
 workspace receipt, the current composition receipt, and the accepted probe
 policy/transcript. Its SHA-256 is
-`a947326abe1d4d7cff9da18eb0b29cca9bbd0545c989ffdc381567a4c90727f8`.
+`d0cf43cedfa73a41f4a4cd0aebe144321bbd01c2d7431c7035551d87f472e329`.
 
 Validate this contract without creating an attempt marker, entering a
 namespace, or executing a build:
@@ -579,15 +579,22 @@ python3 native/tools/native_build_executor_tool.py validate
 sudo python3 native/tools/native_build_executor_tool.py verify-inputs
 ```
 
-The policy treats build execution, exact allowlist staging, structural artifact
-audit, and canonical build-receipt publication as one future closed loop. Those
-four policy capabilities are `true` because a conforming implementation must
-complete all four; `ready` and `releaseInput` remain `false`. The current CLI
-exposes only static `validate` and read-only `verify-inputs`, so those capability
-declarations are not evidence that any command or audit has run. On Linux as
-root, `verify-inputs` rechecks the complete prepared inputs, the exact
+The policy and executor treat build execution, exact allowlist staging,
+structural artifact audit, and canonical build-receipt publication as one
+closed loop. All four capabilities must succeed together; `ready` and
+`releaseInput` remain `false`. The CLI exposes static `validate`, read-only
+`verify-inputs`, and the explicit one-shot `execute`. On Linux as root,
+`verify-inputs` rechecks the complete prepared inputs, the exact
 preparation/composition receipt bytes, and the resolved locked `llvm-readelf`
-target without entering a namespace.
+target without entering a namespace. `execute` is the only command that may
+consume the prepared workspace:
+
+```sh
+sudo python3 native/tools/native_build_executor_tool.py execute
+```
+
+Adding this command is not execution evidence; it has not yet been invoked on
+the retained prepared workspace.
 
 The complete WSL read-only check passed for preparation receipt
 `eff4993d2c1a079564f8da458eb2fc3bb7ee234716d8ce2380ee4c5e59de49f5`,
@@ -597,7 +604,7 @@ and resolved ELF-tool digest
 `5104576a3518575cf1887c2afa9249bbd0dc175cb9dc0f2af0d430fe0cb20bbe`.
 That check opened no namespace and ran no build command.
 
-The future execution is single-attempt. Before launching, it must publish and
+Execution is single-attempt. Before launching, it publishes and
 sync a canonical, bounded, root-owned, metadata-normalized, no-replace attempt
 marker through the pinned workspace descriptor. Its immutable fields bind the
 policy, profile, preparation/composition receipts, accepted probe evidence,
@@ -612,7 +619,8 @@ runner bytes, and parent-observed runner lifecycle. Failure teardown is locked
 to pidfd/cgroup termination, a bounded drain, and cgroup identity/emptiness
 proof before removal. The new namespace and runner helpers are byte-locked; the
 runner contains only the fixed API-26 `arm64` and `x86_64` `mpv` commands. They
-are not reachable from the CLI yet.
+are reachable only through the explicit `execute` command after every input
+gate passes.
 
 The invocation contract separately fixes the execution namespace marker,
 descriptor count, seccomp interpreter/helper, clean Bash interpreter flags,
@@ -627,23 +635,28 @@ input from the prepared `workspace/source` tree. The former must remain
 byte-identical; the latter is deliberately writable and may gain build output,
 but only within its pinned directory and the policy's bounded filesystem delta.
 
-Staging must resolve each source symlink inside its locked prefix and copy only
+Staging resolves each source symlink inside its locked prefix and copies only
 the nine expected regular-library bytes per ABI into no-replace output trees.
-The future audit must require ELF64 `ET_DYN` and the profile machine for each
+The audit requires ELF64 `ET_DYN` and the profile machine for each
 ABI; at least one `PT_LOAD`, with every `PT_LOAD` aligned to exactly `0x4000`
 and `p_offset`/`p_vaddr` congruent; a unique basename SONAME per artifact; and a
 complete per-ABI `DT_NEEDED` closure over staged SONAMEs or the locked API-26
 platform-stub allowlist. Undefined platform symbols must resolve against the
 API-26 NDK stubs. This stack-only phase also records `Java_` exports and rejects
-any such export because the ZivPlayer JNI wrapper is still absent.
+any such export because the ZivPlayer JNI wrapper is still absent. Android
+ident notes are recorded for every artifact; an ident on a newly built library
+must report NDK major r29. The byte-locked NDK 29 package's prebuilt
+`libc++_shared.so` reports r28 and is accepted as a locked runtime input rather
+than misrepresented as a newly built artifact.
 
-The future receipt must record exact command order, bounded log sizes and
+The receipt records exact command order, bounded log sizes and
 digests, parent-observed command events, cgroup/filesystem outcomes, artifact
 hashes, ELF/SONAME/NEEDED/API-26
 observations, overlay/build options, and explicit pending release blockers. It
-will remain a non-release inspection receipt even after successful execution.
-No build, staging, ELF/JNI audit, or receipt publication has occurred in this
-contract-locking step.
+remains a non-release inspection receipt even after successful execution. No
+attempt marker, build, staging, ELF/JNI audit, or receipt publication has yet
+occurred on the retained workspace; this step implements and tests the executor
+without consuming it.
 
 ## Locked build baseline
 

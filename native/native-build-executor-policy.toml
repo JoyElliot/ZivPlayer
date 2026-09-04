@@ -225,7 +225,7 @@ platformSonameAllowlist = [
     "libz.so",
 ]
 platformSymbolPolicy = "resolve-each-undefined-platform-symbol-at-api26"
-androidIdentNotePolicy = "record-and-require-ndk-major-29-if-present"
+androidIdentNotePolicy = "record-all-and-require-built-artifact-ndk-major-29-if-present"
 
 [[audit.abi]]
 name = "arm64-v8a"
