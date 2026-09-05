@@ -115,32 +115,45 @@ class Dex:
 
 
 def platform_libraries(abis: set[str]) -> dict[str, dict]:
-    """Compose's separate AndroidX native helper is bound to Gradle's existing lock."""
-    group, artifact, version = "androidx.graphics", "graphics-path", "1.0.1"
-    coordinate = f"{group}:{artifact}:{version}"
+    """Every AndroidX native helper is bound to its exact locked and verified AAR."""
+    helpers = (
+        ("androidx.graphics", "graphics-path", "1.0.1", "graphics-path-1.0.1.aar", "libandroidx.graphics.path.so"),
+        ("androidx.datastore", "datastore-core-android", "1.2.1", "datastore-core.aar", "libdatastore_shared_counter.so"),
+    )
     dependency_lock = (ROOT / "apps/android/gradle.lockfile").read_text(encoding="utf-8")
-    require(any(line.startswith(coordinate + "=") for line in dependency_lock.splitlines()),
-            "AndroidX graphics helper is not in the application dependency lock")
     metadata = ET.parse(ROOT / "gradle/verification-metadata.xml").getroot()
     for node in metadata.iter():
         node.tag = node.tag.rsplit("}", 1)[-1]
-    checksums = [node.attrib["value"] for component in metadata.iter("component")
-                 if component.attrib == {"group": group, "name": artifact, "version": version}
-                 for entry in component.findall("artifact") if entry.get("name") == f"{artifact}-{version}.aar"
-                 for node in entry.findall("sha256")]
-    require(len(checksums) == 1, "AndroidX helper needs one accepted AAR checksum")
     cache = Path(os.environ.get("GRADLE_USER_HOME", str(Path.home() / ".gradle")))
-    candidates = list((cache / "caches/modules-2/files-2.1" / group / artifact / version)
-                      .glob(f"*/{artifact}-{version}.aar"))
-    accepted = [path for path in candidates if staging.digest(path)[0] == checksums[0]]
-    require(bool(accepted), "verified AndroidX helper AAR is missing from the Gradle cache")
     result = {}
-    with zipfile.ZipFile(accepted[0]) as archive:
-        for abi in abis:
-            name = f"lib/{abi}/libandroidx.graphics.path.so"
-            raw = archive.read(f"jni/{abi}/libandroidx.graphics.path.so")
-            result[name] = {"sha256": hashlib.sha256(raw).hexdigest(), "sizeBytes": len(raw),
-                            "source": coordinate, "aarSha256": checksums[0]}
+    for group, artifact, version, aar_name, library in helpers:
+        coordinate = f"{group}:{artifact}:{version}"
+        require(any(line.startswith(coordinate + "=") for line in dependency_lock.splitlines()),
+                f"AndroidX helper is not in the application dependency lock: {coordinate}")
+        checksums = [node.attrib["value"] for component in metadata.iter("component")
+                     if component.attrib == {"group": group, "name": artifact, "version": version}
+                     for entry in component.findall("artifact") if entry.get("name") == aar_name
+                     for node in entry.findall("sha256")]
+        require(len(checksums) == 1, f"AndroidX helper needs one accepted AAR checksum: {coordinate}")
+        candidates = list((cache / "caches/modules-2/files-2.1" / group / artifact / version).glob(f"*/{aar_name}"))
+        accepted = [path for path in candidates if staging.digest(path)[0] == checksums[0]]
+        require(bool(accepted), f"Verified AndroidX helper AAR is missing: {coordinate}")
+        with zipfile.ZipFile(accepted[0]) as archive:
+            for abi in abis:
+                name = f"lib/{abi}/{library}"
+                raw = archive.read(f"jni/{abi}/{library}")
+                require(raw[:6] == b"\x7fELF\x02\x01", f"AndroidX helper is not little-endian ELF64: {name}")
+                require(struct.unpack_from("<H", raw, 18)[0] == {"arm64-v8a": 183, "x86_64": 62}[abi],
+                        f"AndroidX helper machine differs: {name}")
+                phoff = struct.unpack_from("<Q", raw, 32)[0]
+                entry_size, count = struct.unpack_from("<HH", raw, 54)
+                require(entry_size == 56 and 0 < count < 256, f"Invalid helper program headers: {name}")
+                loads = [phoff + index * entry_size for index in range(count)
+                         if struct.unpack_from("<I", raw, phoff + index * entry_size)[0] == 1]
+                require(bool(loads) and all(struct.unpack_from("<Q", raw, offset + 48)[0] >= 16384 for offset in loads),
+                        f"AndroidX helper ELF LOAD alignment is below 16 KiB: {name}")
+                result[name] = {"sha256": hashlib.sha256(raw).hexdigest(), "sizeBytes": len(raw),
+                                "source": coordinate, "aarSha256": checksums[0]}
     return result
 
 
@@ -162,7 +175,7 @@ def verify(apk: Path) -> dict:
         names = archive.namelist()
         require(len(names) == len(set(names)), "APK has duplicate ZIP entry names")
         require({name for name in names if name.endswith(".so")} == set(expected),
-                "APK native inventory differs from the twenty audited libraries and two locked AndroidX helpers")
+                "APK native inventory differs from the twenty audited libraries and four locked AndroidX helpers")
         for name, item in expected.items():
             info = archive.getinfo(name)
             require(info.compress_type == zipfile.ZIP_STORED, f"native library is compressed: {name}")
@@ -202,7 +215,7 @@ def main() -> int:
         if args.report:
             args.report.parent.mkdir(parents=True, exist_ok=True)
             args.report.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-        print(f"verified APK: {report['apk']}; 20 audited libraries + 2 locked AndroidX helpers, 16-KiB ZIP alignment, 16 DEX JNI methods")
+        print(f"verified APK: {report['apk']}; 20 audited libraries + 4 locked AndroidX helpers, 16-KiB ZIP alignment, 16 DEX JNI methods")
         print(f"SHA-256: {report['apkSha256']}")
         return 0
     except (OSError, ValueError, KeyError, IndexError, struct.error, zipfile.BadZipFile) as error:

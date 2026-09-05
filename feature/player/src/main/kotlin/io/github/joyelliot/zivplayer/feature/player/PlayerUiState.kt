@@ -56,6 +56,8 @@ data class PlayerUiState(
     val canSetVolume: Boolean = false,
     val canSetRepeat: Boolean = false,
     val canRenderVideo: Boolean = false,
+    val hasVideo: Boolean = false,
+    val videoAspectRatio: Float = 16f / 9f,
     val tracks: List<PlayerTrackUiItem> = emptyList(),
     val canSelectTracks: Boolean = false,
     val canAddSubtitle: Boolean = false,

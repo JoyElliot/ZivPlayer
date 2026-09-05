@@ -6,10 +6,14 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [RecentMediaEntity::class],
-    version = 1,
+    entities = [RecentMediaEntity::class, LibraryFolderEntity::class, LibraryMediaEntity::class,
+        TrackChoiceEntity::class, ExternalSubtitleEntity::class, PlaybackResourceEntity::class],
+    version = 2,
     exportSchema = true,
 )
 internal abstract class ZivMediaDatabase : RoomDatabase() {
     abstract fun recentMediaDao(): RecentMediaDao
+    abstract fun libraryDao(): LibraryDao
+    abstract fun playbackPreferencesDao(): PlaybackPreferencesDao
+    abstract fun playbackResourcesDao(): PlaybackResourcesDao
 }

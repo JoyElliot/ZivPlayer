@@ -17,7 +17,7 @@ import kotlinx.coroutines.flow.map
 import java.io.Closeable
 import java.util.UUID
 
-class RoomRecentMediaRepository private constructor(
+class RoomRecentMediaRepository internal constructor(
     private val database: ZivMediaDatabase,
     private val idFactory: () -> MediaId,
 ) : RecentMediaRepository, Closeable {
@@ -66,7 +66,7 @@ class RoomRecentMediaRepository private constructor(
                 context.applicationContext,
                 ZivMediaDatabase::class.java,
                 DATABASE_NAME,
-            ).build(),
+            ).addMigrations(MIGRATION_1_2).build(),
             idFactory = { MediaId(UUID.randomUUID().toString()) },
         )
     }

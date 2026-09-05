@@ -11,6 +11,9 @@ import io.github.joyelliot.zivplayer.core.model.MediaSource
 import io.github.joyelliot.zivplayer.core.model.Milliseconds
 import io.github.joyelliot.zivplayer.core.model.QueueItem
 import io.github.joyelliot.zivplayer.core.model.QueueItemId
+import io.github.joyelliot.zivplayer.core.model.PlaybackOptions
+import io.github.joyelliot.zivplayer.core.model.DecoderMode
+import io.github.joyelliot.zivplayer.core.model.RenderQuality
 import io.github.joyelliot.zivplayer.core.player.ErrorRecovery
 import io.github.joyelliot.zivplayer.core.player.PlayerErrorKind
 import io.github.joyelliot.zivplayer.core.player.runtime.BackendEvent
@@ -27,6 +30,65 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LibmpvBackendTest {
+    @Test
+    fun configurationRollsBackTheSetterThatMutatedThenFailed() = runBlocking {
+        val client = FakeMpvClient()
+        val backend = LibmpvBackend(TestContext, MpvClientFactory { client }, { "/test/mpv" })
+        backend.load(loadRequest())
+        val before = client.strings.toMap()
+        client.stringFailure = { name, value -> name == "scale" && value == "ewa_lanczossharp" }
+        assertNotNull(runCatching { backend.configure(PlaybackOptions(decoder = DecoderMode.SOFTWARE,
+            quality = RenderQuality.HIGH), LibmpvResourcePaths()) }.exceptionOrNull())
+        assertEquals(before, client.strings)
+        assertEquals(listOf("hwdec", "scale", "scale", "hwdec"), client.stringWrites.takeLast(4))
+        client.stringFailure = { _, _ -> false }
+        backend.play() // A fully restored engine remains usable.
+        backend.close()
+    }
+
+    @Test
+    fun failedConfigurationRollbackRequiresReset() = runBlocking {
+        val client = FakeMpvClient()
+        val backend = LibmpvBackend(TestContext, MpvClientFactory { client }, { "/test/mpv" })
+        backend.load(loadRequest())
+        client.stringFailure = { name, _ -> name == "scale" }
+        assertNotNull(runCatching { backend.configure(PlaybackOptions(quality = RenderQuality.HIGH), LibmpvResourcePaths()) }.exceptionOrNull())
+        val failure = withTimeout(1_000) { backend.events.take(1).toList().single() } as BackendEvent.Failure
+        assertEquals(ErrorRecovery.RESET, failure.error.recovery)
+        assertNotNull(runCatching { backend.play() }.exceptionOrNull())
+        backend.close()
+    }
+
+    @Test
+    fun eventBurstPublishesOneResetAndStopsFurtherDelivery() = runBlocking {
+        val client = FakeMpvClient()
+        val backend = LibmpvBackend(TestContext, MpvClientFactory { client }, { "/test/mpv" })
+        backend.load(loadRequest())
+        client.emit(MpvClientEvent(rawEventId = MpvEventType.START_FILE.rawValue))
+        client.emit(MpvClientEvent(rawEventId = MpvEventType.FILE_LOADED.rawValue))
+        repeat(10_000) { index -> client.property(MpvPropertyChange("time-pos", MpvPropertyFormat.DOUBLE.rawValue,
+            MpvPropertyValue.DoubleValue(index.toDouble()), 1L)) }
+        val failure = withTimeout(1_000) { backend.events.take(1).toList().single() } as BackendEvent.Failure
+        assertEquals(ErrorRecovery.RESET, failure.error.recovery)
+        assertEquals(true, client.flags["pause"])
+        assertNotNull(runCatching { backend.play() }.exceptionOrNull())
+        backend.close()
+    }
+
+    @Test
+    fun pumpFailureStillPublishesResetWhenTheDeliveryQueueIsExactlyFull() = runBlocking {
+        val client = FakeMpvClient()
+        val backend = LibmpvBackend(TestContext, MpvClientFactory { client }, { "/test/mpv" })
+        backend.load(loadRequest())
+        client.emit(MpvClientEvent(rawEventId = MpvEventType.START_FILE.rawValue))
+        repeat(256) { client.property(MpvPropertyChange("time-pos", MpvPropertyFormat.DOUBLE.rawValue,
+            MpvPropertyValue.DoubleValue(1.0), 1L)) }
+        client.fail(MpvClientFailure.EVENT_PUMP_STOPPED)
+        val failure = withTimeout(1_000) { backend.events.take(1).toList().single() } as BackendEvent.Failure
+        assertEquals(ErrorRecovery.RESET, failure.error.recovery)
+        backend.close()
+    }
+
     @Test
     fun failedCreationIsNotRetriedByLoadCleanup() = runBlocking {
         var createCalls = 0
@@ -140,6 +202,10 @@ class LibmpvBackendTest {
         private var observer: MpvClient.Observer? = null
         var destroyCalls = 0
             private set
+        val strings = mutableMapOf<String, String>()
+        val stringWrites = mutableListOf<String>()
+        val flags = mutableMapOf<String, Boolean>()
+        var stringFailure: (String, String) -> Boolean = { _, _ -> false }
 
         override fun addObserver(observer: MpvClient.Observer) {
             check(this.observer == null)
@@ -153,7 +219,7 @@ class LibmpvBackendTest {
             }
         }
 
-        override fun setOptionString(name: String, value: String) = Unit
+        override fun setOptionString(name: String, value: String) { strings[name] = value }
 
         override fun initialize() = Unit
 
@@ -165,9 +231,13 @@ class LibmpvBackendTest {
 
         override fun setPropertyDouble(name: String, value: Double) = Unit
 
-        override fun setPropertyBoolean(name: String, value: Boolean) = Unit
+        override fun setPropertyBoolean(name: String, value: Boolean) { flags[name] = value }
 
-        override fun setPropertyString(name: String, value: String) = Unit
+        override fun setPropertyString(name: String, value: String) {
+            strings[name] = value
+            stringWrites += name
+            check(!stringFailure(name, value)) { "Injected mutate-then-fail setter." }
+        }
 
         override fun observeProperty(
             name: String,
@@ -192,6 +262,8 @@ class LibmpvBackendTest {
         fun emit(event: MpvClientEvent) {
             checkNotNull(observer).onEvent(event)
         }
+
+        fun property(change: MpvPropertyChange) { checkNotNull(observer).onPropertyChanged(change) }
 
         fun fail(failure: MpvClientFailure) {
             checkNotNull(observer).onFailure(failure)

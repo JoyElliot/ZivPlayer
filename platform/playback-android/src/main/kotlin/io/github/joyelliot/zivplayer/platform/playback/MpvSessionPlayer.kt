@@ -38,6 +38,13 @@ import io.github.joyelliot.zivplayer.core.model.QueueItem
 import io.github.joyelliot.zivplayer.core.model.QueueItemId
 import io.github.joyelliot.zivplayer.core.model.SubtitleSource
 import io.github.joyelliot.zivplayer.core.model.VolumePercent
+import io.github.joyelliot.zivplayer.core.model.PlayerPreferences
+import io.github.joyelliot.zivplayer.core.model.PlaybackDiagnostics
+import io.github.joyelliot.zivplayer.core.model.TrackKind
+import io.github.joyelliot.zivplayer.core.media.MediaPlaybackPreferences
+import io.github.joyelliot.zivplayer.core.media.SavedSubtitle
+import io.github.joyelliot.zivplayer.core.media.matchTrack
+import io.github.joyelliot.zivplayer.core.media.savedSelection
 import io.github.joyelliot.zivplayer.core.player.CommandResult
 import io.github.joyelliot.zivplayer.core.player.ErrorRecovery
 import io.github.joyelliot.zivplayer.core.player.PlaybackSnapshot
@@ -49,6 +56,8 @@ import io.github.joyelliot.zivplayer.core.player.PlayerStatus
 import io.github.joyelliot.zivplayer.core.player.RepeatMode
 import io.github.joyelliot.zivplayer.platform.libmpv.LibmpvSurfaceLease
 import io.github.joyelliot.zivplayer.platform.libmpv.LibmpvSurfacePort
+import io.github.joyelliot.zivplayer.platform.libmpv.LibmpvConfigurationPort
+import io.github.joyelliot.zivplayer.platform.libmpv.LibmpvResourcePaths
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -59,10 +68,12 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.android.asCoroutineDispatcher
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.CancellationException
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
@@ -74,6 +85,7 @@ private const val MILLIS_TO_MICROS = 1_000L
 internal data class PlaybackEngine(
     val session: PlayerSession,
     val surfacePort: LibmpvSurfacePort,
+    val configurationPort: LibmpvConfigurationPort? = null,
 )
 
 internal class QueueItemIdGenerator(
@@ -142,6 +154,8 @@ internal class MpvSessionPlayer(
     private val ensurePlaybackForeground: () -> Unit,
     private val cancelPendingForeground: () -> Unit,
     private val onPlaybackPublished: () -> Unit,
+    private val preferencesProvider: PlaybackHistoryProvider? = null,
+    private val onConfigurationStatus: (String?) -> Unit = {},
     private val engineFactory: () -> PlaybackEngine,
 ) : SimpleBasePlayer(applicationLooper) {
     private val applicationHandler = Handler(applicationLooper)
@@ -171,11 +185,39 @@ internal class MpvSessionPlayer(
     private var subtitleRequestGeneration = 0L
     private var snapshotCollector: Job
     private var eventCollector: Job
+    private var configurationJob: Job? = null
+    private val configurationReady = CompletableDeferred<Unit>()
+    private var preferences = PlayerPreferences()
+    internal var configurationMessage: String? = null
+        private set
+    private var pendingDefaultRate: QueueItemId? = null
+    private var pendingTrackRestore: PendingTrackRestore? = null
+    private var restoringTracks = false
+    private var pendingImportedChoice: PendingImportedChoice? = null
+    private var trackIntentGeneration = 0L
 
     init {
         progressRecorder.bind(engineEpoch, snapshot)
         snapshotCollector = startSnapshotCollector(engine, engineEpoch)
         eventCollector = startEventCollector(engine, engineEpoch)
+        configurationJob = scope.launch {
+            val repository = preferencesProvider?.playerPreferencesRepository
+            if (repository == null) { configurationReady.complete(Unit); return@launch }
+            try {
+                repository.preferences.collect { value ->
+                    operationGate.withLock {
+                        preferences = value
+                        if (!value.rememberTrackSelection) clearPendingTrackRestore()
+                        applyPlaybackConfiguration()
+                    }
+                    configurationReady.complete(Unit)
+                }
+            } catch (failure: CancellationException) { throw failure
+            } catch (failure: Exception) {
+                configurationMessage = "播放设置读取失败：${failure.message}"
+                onConfigurationStatus(configurationMessage)
+            } finally { configurationReady.complete(Unit) }
+        }
     }
 
     override fun getState(): State {
@@ -226,15 +268,25 @@ internal class MpvSessionPlayer(
         // request that may already be resolving. Pause remains an explicit cancellation.
         if (!playWhenReady) {
             setMediaRequestFence.invalidate()
+            clearPendingTrackRestore()
             releaseAudioFocus()
         }
         if (playWhenReady && setMediaRequestFence.hasPendingRequest()) {
             return Futures.immediateVoidFuture()
         }
-        return launchFuture {
+        val playSequence = PlaybackRequestSequencer.current()
+        val playItem = engine.session.snapshot.value.queue.currentItem?.id
+        val restoration = if (playWhenReady) pendingTrackRestore else null
+        return launchFuture(beforeOperation = { restoration?.let { awaitInitialTrackRestore(it) } }) {
+            if (playWhenReady && (playSequence != PlaybackRequestSequencer.current() ||
+                    playItem != engine.session.snapshot.value.queue.currentItem?.id)) return@launchFuture
             playWhenReadyChangeReason = Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST
             if (playWhenReady) {
                 try {
+                    if (pendingDefaultRate == engine.session.snapshot.value.queue.currentItem?.id) {
+                        dispatchOrThrow(PlayerCommand.SetPlaybackRate(preferences.defaultPlaybackRate))
+                        pendingDefaultRate = null
+                    }
                     check(audioFocusPolicy.requestPlay {
                         ensurePlaybackForeground()
                         audioFocus.request()
@@ -258,6 +310,9 @@ internal class MpvSessionPlayer(
     override fun handleStop(): ListenableFuture<*> {
         setMediaRequestFence.invalidate()
         subtitleRequestGeneration++
+        ++trackIntentGeneration
+        clearPendingTrackRestore()
+        pendingImportedChoice = null
         releaseAudioFocus()
         return launchFuture {
             val beforeStop = engine.session.snapshot.value
@@ -274,12 +329,25 @@ internal class MpvSessionPlayer(
         PlayerCommand.SetRepeatMode(repeatMode.toCoreRepeatMode()),
     )
 
-    override fun handleSetTrackSelectionParameters(parameters: TrackSelectionParameters): ListenableFuture<*> = launchFuture {
+    override fun handleSetTrackSelectionParameters(parameters: TrackSelectionParameters): ListenableFuture<*> {
+        ++trackIntentGeneration
+        clearPendingTrackRestore() // An explicit choice always wins over a delayed restore.
+        pendingImportedChoice = null
+        return launchFuture {
+        clearPendingTrackRestore()
+        pendingImportedChoice = null
         val current = engine.session.snapshot.value
         val queueItem = checkNotNull(current.queue.currentItem) { "No media is loaded." }
         val commands = current.tracks.selectionCommands(queueItem.id.value, parameters)
-        commands.forEach { dispatchOrThrow(it) }
+        commands.forEach { command ->
+            dispatchOrThrow(command)
+            persistChoice {
+                preferencesProvider?.mediaPlaybackPreferencesRepository?.saveTrack(queueItem.media.id,
+                    command.trackId?.let(current.tracks.available::savedSelection), command.kind)
+            }
+        }
         invalidateState()
+        }
     }
 
     override fun handleSetPlaybackParameters(
@@ -292,7 +360,10 @@ internal class MpvSessionPlayer(
         if (permille !in MIN_RATE_PERMILLE..MAX_RATE_PERMILLE) {
             return failedFuture("Playback speed must be between 0.25x and 4.0x.")
         }
-        return dispatch(PlayerCommand.SetPlaybackRate(PlaybackRatePermille(permille)))
+        return launchFuture {
+            pendingDefaultRate = null
+            dispatchOrThrow(PlayerCommand.SetPlaybackRate(PlaybackRatePermille(permille)))
+        }
     }
 
     override fun handleSetVolume(volume: Float, volumeOperationType: Int): ListenableFuture<*> {
@@ -369,6 +440,7 @@ internal class MpvSessionPlayer(
                 ?.takeIf { it.containsKey(PlaybackRequestMetadata.SEQUENCE_EXTRA) }
                 ?.getLong(PlaybackRequestMetadata.SEQUENCE_EXTRA),
         )
+        clearPendingTrackRestore()
 
         return launchFuture {
             try {
@@ -402,6 +474,18 @@ internal class MpvSessionPlayer(
                     runCatching { activeDescriptor?.close() }
                     activeDescriptor = resolved.descriptor
                     activeMediaItem = resolved.mediaItem
+                    pendingDefaultRate = resolved.queueItem.id
+                    clearPendingTrackRestore()
+                    if (preferences.rememberTrackSelection) persistChoice {
+                        preferencesProvider?.mediaPlaybackPreferencesRepository?.find(resolved.queueItem.media.id)?.let {
+                            if (setMediaRequestFence.isCurrent(requestTicket) && (it.audio != null || it.subtitle != null ||
+                                    it.subtitlesDisabled || it.externalSubtitles.isNotEmpty())) {
+                                pendingTrackRestore = PendingTrackRestore(resolved.queueItem.id, it, requestTicket, trackIntentGeneration)
+                            }
+                        }
+                    }
+                    scheduleTrackRestore()
+                    scheduleImportedChoice()
                     invalidateState()
                 } catch (failure: Throwable) {
                     runCatching { resolved.descriptor?.close() }
@@ -451,6 +535,9 @@ internal class MpvSessionPlayer(
     internal fun shutdownAsync(): ListenableFuture<*> {
         setMediaRequestFence.invalidate()
         subtitleRequestGeneration++
+        ++trackIntentGeneration
+        clearPendingTrackRestore()
+        pendingImportedChoice = null
         releaseAudioFocus()
         return launchFuture(allowAfterShutdown = true) {
             shutdown()
@@ -462,6 +549,7 @@ internal class MpvSessionPlayer(
             shutdownCompletion.await()
             return
         }
+        configurationJob?.cancel()
 
         var shutdownFailure: Throwable? = null
         val leaseToDetach = surfaceLease
@@ -523,6 +611,8 @@ internal class MpvSessionPlayer(
                         if (next.status == PlayerStatus.PLAYING) onPlaybackPublished()
                     }
                     progressRecorder.observeSnapshot(observedEpoch, next)
+                    scheduleTrackRestore()
+                    scheduleImportedChoice()
                     invalidateState()
                 }
             }
@@ -565,6 +655,7 @@ internal class MpvSessionPlayer(
 
         val replacement = engineFactory()
         engine = replacement
+        applyPlaybackConfiguration()
         engineEpoch = previousEpoch + 1L
         snapshot = replacement.session.snapshot.value
         progressRecorder.bind(engineEpoch, snapshot)
@@ -583,6 +674,31 @@ internal class MpvSessionPlayer(
     private fun requiresEngineReset(): Boolean =
         engine.session.snapshot.value.error?.recovery == ErrorRecovery.RESET
 
+    private suspend fun applyPlaybackConfiguration() {
+        val port = engine.configurationPort ?: return
+        try {
+            val paths = preferencesProvider?.resolvePlaybackResources(preferences.options) ?: PlaybackResourceLocations()
+            withContext(Dispatchers.IO) { port.configure(preferences.options, LibmpvResourcePaths(paths.fontsDirectory, paths.shaderFiles)) }
+            configurationMessage = null
+        } catch (failure: CancellationException) { throw failure
+        } catch (failure: Exception) {
+            configurationMessage = "部分播放设置未能应用：${failure.message}"
+            Log.w("ZivMedia3Player", "Playback settings were not applied.", failure)
+        }
+        onConfigurationStatus(configurationMessage)
+    }
+
+    internal fun readDiagnostics(): ListenableFuture<PlaybackDiagnostics> {
+        val reply = SettableFuture.create<PlaybackDiagnostics>()
+        val operation = launchFuture {
+            val port = engine.configurationPort
+            reply.set(if (port == null) PlaybackDiagnostics() else withContext(Dispatchers.IO) { port.readDiagnostics() })
+        }
+        operation.addListener({ runCatching { operation.get() }.exceptionOrNull()?.let { reply.setException(it) } },
+            com.google.common.util.concurrent.MoreExecutors.directExecutor())
+        return reply
+    }
+
     internal fun addSubtitle(
         uri: Uri,
         expectedMediaId: String,
@@ -591,23 +707,31 @@ internal class MpvSessionPlayer(
     ): ListenableFuture<*> {
         if (uri.scheme != CONTENT_SCHEME) return failedFuture("Choose a subtitle through the document picker.")
         val request = ++subtitleRequestGeneration
+        val intent = ++trackIntentGeneration
+        clearPendingTrackRestore()
+        pendingImportedChoice = null
         val epoch = engineEpoch
         val itemId = snapshot.queue.currentItem?.id
-        fun isCurrent(): Boolean = request == subtitleRequestGeneration && epoch == engineEpoch &&
+        fun isCurrent(): Boolean = intent == trackIntentGeneration && request == subtitleRequestGeneration && epoch == engineEpoch &&
             itemId != null && engine.session.snapshot.value.queue.currentItem?.id == itemId &&
             activeMediaItem?.mediaId == expectedMediaId &&
             activeMediaItem?.mediaMetadata?.extras?.getLong(PlaybackRequestMetadata.SEQUENCE_EXTRA) == expectedRequestSequence &&
             !setMediaRequestFence.hasPendingRequest()
         return launchFuture {
             check(isCurrent()) { "The selected media changed while choosing a subtitle." }
+            clearPendingTrackRestore()
+            pendingImportedChoice = null
             check(subtitleDescriptors.size < 16) { "At most 16 external subtitles may be attached." }
+            val managed = preferencesProvider?.takeIf { it.mediaPlaybackPreferencesRepository != null }
+                ?.importSubtitleResource(uri)
+            check(isCurrent()) { "The selected media changed while importing a subtitle." }
             val (descriptor, displayName) = withContext(NonCancellable + Dispatchers.IO) {
-                val displayName = title?.takeIf(String::isNotBlank) ?: runCatching {
+                val displayName = managed?.title ?: title?.takeIf(String::isNotBlank) ?: runCatching {
                     context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
                         if (cursor.moveToFirst()) cursor.getString(0)?.takeIf(String::isNotBlank) else null
                     }
                 }.getOrNull() ?: uri.lastPathSegment ?: "External subtitle"
-                checkNotNull(context.contentResolver.openFileDescriptor(uri, READ_ONLY_MODE)) {
+                checkNotNull(context.contentResolver.openFileDescriptor(managed?.uri ?: uri, READ_ONLY_MODE)) {
                     "The subtitle could not be opened."
                 } to displayName
             }
@@ -617,6 +741,12 @@ internal class MpvSessionPlayer(
                     "$FILE_DESCRIPTOR_URI_PREFIX${descriptor.fd}", displayName,
                 )))
                 subtitleDescriptors += descriptor
+                if (managed != null) persistChoice {
+                    preferencesProvider.mediaPlaybackPreferencesRepository?.saveSubtitle(MediaId(expectedMediaId),
+                        SavedSubtitle(managed.id, displayName))
+                    if (intent == trackIntentGeneration) pendingImportedChoice = PendingImportedChoice(checkNotNull(itemId), displayName, intent)
+                    scheduleImportedChoice()
+                }
             } catch (failure: Throwable) {
                 runCatching { descriptor.close() }.exceptionOrNull()?.let(failure::addSuppressed)
                 throw failure
@@ -626,11 +756,154 @@ internal class MpvSessionPlayer(
 
     private fun clearSubtitleDescriptors() {
         subtitleRequestGeneration++
+        clearPendingTrackRestore()
+        pendingImportedChoice = null
         subtitleDescriptors.forEach { descriptor ->
             runCatching { descriptor.close() }.onFailure { Log.w("ZivMedia3Player", "Subtitle handle could not be closed.", it) }
         }
         subtitleDescriptors.clear()
     }
+
+    private suspend fun persistChoice(block: suspend () -> Unit): Boolean {
+        try { block(); return true } catch (failure: CancellationException) { throw failure
+        } catch (failure: Exception) {
+            configurationMessage = "音轨或字幕记忆未能保存/读取：${failure.message}"
+            onConfigurationStatus(configurationMessage)
+            Log.w("ZivMedia3Player", "Playback choices could not be persisted/restored.", failure)
+            return false
+        }
+    }
+
+    private fun clearPendingTrackRestore() {
+        pendingTrackRestore?.completion?.complete(Unit)
+        pendingTrackRestore = null
+    }
+
+    private fun PendingTrackRestore.isCurrent(): Boolean = pendingTrackRestore === this &&
+        preferences.rememberTrackSelection && intent == trackIntentGeneration && setMediaRequestFence.isCurrent(ticket) &&
+        engine.session.snapshot.value.queue.currentItem?.id == itemId
+
+    private suspend fun awaitInitialTrackRestore(pending: PendingTrackRestore) {
+        val observedEngine = engine
+        // Keep autoplay false during initial preparation. Native track discovery can lag
+        // FILE_LOADED, so wait for the restore independently of the command mutex.
+        if (!awaitPreparationOrRestoreCancellation(pending.completion) {
+                observedEngine.session.snapshot.first {
+                    it.queue.currentItem?.id != pending.itemId || it.status != PlayerStatus.LOADING
+                }
+            }) return
+        if (!pending.isCurrent()) return
+        if (observedEngine.session.snapshot.value.status !in setOf(
+                PlayerStatus.READY, PlayerStatus.PLAYING, PlayerStatus.PAUSED, PlayerStatus.BUFFERING)) {
+            clearPendingTrackRestore()
+            return
+        }
+        scheduleTrackRestore()
+        if (withTimeoutOrNull(2_000L) { pending.completion.await(); true } != true) {
+            if (pendingTrackRestore === pending) {
+                clearPendingTrackRestore()
+                configurationMessage = "保存的部分轨道尚未出现，已使用当前可用轨道。"
+                onConfigurationStatus(configurationMessage)
+            }
+        }
+    }
+
+    private fun scheduleImportedChoice() {
+        val pending = pendingImportedChoice ?: return
+        val current = engine.session.snapshot.value
+        if (current.queue.currentItem?.id != pending.itemId || pending.intent != trackIntentGeneration) { pendingImportedChoice = null; return }
+        val selected = current.tracks.selected[TrackKind.SUBTITLE] ?: return
+        val choice = current.tracks.available.savedSelection(selected)
+            ?.takeIf { it.external && it.label == pending.title } ?: return
+        pendingImportedChoice = null
+        scope.launch {
+            operationGate.withLock {
+                val latest = engine.session.snapshot.value
+                if (pending.intent == trackIntentGeneration && latest.queue.currentItem?.id == pending.itemId &&
+                    latest.tracks.selected[TrackKind.SUBTITLE] == selected) persistChoice {
+                    preferencesProvider?.mediaPlaybackPreferencesRepository?.saveTrack(
+                        checkNotNull(current.queue.currentItem).media.id, choice, TrackKind.SUBTITLE)
+                }
+            }
+        }
+    }
+
+    private fun scheduleTrackRestore() {
+        val pending = pendingTrackRestore ?: return
+        if (restoringTracks || shutdownStarted.get()) return
+        if (!pending.isCurrent()) { clearPendingTrackRestore(); return }
+        val current = engine.session.snapshot.value
+        if (current.queue.currentItem?.id != pending.itemId || current.status !in setOf(
+                PlayerStatus.READY, PlayerStatus.PLAYING, PlayerStatus.PAUSED, PlayerStatus.BUFFERING)) return
+        restoringTracks = true
+        scope.launch {
+            val beforeTracks = engine.session.snapshot.value.tracks
+            try {
+                val restored = persistChoice {
+                    while (pending.externalIndex < pending.saved.externalSubtitles.size) {
+                        if (!pending.isCurrent()) return@persistChoice
+                        val saved = pending.saved.externalSubtitles[pending.externalIndex]
+                        val resource = preferencesProvider?.findSubtitleResource(saved.resourceId)
+                        if (resource == null) { pending.externalIndex++; continue }
+                        if (!pending.isCurrent()) return@persistChoice
+                        // Provider and database I/O must not hold up Pause, replacement,
+                        // shutdown, or the two-second best-effort restoration deadline.
+                        val descriptor = withContext(NonCancellable + Dispatchers.IO) {
+                            checkNotNull(context.contentResolver.openFileDescriptor(resource.uri, READ_ONLY_MODE))
+                        }
+                        var retained = false
+                        try {
+                            operationGate.withLock {
+                                if (pending.isCurrent()) {
+                                    dispatchOrThrow(PlayerCommand.AddSubtitle(SubtitleSource(
+                                        "$FILE_DESCRIPTOR_URI_PREFIX${descriptor.fd}", saved.title)))
+                                    subtitleDescriptors += descriptor
+                                    retained = true
+                                    pending.externalIndex++
+                                }
+                            }
+                        } finally { if (!retained) runCatching { descriptor.close() } }
+                        if (!pending.isCurrent()) return@persistChoice
+                    }
+                    operationGate.withLock {
+                        if (!pending.isCurrent()) return@withLock
+                        val tracks = engine.session.snapshot.value.tracks.available
+                        if (!pending.audioRestored && pending.isCurrent()) {
+                            pending.saved.audio?.matchTrack(tracks)?.let {
+                                dispatchOrThrow(PlayerCommand.SelectTrack(TrackKind.AUDIO, it))
+                                pending.audioRestored = true
+                            }
+                        }
+                        if (!pending.subtitleRestored && pending.isCurrent()) {
+                            if (pending.saved.subtitlesDisabled) {
+                                dispatchOrThrow(PlayerCommand.SelectTrack(TrackKind.SUBTITLE, null))
+                                pending.subtitleRestored = true
+                            } else pending.saved.subtitle?.matchTrack(tracks)?.let {
+                                dispatchOrThrow(PlayerCommand.SelectTrack(TrackKind.SUBTITLE, it))
+                                pending.subtitleRestored = true
+                            }
+                        }
+                        if (pending.audioRestored && pending.subtitleRestored && pendingTrackRestore === pending)
+                            clearPendingTrackRestore()
+                    }
+                }
+                if (!restored && pendingTrackRestore === pending) clearPendingTrackRestore()
+            } finally {
+                restoringTracks = false
+                if (pendingTrackRestore !== pending || beforeTracks != engine.session.snapshot.value.tracks) scheduleTrackRestore()
+            }
+        }
+    }
+
+    private class PendingTrackRestore(val itemId: QueueItemId, val saved: MediaPlaybackPreferences,
+        val ticket: SetMediaRequestFence.Ticket, val intent: Long) {
+        val completion = CompletableDeferred<Unit>()
+        var externalIndex = 0
+        var audioRestored = saved.audio == null
+        var subtitleRestored = saved.subtitle == null && !saved.subtitlesDisabled
+    }
+
+    private data class PendingImportedChoice(val itemId: QueueItemId, val title: String, val intent: Long)
 
     private fun releaseAudioFocus() {
         audioFocusPolicy.cancelPlaybackIntent()
@@ -733,6 +1006,7 @@ internal class MpvSessionPlayer(
 
     private fun launchFuture(
         allowAfterShutdown: Boolean = false,
+        beforeOperation: suspend () -> Unit = {},
         block: suspend () -> Unit,
     ): ListenableFuture<*> {
         if (shutdownStarted.get() && !allowAfterShutdown) {
@@ -741,6 +1015,8 @@ internal class MpvSessionPlayer(
         val future = SettableFuture.create<Void>()
         val job = scope.launch {
             try {
+                if (!allowAfterShutdown) configurationReady.await()
+                beforeOperation()
                 operationGate.withLock {
                     if (shutdownStarted.get() && !allowAfterShutdown) {
                         throw PlaybackException(

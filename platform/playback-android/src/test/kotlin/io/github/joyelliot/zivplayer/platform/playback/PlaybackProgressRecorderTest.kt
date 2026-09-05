@@ -974,6 +974,62 @@ class PlaybackProgressRecorderTest {
         assertEquals(Milliseconds(35L), repository.checkpoints.single().position)
     }
 
+    @Test
+    fun `sustained repeat outage retains only latest completion and reset`() = runTest {
+        val repository = FakeRecentMediaRepository(failuresBeforeSuccess = 1)
+        val recorder = recorder(repository)
+        val initial = snapshot(PlayerStatus.PLAYING, positionMs = 95L, durationMs = 100L)
+        recorder.bind(EPOCH_ONE, initial)
+        awaitRecorder { recorder.sampleNow() }
+        var sequence = 0L
+        var latest = initial
+        // No retry ticks during the outage: every complete/reset cycle enters the retry lane.
+        repeat(1_000) { index ->
+            val ended = snapshot(PlayerStatus.ENDED, positionMs = 100L, durationMs = 100L, revision = index * 2L + 1)
+            latest = snapshot(PlayerStatus.LOADING, positionMs = 0L, durationMs = 100L, revision = index * 2L + 2)
+            recorder.observeEvent(EPOCH_ONE, stateChanged(ended, ++sequence))
+            recorder.observeEvent(EPOCH_ONE, stateChanged(latest, ++sequence))
+        }
+        awaitRecorder { recorder.sampleNow() }
+        assertEquals(listOf(true, false), repository.checkpoints.map { it.completed })
+        assertEquals(listOf(100L, 0L), repository.checkpoints.map { it.position.value })
+        awaitRecorder { recorder.closeAndFlush(EPOCH_ONE, latest) }
+    }
+
+    @Test
+    fun `thousands of ordered events preserve the final checkpoint under backpressure`() = runTest {
+        val repository = FakeRecentMediaRepository()
+        val recorder = recorder(repository)
+        val initial = snapshot(PlayerStatus.PLAYING, positionMs = 0L, durationMs = 10_000L)
+        recorder.bind(EPOCH_ONE, initial)
+        var latest = initial
+        repeat(4_000) { index ->
+            latest = snapshot(PlayerStatus.PLAYING, positionMs = index + 1L, durationMs = 10_000L, revision = index + 1L)
+            recorder.observeEvent(EPOCH_ONE, stateChanged(latest, index + 1L))
+        }
+        awaitRecorder { recorder.flushPause(EPOCH_ONE, latest.copy(status = PlayerStatus.PAUSED)) }
+        assertEquals(4_000L, repository.checkpoints.last().position.value)
+        awaitRecorder { recorder.closeAndFlush(EPOCH_ONE, latest) }
+    }
+
+    @Test
+    fun `closing a large stalled retry backlog has one global time budget per pass`() = runTest {
+        val repository = FakeRecentMediaRepository(failuresBeforeSuccess = 300)
+        val recorder = recorder(repository)
+        var latest = snapshot(PlayerStatus.PAUSED, positionMs = 10L, durationMs = 100L)
+        recorder.bind(EPOCH_ONE, latest)
+        repeat(255) { index ->
+            latest = snapshot(PlayerStatus.PAUSED, mediaId = "media-$index", queueItemId = "item-$index",
+                positionMs = 10L, durationMs = 100L, revision = index + 1L)
+            recorder.observeEvent(EPOCH_ONE, stateChanged(latest, index + 1L))
+        }
+        runCurrent()
+        repository.blockWrites = true
+        val before = testScheduler.currentTime
+        awaitRecorder { recorder.closeAndFlush(EPOCH_ONE, latest) }
+        assertTrue("Close exceeded its bounded retry passes", testScheduler.currentTime - before <= 4_100L)
+    }
+
     private fun TestScope.recorder(
         repository: FakeRecentMediaRepository,
         clock: () -> Long = { 1_000L },

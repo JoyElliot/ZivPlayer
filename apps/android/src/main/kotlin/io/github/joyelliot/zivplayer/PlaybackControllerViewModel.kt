@@ -31,6 +31,8 @@ import io.github.joyelliot.zivplayer.feature.player.PlayerTrackUiItem
 import io.github.joyelliot.zivplayer.platform.playback.PlaybackRequestMetadata
 import io.github.joyelliot.zivplayer.platform.playback.SubtitleRequestContract
 import io.github.joyelliot.zivplayer.platform.playback.PlaybackService
+import io.github.joyelliot.zivplayer.platform.playback.PlaybackDiagnosticsContract
+import io.github.joyelliot.zivplayer.core.model.PlaybackDiagnostics
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -70,6 +72,15 @@ class PlaybackControllerViewModel(
     private var subtitleMessageMediaId: String? = null
     private var subtitleMessageSequence: Long? = null
     private var subtitleOperationGeneration = 0L
+    val diagnostics = mutableStateOf<PlaybackDiagnostics?>(null)
+    val diagnosticsMessage = mutableStateOf<String?>(null)
+    val configurationMessage = mutableStateOf<String?>(null)
+    var diagnosticsSampledAtEpochMs: Long? = null
+        private set
+    private var diagnosticsJob: Job? = null
+    private var diagnosticsGeneration = 0L
+    private var diagnosticsRequest: ListenableFuture<SessionResult>? = null
+    private var diagnosticsController: MediaController? = null
 
     private val playerListener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) {
@@ -95,6 +106,46 @@ class PlaybackControllerViewModel(
     }
 
     fun stop() = withControllerCommand(Player.COMMAND_STOP, MediaController::stop)
+    fun pause() = withControllerCommand(Player.COMMAND_PLAY_PAUSE, MediaController::pause)
+
+    fun setDiagnosticsVisible(visible: Boolean) {
+        if (visible && diagnosticsJob?.isActive == true) return
+        ++diagnosticsGeneration
+        diagnosticsJob?.cancel()
+        diagnosticsJob = null
+        diagnosticsRequest?.cancel(false)
+        diagnosticsRequest = null
+        diagnosticsController = null
+        diagnosticsMessage.value = null
+        diagnosticsSampledAtEpochMs = null
+        if (!visible) { diagnostics.value = null; return }
+        val generation = diagnosticsGeneration
+        diagnosticsJob = viewModelScope.launch {
+            while (isActive) {
+                val active = mutableController.value
+                val command = SessionCommand(PlaybackDiagnosticsContract.ACTION_READ, Bundle.EMPTY)
+                if (active != null && active.isConnected && active.isSessionCommandAvailable(command) &&
+                    (diagnosticsRequest?.isDone != false || diagnosticsController !== active)) {
+                    val connection = connectionGeneration
+                    diagnosticsController = active
+                    val request = active.sendCustomCommand(command, Bundle.EMPTY)
+                    diagnosticsRequest = request
+                    request.addListener({
+                        if (cleared || generation != diagnosticsGeneration || connection != connectionGeneration ||
+                            mutableController.value !== active || diagnosticsRequest !== request) return@addListener
+                        val result = runCatching { request.get() }.getOrNull()
+                        if (result?.resultCode == SessionResult.RESULT_SUCCESS) {
+                            diagnostics.value = PlaybackDiagnosticsContract.decode(result.extras)
+                            diagnosticsSampledAtEpochMs = System.currentTimeMillis()
+                            diagnosticsMessage.value = null
+                            configurationMessage.value = result.extras.getString(PlaybackDiagnosticsContract.SETTINGS_MESSAGE)
+                        } else diagnosticsMessage.value = applicationContext.getString(R.string.diagnostics_read_failed)
+                    }, mainExecutor)
+                }
+                delay(1_000)
+            }
+        }
+    }
 
     fun seekTo(positionMs: Long) =
         withControllerCommand(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM) { active ->
@@ -195,6 +246,13 @@ class PlaybackControllerViewModel(
         )
 
         val connectionListener = object : MediaController.Listener {
+            override fun onCustomCommand(controller: MediaController, command: SessionCommand, args: Bundle): ListenableFuture<SessionResult> {
+                if (!cleared && generation == connectionGeneration && command.customAction == PlaybackDiagnosticsContract.ACTION_SETTINGS_STATUS) {
+                    configurationMessage.value = args.getString(PlaybackDiagnosticsContract.SETTINGS_MESSAGE)
+                    return com.google.common.util.concurrent.Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                }
+                return super.onCustomCommand(controller, command, args)
+            }
             override fun onDisconnected(controller: MediaController) {
                 handleDisconnected(controller, generation)
             }
@@ -347,6 +405,11 @@ class PlaybackControllerViewModel(
             canSetRepeat = currentItem != null &&
                 player.isCommandAvailable(Player.COMMAND_SET_REPEAT_MODE),
             canRenderVideo = player.isCommandAvailable(Player.COMMAND_SET_VIDEO_SURFACE),
+            hasVideo = currentItem != null && player.currentTracks.groups.any { it.type == C.TRACK_TYPE_VIDEO && it.length > 0 },
+            videoAspectRatio = player.currentTracks.groups.firstOrNull { it.type == C.TRACK_TYPE_VIDEO && it.length > 0 }
+                ?.getTrackFormat(0)?.let { format -> if (format.width > 0 && format.height > 0)
+                    (format.width.toFloat() / format.height * format.pixelWidthHeightRatio).takeIf { it.isFinite() && it > 0 }
+                    else null } ?: (16f / 9f),
             tracks = player.currentTracks.groups.mapNotNull { group ->
                 val kind = when (group.type) {
                     C.TRACK_TYPE_AUDIO -> PlayerTrackKind.AUDIO
@@ -411,6 +474,8 @@ class PlaybackControllerViewModel(
 
     override fun onCleared() {
         cleared = true
+        diagnosticsJob?.cancel()
+        diagnosticsRequest?.cancel(false)
         ++connectionGeneration
         reconnectJob?.cancel()
         reconnectJob = null

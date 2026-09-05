@@ -24,6 +24,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.ClosedSendChannelException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
@@ -53,7 +54,7 @@ internal class PlaybackProgressRecorder(
 ) {
     private val recorderJob = SupervisorJob()
     private val scope = CoroutineScope(recorderJob + ioDispatcher)
-    private val messages = Channel<Message>(Channel.UNLIMITED)
+    private val messages = Channel<Message>(MAX_QUEUED_MESSAGES)
     private val lifecycleGate = Mutex()
     private val closing = AtomicBoolean(false)
     private val closeCompletion = CompletableDeferred<Unit>()
@@ -76,17 +77,19 @@ internal class PlaybackProgressRecorder(
     fun bind(epoch: Long, snapshot: PlaybackSnapshot) {
         if (closing.get()) return
         ensureStarted()
-        messages.trySend(Message.Bind(epoch, snapshot))
+        check(messages.trySend(Message.Bind(epoch, snapshot)).isSuccess) { "Playback history is busy during engine binding." }
     }
 
-    fun observeSnapshot(epoch: Long, snapshot: PlaybackSnapshot) {
+    suspend fun observeSnapshot(epoch: Long, snapshot: PlaybackSnapshot) {
+        if (actorTermination.isCompleted) return
         ensureStarted()
-        messages.trySend(Message.Snapshot(epoch, snapshot))
+        try { messages.send(Message.Snapshot(epoch, snapshot)) } catch (_: ClosedSendChannelException) { }
     }
 
-    fun observeEvent(epoch: Long, event: PlaybackEvent) {
+    suspend fun observeEvent(epoch: Long, event: PlaybackEvent) {
+        if (actorTermination.isCompleted) return
         ensureStarted()
-        messages.trySend(Message.Event(epoch, event))
+        try { messages.send(Message.Event(epoch, event)) } catch (_: ClosedSendChannelException) { }
     }
 
     suspend fun flushPause(epoch: Long, snapshot: PlaybackSnapshot) {
@@ -225,6 +228,7 @@ internal class PlaybackProgressRecorder(
                 reportFailure(failure)
                 shouldClose = shouldClose || message is Message.Close
             } finally {
+                state.trimCaches()
                 message.acknowledgement?.complete(Unit)
             }
             if (shouldClose) return
@@ -278,15 +282,15 @@ internal class PlaybackProgressRecorder(
         private var activeEpoch: Long? = null
         private var current: Candidate? = null
         private var eventCurrent: Candidate? = null
-        private val latestPositionSnapshots = mutableMapOf<QueueItemId, PlaybackSnapshot>()
-        private val transitionCandidates = mutableMapOf<TransitionKey, Candidate>()
+        private val latestPositionSnapshots = linkedMapOf<QueueItemId, PlaybackSnapshot>()
+        private val transitionCandidates = linkedMapOf<TransitionKey, Candidate>()
         private val handledTransitions = mutableListOf<HandledTransition>()
         private var pendingCompletionReset: CompletionReset? = null
-        private val knownDurations = mutableMapOf<MediaId, Milliseconds>()
-        private val lastPersisted = mutableMapOf<MediaId, CheckpointPayload>()
+        private val knownDurations = linkedMapOf<MediaId, Milliseconds>()
+        private val lastPersisted = linkedMapOf<MediaId, CheckpointPayload>()
         private val pendingWrites = linkedMapOf<MediaId, MutableList<PendingWrite>>()
-        private val untrackedMediaIds = mutableSetOf<MediaId>()
-        private val timestampBaselinesLoaded = mutableSetOf<MediaId>()
+        private val untrackedMediaIds = linkedSetOf<MediaId>()
+        private val timestampBaselinesLoaded = linkedSetOf<MediaId>()
         private var lastTimestamp = -1L
         private var lastRevision = -1L
         private var lastEventRevision = -1L
@@ -401,6 +405,7 @@ internal class PlaybackProgressRecorder(
         }
 
         suspend fun sampleActive() {
+            if (closing.get()) return
             retryPendingWrites()
             current?.takeIf {
                 it.status == PlayerStatus.PLAYING || it.status == PlayerStatus.BUFFERING
@@ -463,6 +468,35 @@ internal class PlaybackProgressRecorder(
             lastRevision = -1L
             lastEventRevision = -1L
             lastEventSequence = -1L
+            knownDurations.clear()
+            lastPersisted.clear()
+            timestampBaselinesLoaded.clear()
+            untrackedMediaIds.clear()
+        }
+
+        fun trimCaches() {
+            val referenced = buildSet {
+                current?.let { add(it.queueItemId) }; eventCurrent?.let { add(it.queueItemId) }
+                pendingCompletionReset?.to?.let(::add)
+                transitionCandidates.values.forEach { add(it.queueItemId) }
+            }
+            latestPositionSnapshots.keys.filter { it !in referenced }.dropLast(MAX_CACHED_MEDIA).forEach(latestPositionSnapshots::remove)
+            while (transitionCandidates.size > MAX_HANDLED_TRANSITIONS) {
+                transitionCandidates.remove(transitionCandidates.keys.first())
+                reportFailure(IllegalStateException("Playback history transition observations exceeded the recovery window."))
+            }
+            while (knownDurations.size > MAX_CACHED_MEDIA) knownDurations.remove(knownDurations.keys.first())
+            while (lastPersisted.size > MAX_CACHED_MEDIA) {
+                val key = lastPersisted.keys.first()
+                lastPersisted.remove(key)
+                timestampBaselinesLoaded.remove(key)
+            }
+            while (timestampBaselinesLoaded.size > MAX_CACHED_MEDIA) {
+                val key = timestampBaselinesLoaded.first()
+                timestampBaselinesLoaded.remove(key)
+                lastPersisted.remove(key)
+            }
+            while (untrackedMediaIds.size > MAX_CACHED_MEDIA) untrackedMediaIds.remove(untrackedMediaIds.first())
         }
 
         private suspend fun persistUnresolvedEventSource() {
@@ -603,6 +637,7 @@ internal class PlaybackProgressRecorder(
             }
 
             val write = PendingWrite(candidate, completed)
+            if (closing.get()) { enqueuePendingWrite(write); return }
             if (!pendingWrites[candidate.mediaId].isNullOrEmpty()) {
                 enqueuePendingWrite(write)
                 return
@@ -659,26 +694,46 @@ internal class PlaybackProgressRecorder(
                 return
             }
 
+            if (mediaId !in pendingWrites && pendingWrites.size >= MAX_CACHED_MEDIA) {
+                // A checkpoint store is not an event journal. Keep the most recent media
+                // when a persistently unavailable database exhausts the retry budget.
+                pendingWrites.remove(pendingWrites.keys.first())
+                reportFailure(IllegalStateException("Playback history retry capacity exceeded; an older checkpoint could not be saved."))
+            }
             val queue = pendingWrites.getOrPut(mediaId) { mutableListOf() }
+            pendingWrites.remove(mediaId)
+            pendingWrites[mediaId] = queue
             val lastIndex = queue.lastIndex
             if (lastIndex >= 0 && queue[lastIndex].completed == write.completed) {
                 queue[lastIndex] = write
             } else {
                 queue += write
             }
+            // Preserve the latest completion/reset pair, not every repeat cycle during an outage.
+            while (queue.size > 2) queue.removeAt(0)
         }
 
         private suspend fun retryPendingWrites() {
-            pendingWrites.keys.toList().forEach { mediaId ->
-                val queue = pendingWrites[mediaId] ?: return@forEach
-                while (queue.isNotEmpty()) {
-                    if (!attemptPersist(queue.first())) break
-                    queue.removeAt(0)
-                }
-                if (queue.isEmpty() || mediaId in untrackedMediaIds) {
+            // One stalled database must not multiply its per-call timeout by 256 media
+            // during pause or service shutdown. Rotate failures for fair later retries.
+            val preferred = if (closing.get()) current?.mediaId else null
+            val keys = listOfNotNull(preferred) + pendingWrites.keys.filter { it != preferred }
+            val completed = withTimeoutOrNull(RETRY_PASS_BUDGET_MS) {
+                keys.forEach { mediaId ->
+                    val queue = pendingWrites[mediaId] ?: return@forEach
+                    // Rotate before a cancellable call, so a timed-out first entry cannot
+                    // starve every other media on the next pass.
                     pendingWrites.remove(mediaId)
+                    pendingWrites[mediaId] = queue
+                    while (queue.isNotEmpty()) {
+                        if (!attemptPersist(queue.first())) break
+                        queue.removeAt(0)
+                    }
+                    if (queue.isEmpty() || mediaId in untrackedMediaIds) pendingWrites.remove(mediaId)
                 }
+                true
             }
+            if (completed != true) reportFailure(IllegalStateException("Playback history retry time budget exceeded; pending checkpoints remain bounded."))
         }
 
         private suspend fun ensureTimestampBaseline(mediaId: MediaId): Boolean {
@@ -816,5 +871,8 @@ internal class PlaybackProgressRecorder(
         const val FINAL_EVENT_QUIET_PERIOD_MS = 50L
         const val MAX_FINAL_DRAIN_MESSAGES = 64
         const val MAX_HANDLED_TRANSITIONS = 64
+        const val MAX_QUEUED_MESSAGES = 512
+        const val MAX_CACHED_MEDIA = 256
+        const val RETRY_PASS_BUDGET_MS = 2_000L
     }
 }

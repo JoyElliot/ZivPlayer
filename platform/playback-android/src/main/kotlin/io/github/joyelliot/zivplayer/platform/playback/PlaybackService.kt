@@ -31,6 +31,7 @@ import io.github.joyelliot.zivplayer.platform.libmpv.LibmpvBackend
 class PlaybackService : MediaSessionService() {
     private var mediaSession: MediaSession? = null
     private var player: MpvSessionPlayer? = null
+    private var diagnosticsOperation: ListenableFuture<io.github.joyelliot.zivplayer.core.model.PlaybackDiagnostics>? = null
     private val foregroundGate = PlaybackForegroundGate(this)
 
     override fun onCreate() {
@@ -56,11 +57,21 @@ class PlaybackService : MediaSessionService() {
                 ensurePlaybackForeground = { foregroundGate.begin(checkNotNull(mediaSession)) },
                 cancelPendingForeground = foregroundGate::cancelPendingPromotion,
                 onPlaybackPublished = foregroundGate::onPlaybackPublished,
+                preferencesProvider = historyProvider,
+                onConfigurationStatus = { message ->
+                    mediaSession?.let { session ->
+                        session.connectedControllers.filter { it.uid == Process.myUid() }.forEach { controller ->
+                            session.sendCustomCommand(controller, SessionCommand(PlaybackDiagnosticsContract.ACTION_SETTINGS_STATUS, Bundle.EMPTY),
+                                Bundle().apply { putString(PlaybackDiagnosticsContract.SETTINGS_MESSAGE, message) })
+                        }
+                    }
+                },
             ) {
                 val backend = LibmpvBackend(this)
                 PlaybackEngine(
                     session = DefaultPlayerSession(backend),
                     surfacePort = backend,
+                    configurationPort = backend,
                 )
             }
             val sessionBuilder = MediaSession.Builder(this, createdPlayer)
@@ -150,6 +161,7 @@ class PlaybackService : MediaSessionService() {
                 sessionCommands
                     .add(SessionCommand(SubtitleRequestContract.ACTION_ADD, Bundle.EMPTY))
                     .add(SessionCommand(VideoSurfaceRequestContract.ACTION_RESIZE, Bundle.EMPTY))
+                    .add(SessionCommand(PlaybackDiagnosticsContract.ACTION_READ, Bundle.EMPTY))
             }
             // Media3 1.11's deprecated default callback returns an empty command set.
             // This is the connection's static ceiling; the player's current capabilities
@@ -160,6 +172,13 @@ class PlaybackService : MediaSessionService() {
                 .build()
         }
 
+        override fun onPostConnect(session: MediaSession, controller: MediaSession.ControllerInfo) {
+            if (controller.uid == Process.myUid()) session.sendCustomCommand(controller,
+                SessionCommand(PlaybackDiagnosticsContract.ACTION_SETTINGS_STATUS, Bundle.EMPTY), Bundle().apply {
+                    putString(PlaybackDiagnosticsContract.SETTINGS_MESSAGE, player?.configurationMessage)
+                })
+        }
+
         override fun onCustomCommand(
             session: MediaSession,
             controller: MediaSession.ControllerInfo,
@@ -167,11 +186,28 @@ class PlaybackService : MediaSessionService() {
             args: Bundle,
         ): ListenableFuture<SessionResult> {
             if (customCommand.customAction != SubtitleRequestContract.ACTION_ADD &&
-                customCommand.customAction != VideoSurfaceRequestContract.ACTION_RESIZE) {
+                customCommand.customAction != VideoSurfaceRequestContract.ACTION_RESIZE &&
+                customCommand.customAction != PlaybackDiagnosticsContract.ACTION_READ) {
                 return super.onCustomCommand(session, controller, customCommand, args)
             }
             if (controller.uid != Process.myUid()) {
                 return Futures.immediateFuture(SessionResult(SessionError.ERROR_PERMISSION_DENIED))
+            }
+            if (customCommand.customAction == PlaybackDiagnosticsContract.ACTION_READ) {
+                val owned = player ?: return Futures.immediateFuture(SessionResult(SessionError.ERROR_INVALID_STATE))
+                if (diagnosticsOperation?.isDone == false)
+                    return Futures.immediateFuture(SessionResult(SessionError.ERROR_INVALID_STATE))
+                val reply = SettableFuture.create<SessionResult>()
+                val operation = owned.readDiagnostics()
+                diagnosticsOperation = operation
+                operation.addListener({
+                    val result = runCatching { operation.get() }
+                    reply.set(result.fold(onSuccess = { data -> SessionResult(SessionResult.RESULT_SUCCESS,
+                        PlaybackDiagnosticsContract.encode(data).apply {
+                            putString(PlaybackDiagnosticsContract.SETTINGS_MESSAGE, owned.configurationMessage)
+                        }) }, onFailure = { SessionResult(SessionError.ERROR_IO) }))
+                }, MoreExecutors.directExecutor())
+                return reply
             }
             if (customCommand.customAction == VideoSurfaceRequestContract.ACTION_RESIZE) {
                 val ownedPlayer = player ?: return Futures.immediateFuture(SessionResult(SessionError.ERROR_INVALID_STATE))

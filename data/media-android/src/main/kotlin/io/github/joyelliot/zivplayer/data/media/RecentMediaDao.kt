@@ -24,6 +24,9 @@ internal interface RecentMediaDao {
     @Query("SELECT * FROM recent_media WHERE source_uri = :sourceUri LIMIT 1")
     suspend fun findBySourceUri(sourceUri: String): RecentMediaEntity?
 
+    @Query("SELECT source_uri FROM recent_media")
+    suspend fun allSourceUris(): List<String>
+
     @Upsert
     suspend fun upsert(entity: RecentMediaEntity)
 

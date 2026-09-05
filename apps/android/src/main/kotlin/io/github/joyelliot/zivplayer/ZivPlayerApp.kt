@@ -11,14 +11,22 @@ import android.view.Surface
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.movableContentOf
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -32,6 +40,14 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
 import io.github.joyelliot.zivplayer.designsystem.ZivTheme
+import io.github.joyelliot.zivplayer.designsystem.ZivAppearance
+import io.github.joyelliot.zivplayer.designsystem.ZivPrimaryButton
+import io.github.joyelliot.zivplayer.feature.library.LibraryScreen
+import io.github.joyelliot.zivplayer.feature.settings.SettingsScreen
+import io.github.joyelliot.zivplayer.feature.settings.DiagnosticsScreen
+import io.github.joyelliot.zivplayer.core.media.PlaybackResourceKind
+import io.github.joyelliot.zivplayer.core.model.PlayerPreferences
+import io.github.joyelliot.zivplayer.core.model.PlaybackDiagnostics
 import io.github.joyelliot.zivplayer.feature.player.PlayerHomeScreen
 import io.github.joyelliot.zivplayer.feature.player.PlayerRepeatMode
 import io.github.joyelliot.zivplayer.feature.player.PlayerUiState
@@ -69,7 +85,50 @@ fun ZivPlayerApp(
     onSubtitleSelected: (Uri?) -> Unit = {},
     onOpenRecent: (String) -> Unit = {},
     onForgetRecent: (String) -> Unit = {},
+    library: LibraryViewModel? = null,
+    settings: SettingsViewModel? = null,
+    fullscreen: Boolean = false,
+    pictureInPicture: Boolean = false,
+    onFullscreenChange: (Boolean) -> Unit = {},
+    onEnterPictureInPicture: () -> Unit = {},
+    onPlayerVisibilityChange: (Boolean) -> Unit = {},
+    diagnostics: PlaybackDiagnostics? = null,
+    diagnosticsMessage: String? = null,
+    configurationMessage: String? = null,
+    onDiagnosticsVisibilityChange: (Boolean) -> Unit = {},
+    onExportDiagnostics: () -> Unit = {},
 ) {
+    var destination by rememberSaveable { mutableStateOf(AppDestination.PLAYER) }
+    var showDiagnostics by rememberSaveable { mutableStateOf(false) }
+    var importKind by rememberSaveable { mutableStateOf(PlaybackResourceKind.FONT) }
+    val preferences = settings?.preferences?.value ?: PlayerPreferences()
+    val expanded = fullscreen || pictureInPicture
+    val renderState = rememberUpdatedState(Triple(controller, playerState.canRenderVideo, expanded))
+    val videoContent = remember {
+        movableContentOf {
+            val (player, canRender, fill) = renderState.value
+            PlayerVideoSurface(player, canRender, if (fill) Modifier.fillMaxSize()
+                else Modifier.fillMaxWidth().aspectRatio(16f / 9f))
+        }
+    }
+    LaunchedEffect(destination, expanded) { onPlayerVisibilityChange(destination == AppDestination.PLAYER || expanded) }
+    LaunchedEffect(destination, showDiagnostics, expanded) {
+        onDiagnosticsVisibilityChange(destination == AppDestination.SETTINGS && showDiagnostics && !expanded)
+    }
+    DisposableEffect(Unit) { onDispose { onDiagnosticsVisibilityChange(false) } }
+    BackHandler(enabled = fullscreen || destination != AppDestination.PLAYER || showDiagnostics) {
+        when {
+            fullscreen -> onFullscreenChange(false)
+            showDiagnostics -> showDiagnostics = false
+            else -> destination = AppDestination.PLAYER
+        }
+    }
+    val openFolder = rememberLauncherForActivityResult(OpenMediaFolder()) { selection ->
+        selection?.let { library?.addFolder(it) }
+    }
+    val importResource = rememberLauncherForActivityResult(OpenMediaDocument()) { selection ->
+        selection?.let { settings?.importResource(it.uri, importKind) }
+    }
     val openMedia = rememberLauncherForActivityResult(OpenMediaDocument()) { selection ->
         selection?.let(onDocumentSelected)
     }
@@ -150,7 +209,21 @@ fun ZivPlayerApp(
         }
     }
 
-    ZivTheme {
+    ZivTheme(appearance = ZivAppearance.valueOf(preferences.appearance.name)) {
+        if (expanded) {
+            Box(Modifier.fillMaxSize().background(Color.Black)) {
+                videoContent()
+                if (!pictureInPicture) Row(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ZivPrimaryButton("−${preferences.seekStepSeconds}s", { onSeekTo((playerState.positionMs - preferences.seekStepSeconds * 1000).coerceAtLeast(0)) }, enabled = playerState.canSeek)
+                    ZivPrimaryButton(stringResource(R.string.app_play_pause), onPlayPause, enabled = playerState.canPlayPause)
+                    ZivPrimaryButton("+${preferences.seekStepSeconds}s", { onSeekTo(playerState.positionMs + preferences.seekStepSeconds * 1000) }, enabled = playerState.canSeek)
+                    ZivPrimaryButton(stringResource(R.string.app_exit_fullscreen), { onFullscreenChange(false) })
+                }
+            }
+        } else Column(Modifier.fillMaxSize()) {
+            Box(Modifier.weight(1f)) { when (destination) {
+            AppDestination.PLAYER ->
         PlayerHomeScreen(
             state = playerState,
             recentMedia = recentMedia,
@@ -176,15 +249,47 @@ fun ZivPlayerApp(
             },
             onOpenRecent = onOpenRecent,
             onForgetRecent = onForgetRecent,
-            videoContent = {
-                PlayerVideoSurface(
-                    player = controller,
-                    canRenderVideo = playerState.canRenderVideo,
-                )
+            videoContent = videoContent,
+            extraControls = {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ZivPrimaryButton(stringResource(R.string.app_fullscreen), { onFullscreenChange(true) }, Modifier.weight(1f), enabled = playerState.canRenderVideo && playerState.hasVideo)
+                    ZivPrimaryButton(stringResource(R.string.app_pip), onEnterPictureInPicture, Modifier.weight(1f), enabled = playerState.canRenderVideo && playerState.hasVideo)
+                }
             },
         )
+            AppDestination.LIBRARY -> LibraryScreen(
+                folders = library?.folders?.value.orEmpty(), media = library?.media?.value.orEmpty(),
+                scanningFolderId = library?.progress?.value?.folderId, scannedCount = library?.progress?.value?.mediaFound ?: 0,
+                message = library?.message?.value, onAddFolder = { openFolder.launch(Unit) },
+                onScan = { library?.scan(it) }, onCancelScan = { library?.cancelScan() },
+                onRemoveFolder = { library?.removeFolder(it) }, onFavorite = { library?.setFavorite(it) }, onHidden = { library?.setHidden(it) },
+                onOpen = { item -> destination = AppDestination.PLAYER; onDocumentSelected(OpenMediaDocumentResult(Uri.parse(item.sourceUri.value), 0)) },
+            )
+            AppDestination.SETTINGS -> if (showDiagnostics) DiagnosticsScreen(
+                snapshot = diagnostics, device = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL} · Android ${android.os.Build.VERSION.RELEASE}",
+                message = diagnosticsMessage, onBack = { showDiagnostics = false }, onExport = onExportDiagnostics,
+            ) else SettingsScreen(
+                value = preferences, resources = settings?.resources?.value.orEmpty(), message = configurationMessage ?: settings?.message?.value,
+                busy = settings?.busy?.value ?: false, onUpdate = { settings?.update(it) },
+                onImport = { kind -> importKind = kind; importResource.launch(arrayOf("*/*")) }, onDelete = { settings?.deleteResource(it) },
+                onDiagnostics = { showDiagnostics = true },
+            )
+            } }
+            Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                AppDestination.entries.forEach { item ->
+                    ZivPrimaryButton(stringResource(when (item) {
+                        AppDestination.PLAYER -> R.string.app_player
+                        AppDestination.LIBRARY -> R.string.app_library
+                        AppDestination.SETTINGS -> R.string.app_settings
+                    }), { destination = item }, Modifier.weight(1f), enabled = destination != item)
+                }
+            }
+        }
     }
 }
+
+private enum class AppDestination { PLAYER, LIBRARY, SETTINGS }
 
 @Composable
 private fun MediaSelectionNotice.toUserMessage(): String = when (this) {
@@ -417,15 +522,13 @@ private fun MediaController.removeListenerOnApplicationLooper(listener: Player.L
 private fun PlayerVideoSurface(
     player: MediaController?,
     canRenderVideo: Boolean,
+    modifier: Modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f),
 ) {
     val context = LocalContext.current
     val surfaceView = remember(context) { SurfaceView(context) }
     AndroidView(
         factory = { surfaceView },
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(16f / 9f)
-            .background(Color.Black),
+        modifier = modifier.background(Color.Black),
     )
 
     DisposableEffect(player, surfaceView, canRenderVideo) {

@@ -1,0 +1,33 @@
+<resources>
+    <string name="library_title">Library</string>
+    <string name="library_add_folder">Add folder</string>
+    <string name="library_folders">Folders (%1$d)</string>
+    <string name="library_folder_hint">Choose a media folder. Scans only update the library index and keep your original files.</string>
+    <string name="library_never_scanned">Not scanned</string>
+    <string name="library_scanning">Scanning</string>
+    <string name="library_ready">Up to date</string>
+    <string name="library_interrupted">Interrupted</string>
+    <string name="library_access_lost">Access lost · add the folder again</string>
+    <string name="library_failed">Scan failed</string>
+    <string name="library_folder_status">%1$s · %2$s</string>
+    <plurals name="library_items"><item quantity="one">%1$d item</item><item quantity="other">%1$d items</item></plurals>
+    <plurals name="library_found"><item quantity="one">Found %1$d media file</item><item quantity="other">Found %1$d media files</item></plurals>
+    <string name="library_cancel">Cancel scan</string>
+    <string name="library_rescan">Scan again</string>
+    <string name="library_remove">Remove index</string>
+    <string name="library_search">Search name or path</string>
+    <string name="library_all">All media</string>
+    <string name="library_video">Video</string>
+    <string name="library_audio">Audio</string>
+    <string name="library_favorites">Favorites</string>
+    <string name="library_hidden">Hidden</string>
+    <string name="library_sort_name">Sort: name</string>
+    <string name="library_sort_modified">Sort: modified</string>
+    <string name="library_sort_size">Sort: size</string>
+    <plurals name="library_results"><item quantity="one">%1$d result · tap a file to play</item><item quantity="other">%1$d results · tap a file to play</item></plurals>
+    <string name="library_favorite">Favorite</string>
+    <string name="library_unfavorite">Unfavorite</string>
+    <string name="library_hide">Hide</string>
+    <string name="library_unhide">Show again</string>
+    <string name="library_empty">No matching media. Add a folder, scan it, or change the filter.</string>
+</resources>
