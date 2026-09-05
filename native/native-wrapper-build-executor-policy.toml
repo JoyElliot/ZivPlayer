@@ -1,0 +1,326 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Closed-loop policy for one offline wrapper-inclusive inspection build. This
+# additive policy binds the accepted wrapper namespace probe, exact 20-artifact
+# staging and audit, pinned JNI source contract, and a non-release receipt.
+
+schemaVersion = 1
+kind = "ziv-native-wrapper-build-executor-policy-v1"
+
+[binding]
+profileName = "ziv-libmpv-stack-wrapper-api26-v1"
+profileSha256 = "d6cf2a360b4c8f159e49fc9a9872faf4a21e3dc5e8a225905d3b3ccaf4fe42ce"
+namespaceProbePolicyPath = "native/native-wrapper-executor-policy.toml"
+namespaceProbePolicySha256 = "e38767eb0e8e095364d13040a9ce3f49479f9147e1a2740d4f81860c496d1647"
+namespaceProbeTranscriptSha256 = "e182d70ac1a76b00f7f3a622835c23621ba3df4654a339b945f66094f959dc9f"
+preparationReceiptKind = "ziv-native-build-preparation-wrapper-v1"
+preparationReceiptSha256 = "e51dae00b7f145de9663ee1b90010bf9904f8775ff2f12624454040c941132b4"
+toolchainCompositionReceiptSha256 = "e9b88860b8e6d043a80a7f3d6aa7e3e641574e7da4c66a0541db129a4e081989"
+hostPlatform = "linux/amd64"
+toolchainMount = "/opt/zivplayer/toolchain"
+sourceMount = "/build/source"
+outputMount = "/build/output"
+homeMount = "/build/home"
+temporaryMount = "/build/tmp"
+wrapperInputMount = "/build/wrapper"
+wrapperInputReadOnly = true
+
+[gate]
+phase = "offline-wrapper-inspection-build"
+buildCommands = true
+artifactStaging = true
+artifactAudit = true
+buildReceipt = true
+ready = false
+releaseInput = false
+
+[execution]
+environmentMode = "empty"
+commandsSource = "native-wrapper-build-profile"
+commandOrder = "sequential-exact"
+namespaceProfile = "ziv-native-wrapper-build-namespace-execution-v1"
+namespaceArgumentCount = 31
+preservedDescriptorCount = 11
+seccompInvocation = ["/usr/bin/perl", "/usr/share/zivplayer/toolchain-evidence/apt-stage/helpers/native/toolchain/install-seccomp.pl"]
+runnerInterpreterInvocation = ["/bin/bash", "--noprofile", "--norc"]
+runnerInvocation = ["/run/ziv-native-wrapper-build-runner.bash", "--execute-locked-wrapper-build"]
+procHidepidRequested = "2"
+procHidepidAccepted = ["2", "invisible"]
+workspaceReuse = "single-attempt"
+buildTimeoutSeconds = 14400
+timeoutValidation = "dedicated-build-wall-clock-deadline"
+stdoutLimitBytes = 33554432
+stderrLimitBytes = 33554432
+stderrAllowed = true
+commandEventSource = "locked-runner-bytes-plus-parent-launch-and-exit"
+childStdoutMarkers = "diagnostic-only-non-authoritative"
+transcript = "bounded-stream-sha256-plus-parent-runner-events"
+parentDeathSignal = "SIGKILL"
+newSession = true
+failureTeardown = "pidfd-sigterm-2s-cgroup-kill-pidfd-sigkill"
+leaderSigtermGraceSeconds = 2
+cgroupDrainTimeoutSeconds = 10
+cgroupRemoval = "require-empty-and-identity"
+failureRetention = "retain-workspace-and-attempt"
+rlimitNoFile = 4096
+rlimitFileSizeBytes = 2147483648
+rlimitCoreBytes = 0
+
+[cgroup]
+version = 2
+controllers = ["cpu", "io", "memory", "pids"]
+pidsMax = 512
+memoryMaxBytes = 2147483648
+memorySwapMaxBytes = 0
+cpuQuotaMicros = 200000
+cpuPeriodMicros = 100000
+ioReadBytesPerSecond = 8388608
+ioWriteBytesPerSecond = 8388608
+ioReadOperationsPerSecond = 2048
+ioWriteOperationsPerSecond = 2048
+ioDevicePolicy = "require-apt-sdk-canonical-source-and-workspace-same-block-device"
+
+[filesystem]
+minimumFreeBytes = 8589934592
+reserveFreeBytes = 4294967296
+minimumFreeInodes = 250000
+reserveFreeInodes = 100000
+maximumEntryDelta = 104096
+maximumLibraryBytes = 536870912
+maximumArtifactBytes = 4294967296
+
+[workspace]
+precondition = "verified-preparation"
+attemptMarkerName = "ziv-native-wrapper-build-attempt.json"
+attemptMarkerKind = "ziv-native-wrapper-build-attempt-v1"
+attemptMarkerSchemaVersion = 1
+attemptMarkerCanonicalJson = true
+attemptMarkerMode = 384
+attemptMarkerOwnerUid = 0
+attemptMarkerOwnerGid = 0
+attemptMarkerLinkCount = 1
+attemptMarkerNormalizedMtimeNs = 946684800000000000
+attemptMarkerXattrs = "forbidden"
+attemptMarkerMaximumBytes = 65536
+attemptMarkerPublication = "workspace-root-create-no-replace-fsync"
+attemptMarkerPublicationParent = "pinned-workspace-descriptor"
+attemptMarkerReadback = "stable-canonical-bytes-and-sha256"
+attemptMarkerParentFsync = true
+attemptMarkerRecords = [
+    "policy-sha256",
+    "profile-name-and-sha256",
+    "preparation-and-composition-receipt-sha256",
+    "accepted-namespace-probe-policy-and-transcript-sha256",
+    "executor-helper-sha256",
+    "exact-command-order",
+    "attempt-state-consumed-before-launch",
+]
+attemptMarkerFields = [
+    "artifactAudited",
+    "artifactStaged",
+    "buildExecuted",
+    "commands",
+    "kind",
+    "launcherSha256",
+    "namespaceProbePolicySha256",
+    "namespaceProbeTranscriptSha256",
+    "namespaceSha256",
+    "policySha256",
+    "preparationReceiptSha256",
+    "profileName",
+    "profileSha256",
+    "ready",
+    "releaseInput",
+    "runnerSha256",
+    "schemaVersion",
+    "seccompSha256",
+    "state",
+    "toolchainCompositionReceiptSha256",
+]
+attemptMarkerFieldOrder = "canonical-json-lexicographic"
+attemptMarkerAdditionalFields = "forbidden"
+attemptMarkerState = "consumed-before-launch"
+attemptMarkerBuildExecuted = false
+attemptMarkerArtifactStaged = false
+attemptMarkerArtifactAudited = false
+attemptMarkerReady = false
+attemptMarkerReleaseInput = false
+preparationReceiptDisposition = "retain-read-only"
+mutableAfterAttempt = ["source", "output", "home", "tmp"]
+canonicalSourcePostcondition = "reverify-external-canonical-source-input-unchanged"
+preparedSourcePostcondition = "allow-build-mutations-within-pinned-directory-and-bounded-filesystem-delta"
+immutableInputsPostcondition = "reverify-policy-profile-receipts-toolchain-helpers-wrapper-bytes-and-identity"
+failureDisposition = "retain-workspace-and-attempt-without-build-receipt"
+
+[artifacts]
+stagingMode = "copy-exact-allowlist"
+publication = "per-abi-tree-no-replace-fsync"
+builtLibraryRootTemplate = "/build/source/buildscripts/prefix/{upstreamArch}/lib"
+runtimeLibraryRootTemplate = "/opt/zivplayer/toolchain/android-sdk/ndk/29.0.14206865/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/{ndkRuntimeDirectory}"
+outputLibraryTemplate = "/build/output/{abi}/{library}"
+expectedLibraries = [
+    "libavcodec.so",
+    "libavdevice.so",
+    "libavfilter.so",
+    "libavformat.so",
+    "libavutil.so",
+    "libc++_shared.so",
+    "libmpv.so",
+    "libswresample.so",
+    "libswscale.so",
+    "libzivplayer_mpv.so",
+]
+builtLibraries = [
+    "libavcodec.so",
+    "libavdevice.so",
+    "libavfilter.so",
+    "libavformat.so",
+    "libavutil.so",
+    "libmpv.so",
+    "libswresample.so",
+    "libswscale.so",
+    "libzivplayer_mpv.so",
+]
+runtimeLibraries = ["libc++_shared.so"]
+abiDirectoryMode = 493
+libraryMode = 420
+normalizedMtimeNs = 946684800000000000
+sourceSymlinkPolicy = "resolve-within-locked-root-copy-regular-bytes"
+outputSymlinks = "forbidden"
+outputHardlinks = "forbidden"
+outputXattrs = "forbidden"
+
+[audit]
+elfToolPath = "/opt/zivplayer/toolchain/android-sdk/ndk/29.0.14206865/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf"
+elfToolTarget = "llvm-readobj"
+elfToolTargetSha256 = "5104576a3518575cf1887c2afa9249bbd0dc175cb9dc0f2af0d430fe0cb20bbe"
+elfToolDialect = "llvm-readelf"
+elfToolArguments = [
+    "--file-header",
+    "--program-headers",
+    "--dynamic-table",
+    "--dyn-symbols",
+    "--relocations",
+    "--notes",
+    "--wide",
+]
+dynamicSymbolTablePolicy = "require-one-complete-dynsym-table-with-contiguous-zero-based-indices"
+symbolNamePolicy = "preserve-version-and-reject-whitespace-except-readelf-version-index"
+dynamicNamePolicy = "require-whitespace-free-bracket-free-soname-and-needed-with-no-trailing-data"
+elfType = "ET_DYN"
+pageSizeBytes = 16384
+loadSegmentPolicy = "require-one-or-more-load-segments-each-align-16384-and-offset-vaddr-congruent"
+sonamePolicy = "require-one-basename-per-artifact-and-unique-within-abi"
+neededPolicy = "require-basename-and-resolve-to-staged-soname-or-api26-platform-stub"
+dependencyClosurePolicy = "per-abi-complete-no-unknown-needed"
+jniExportPolicy = "require-wrapper-exact-jni-lifecycle-and-no-other-jni-or-java-prefix"
+nativeApiEvidence = "locked-api26-driver-plus-built-ident-api26-ndk-r29-and-api26-version-aware-symbol-closure"
+platformStubRootTemplate = "/opt/zivplayer/toolchain/android-sdk/ndk/29.0.14206865/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/{ndkRuntimeDirectory}/26"
+platformSonameAllowlist = [
+    "libOpenSLES.so",
+    "libaaudio.so",
+    "libandroid.so",
+    "libc.so",
+    "libdl.so",
+    "libEGL.so",
+    "libGLESv2.so",
+    "libGLESv3.so",
+    "libjnigraphics.so",
+    "liblog.so",
+    "libm.so",
+    "libmediandk.so",
+    "libvulkan.so",
+    "libz.so",
+]
+platformSymbolPolicy = "resolve-each-strong-undefined-platform-symbol-at-api26"
+symbolVersionPolicy = "resolve-exact-version-or-default-version-alias"
+unresolvedWeakSymbolPolicy = "allow-only-locked-abi-library-symbol-type-visibility-and-relocation-set"
+allowedUnresolvedWeakSymbols = [
+    { abi = "arm64-v8a", library = "libavcodec.so", symbol = "memfd_create", symbolTypes = ["NOTYPE"], symbolVisibilities = ["DEFAULT"], relocationTypes = ["R_AARCH64_GLOB_DAT"] },
+    { abi = "arm64-v8a", library = "libavfilter.so", symbol = "memfd_create", symbolTypes = ["NOTYPE"], symbolVisibilities = ["DEFAULT"], relocationTypes = ["R_AARCH64_GLOB_DAT"] },
+    { abi = "arm64-v8a", library = "libavformat.so", symbol = "memfd_create", symbolTypes = ["NOTYPE"], symbolVisibilities = ["DEFAULT"], relocationTypes = ["R_AARCH64_GLOB_DAT"] },
+    { abi = "arm64-v8a", library = "libavutil.so", symbol = "memfd_create", symbolTypes = ["NOTYPE"], symbolVisibilities = ["DEFAULT"], relocationTypes = ["R_AARCH64_GLOB_DAT"] },
+    { abi = "arm64-v8a", library = "libmpv.so", symbol = "memfd_create", symbolTypes = ["NOTYPE"], symbolVisibilities = ["DEFAULT"], relocationTypes = ["R_AARCH64_GLOB_DAT"] },
+    { abi = "arm64-v8a", library = "libswscale.so", symbol = "memfd_create", symbolTypes = ["NOTYPE"], symbolVisibilities = ["DEFAULT"], relocationTypes = ["R_AARCH64_GLOB_DAT"] },
+]
+androidIdentNotePolicy = "require-built-artifact-api26-and-ndk-r29-record-locked-runtime"
+
+[[audit.abi]]
+name = "arm64-v8a"
+clangTriple = "aarch64-linux-android26"
+elfClass = 64
+elfMachine = "AArch64"
+
+[[audit.abi]]
+name = "x86_64"
+clangTriple = "x86_64-linux-android26"
+elfClass = 64
+elfMachine = "Advanced Micro Devices X86-64"
+
+[contract]
+schemaVersion = 1
+validation = "pinned-source-structure-v1"
+bindingsClass = "io/github/joyelliot/zivplayer/platform/libmpv/MpvNativeBindings"
+libraryName = "zivplayer_mpv"
+wrapperSoname = "libzivplayer_mpv.so"
+methodCount = 16
+registrationMethodCount = 16
+requiredJniExports = ["JNI_OnLoad", "JNI_OnUnload"]
+requiredSymbolType = "FUNC"
+requiredBinding = "GLOBAL"
+requiredVisibility = "DEFAULT"
+requiredDefinition = "numeric-section-index"
+forbiddenPrefixes = ["Java_"]
+methodsProjectionSha256 = "856d5535a02d8570ce0c5f56e7c0a7b72ae4ef31ad84e2e96b7c49539ceacab3"
+wireProjectionSha256 = "9b93c5e539535802455e06fca286c20d61d6668e0063190a47a1216902f90e0b"
+fullProjectionSha256 = "fe7687bacc79e7c091dc7d95d300ff0f61cc3da49885b802ff14c93960f0a780"
+registrationProofScope = "pinned-source-table-plus-compiled-lifecycle-exports"
+runtimeRegistrationEvidence = "pending-device-art-smoke"
+
+[receipt]
+name = "ziv-native-wrapper-build-receipt.json"
+kind = "ziv-native-wrapper-build-receipt-v1"
+schemaVersion = 1
+canonicalJson = true
+mode = 420
+ownerUid = 0
+ownerGid = 0
+linkCount = 1
+normalizedMtimeNs = 946684800000000000
+xattrs = "forbidden"
+maximumBytes = 4194304
+publication = "workspace-root-no-replace-fsync"
+publicationParent = "pinned-workspace-descriptor"
+temporarySuffix = ".part"
+readback = "stable-canonical-bytes-and-sha256"
+parentFsync = true
+records = [
+    "policy-and-input-locks",
+    "attempt-state",
+    "exact-command-order-from-policy-profile-locked-runner-and-parent-events",
+    "bounded-log-size-and-sha256",
+    "cgroup-and-filesystem-outcome",
+    "per-artifact-size-and-sha256",
+    "elf-class-machine-type-and-load-segments",
+    "soname-and-needed-resolution-closure",
+    "api26-version-aware-strong-symbol-closure-and-locked-weak-artifact-symbol-types-visibilities-and-relocations",
+    "jni-lifecycle-export-and-pinned-source-registration-contract",
+    "build-options-and-overlay-hashes",
+    "pending-release-blockers",
+]
+buildExecuted = true
+artifactStaged = true
+artifactAudited = true
+ready = false
+releaseInput = false
+pendingReleaseBlockers = ["pending-wrapper-runtime-validation", "pending-offline-closure", "pending-actual-build-graph", "pending-accepted-release-builder", "pending-release-gate"]
+
+[helpers]
+launcherPath = "native/toolchain/native-wrapper-executor-child.py"
+launcherSha256 = "1264e5b7d40c3451ef82f42cb1145dfdbf7da65e91be20a34d185a6a084a37bb"
+namespacePath = "native/toolchain/native-wrapper-build-execution-namespace.bash"
+namespaceSha256 = "90ce7e39bc784d42e7bda64457dd323ca436c3434a7bfb579b12ca04e0112ad9"
+runnerPath = "native/toolchain/native-wrapper-build-runner.bash"
+runnerSha256 = "1aa8282b5695b221e9c159afd50fdb53206453da847748c9afe86b6edfa78298"
+seccompPath = "native/toolchain/install-seccomp.pl"
+seccompSha256 = "ab2e6d21a2768a585b2bc53a2495c78f46ab9a4dbac32d09bf58e311091c597d"

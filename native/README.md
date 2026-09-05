@@ -848,22 +848,54 @@ must report NDK major r29. The byte-locked NDK 29 package's prebuilt
 `libc++_shared.so` reports r28 and is accepted as a locked runtime input rather
 than misrepresented as a newly built artifact.
 
-The additive wrapper path now has a separate policy and accepted namespace
-probe bound to its exact preparation. It proves the six inputs are mounted at
-`/build/wrapper` read-only, but it deliberately does not authorize a build. A
-new build policy, runner, and receipt kind must cover all 20 artifacts,
-including exact `JNI_OnLoad`/`JNI_OnUnload` visibility, no `Java_` exports, the
-16-entry `RegisterNatives` contract, SONAME/NEEDED closure, API 26, and 16-KiB
-LOAD alignment. None of that compiled evidence exists merely because the
-preparation or namespace probe passed.
+The additive wrapper path has a separate policy and accepted namespace probe
+bound to its exact preparation. It proves the six inputs are mounted at
+`/build/wrapper` read-only, but it deliberately does not authorize a build.
+The separate `native-wrapper-build-executor-policy.toml`,
+`native-wrapper-build-execution-namespace.bash`,
+`native-wrapper-build-runner.bash`, and
+`native_wrapper_build_executor_tool.py` now define the next closed execution
+path without changing the historical stack-only executor or receipt. The new
+path requires all 20 artifacts, exact `JNI_OnLoad`/`JNI_OnUnload` definitions,
+no other `JNI_` or any `Java_` dynamic symbols, the pinned 16-entry
+`RegisterNatives` source contract, SONAME/NEEDED closure, built Android-ident
+API 26 with NDK r29, and 16-KiB LOAD alignment. Its successful output is still
+an explicitly non-release wrapper receipt. Until that executor actually runs,
+none of the compiled evidence exists merely because its code, preparation, or
+namespace probe passed.
 
-The receipt records exact command order, bounded log sizes and
-digests, parent-observed command events, cgroup/filesystem outcomes, artifact
-hashes, ELF/SONAME/NEEDED/API-26
-observations, overlay/build options, and explicit pending release blockers. It
-remains a non-release inspection receipt after successful execution. All three
-failed attempts remain retained as described above; the consumed fourth
-workspace and its successful non-release receipt are retained without rerun.
+Static validation is safe on either host and cannot enter a namespace:
+
+```text
+python native/tools/native_wrapper_build_executor_tool.py validate
+```
+
+Both Linux-only commands require an explicit prepared workspace. The first is
+read-only and never publishes an attempt marker; the second consumes the
+workspace before launching the two locked commands:
+
+```text
+python3 native/tools/native_wrapper_build_executor_tool.py verify-inputs \
+  --build-workspace /var/tmp/<exact-wrapper-workspace>
+python3 native/tools/native_wrapper_build_executor_tool.py execute \
+  --build-workspace /var/tmp/<fresh-exact-wrapper-workspace>
+```
+
+The wrapper receipt records exact command order, bounded log sizes and digests,
+the parent-observed `runner-launched` and zero-exit `runner-exited` events,
+cgroup/filesystem outcomes, artifact hashes, ELF/SONAME/NEEDED/API-26
+observations, overlay/build options, and explicit pending release blockers. A
+future successful wrapper execution will still produce only a non-release
+inspection receipt. Separately, all three failed historical stack-only attempts
+remain retained as described above; that path's consumed fourth workspace and
+successful non-release receipt are retained without rerun. No wrapper execution
+attempt or wrapper build receipt exists yet.
+
+The receipt's compact `wrapperContract` summary is not a replacement for the
+executor policy. Exact wrapper SONAME, required JNI names and symbol attributes,
+and forbidden prefixes remain in the byte-locked policy referenced by the
+receipt's `policySha256`; the per-artifact audit records the corresponding
+compiled observations.
 
 ## Locked build baseline
 
@@ -903,9 +935,9 @@ namespace probe have passed through the canonical executor in inspection mode,
 and the fourth stack-only WSL one-shot build has published its successful
 non-release receipt. The next native milestones must:
 
-1. add a wrapper-specific build-executor policy and runner bound to the accepted
-   probe, additive profile, exact preparation, and read-only `/build/wrapper`;
-2. run the two locked `mpv+zivplayer_mpv` commands once in a fresh workspace and
+1. finish independent review and read-only input verification of the checked-in
+   wrapper build executor against one fresh, exact prepared workspace;
+2. run the two locked `mpv+zivplayer_mpv` commands once in that fresh workspace and
    audit exactly 20 outputs, including ELF class/machine, API 26, SONAME/NEEDED,
    strong/weak symbol closure, 16-KiB LOAD alignment, and the exact JNI export
    and registration contract;

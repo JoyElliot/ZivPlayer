@@ -109,9 +109,12 @@ policy, and receipt remain immutable historical evidence.
   `/build/wrapper` without opening any build or release gate. `CMakeLists.txt`
   remains a shallow contract/reference input and is not the selected execution
   path. Neither its restrictions nor the build-file declarations are
-  provenance: the new wrapper-inclusive build executor and receipt must bind
-  the accepted probe and hashes, then audit exactly nine stack libraries plus
-  the wrapper per ABI, or 20 outputs in total.
+  provenance: the checked-in wrapper-inclusive build executor binds the
+  accepted probe, exact preparation, six source inputs, and helper hashes. On
+  execution it must audit exactly nine stack libraries plus the wrapper per
+  ABI, or 20 outputs in total, before publishing its separate non-release
+  receipt. The implementation and its tests are not compiled-artifact evidence;
+  that evidence starts only with a successful fresh-workspace execution.
   Historical stack-only policies and receipts remain immutable.
 - Gradle may consume native libraries only from a generated staging tree whose
   complete manifest, hashes, ABI inventory, metadata, ELF dependency closure,
