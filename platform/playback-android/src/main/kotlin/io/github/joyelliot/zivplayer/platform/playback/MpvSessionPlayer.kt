@@ -614,7 +614,7 @@ internal class MpvSessionPlayer(
             try {
                 check(isCurrent()) { "The selected media changed while opening a subtitle." }
                 dispatchOrThrow(PlayerCommand.AddSubtitle(SubtitleSource(
-                    "$FILE_DESCRIPTOR_PATH_PREFIX${descriptor.fd}", displayName,
+                    "$FILE_DESCRIPTOR_URI_PREFIX${descriptor.fd}", displayName,
                 )))
                 subtitleDescriptors += descriptor
             } catch (failure: Throwable) {
@@ -688,7 +688,7 @@ internal class MpvSessionPlayer(
             null
         }
         try {
-            val locator = descriptor?.let { "$FILE_DESCRIPTOR_PATH_PREFIX${it.fd}" } ?: uri.toString()
+            val locator = descriptor?.let { "$FILE_DESCRIPTOR_URI_PREFIX${it.fd}" } ?: uri.toString()
             val queueItemId = queueItemIdGenerator.next()
             val mediaId = mediaItem.mediaId.ifBlank { "session:${queueItemId.value}" }
             val normalizedItem = mediaItem.buildUpon().setMediaId(mediaId).build()
@@ -791,7 +791,9 @@ internal class MpvSessionPlayer(
         const val MAX_RATE_PERMILLE = 4_000
         const val CONTENT_SCHEME = "content"
         const val READ_ONLY_MODE = "r"
-        const val FILE_DESCRIPTOR_PATH_PREFIX = "/proc/self/fd/"
+        // Borrow the granted descriptor. Reopening /proc/self/fd can fail Android access checks;
+        // fdclose:// would instead transfer ownership and break replay and our PFD cleanup.
+        const val FILE_DESCRIPTOR_URI_PREFIX = "fd://"
     }
 }
 

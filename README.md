@@ -35,10 +35,13 @@ libraries (ten per ABI) are staged through a receipt-bound verifier before
 Gradle packages them. The APK also contains the separately locked AndroidX
 graphics helper used by Compose. JVM and Android build checks
 cover state projection, command policy, reset recovery, Surface lease ordering,
-and service manifest composition. A physical device or configured emulator is
-still required to prove actual media output, foreground notification behavior,
-Surface recreation, audio focus, native shutdown, Room behavior, document
-provider permission persistence, and process-death reopening.
+and service manifest composition. The initial build has now passed seven
+instrumentation tests on an Android 15 arm64 phone, including real JNI playback,
+track/subtitle selection, replay, Surface recreation and transient audio focus.
+Device acceptance also covers visible ASS/SRT Chinese subtitles, audible output,
+system media controls, and SAF/history reopening after process death. See the
+[initial-build acceptance record](docs/validation/2026-09-05-initial-build.md)
+for evidence, environment constraints and the remaining compatibility matrix.
 
 The source adapter preserves event payloads and observer identities under a
 single-instance, serialized stop/load policy. Track discovery uses fresh
@@ -184,9 +187,14 @@ The artifact verifier checks the twenty audited library hashes, the two
 AndroidX helpers against their verified Gradle AAR, uncompressed 16-KiB ZIP
 alignment, and all sixteen native method descriptors in the actual DEX.
 `NativePlaybackSmokeTest` exercises the real service/JNI path; compiling it
-does not establish a device pass. Audible output, ASS/CJK appearance, system
-notification controls, audio interruptions and document-provider persistence
-still require device acceptance. No emulator is required for the USB workflow.
+does not establish a device pass. Its screenshots require visual review, and
+audible output, system notification controls and real document-provider
+persistence require the separate device steps recorded in the acceptance report.
+The test harness foregrounds the app and warms its test-only fixture provider
+through ADB shell, which avoids this phone's background-activity restriction.
+Audio-focus acceptance requires the OS to deliver focus-loss callbacks; disable
+an OEM's simultaneous-app-audio override temporarily when running that check.
+No emulator is required for the USB workflow.
 
 The native source manifest has a separate explicit cache gate:
 

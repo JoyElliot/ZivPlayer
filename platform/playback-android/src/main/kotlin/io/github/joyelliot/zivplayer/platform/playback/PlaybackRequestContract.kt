@@ -26,7 +26,7 @@ object VideoSurfaceRequestContract {
     const val HEIGHT = "surface_height"
 }
 
-/** UI and service share one process. Old Surface callbacks cannot resize a newer render target. */
+/** UI and service share one process. Old Surface callbacks cannot resize or clear a newer target. */
 object VideoSurfaceRequests {
     private val sequence = AtomicLong(0L)
     private val active = AtomicLong(0L)
@@ -34,7 +34,7 @@ object VideoSurfaceRequests {
     fun claim(): Long = sequence.incrementAndGet().also(active::set)
     fun current(): Long = active.get()
     fun isCurrent(token: Long): Boolean = token > 0L && token == active.get()
-    fun release(token: Long) { active.compareAndSet(token, 0L) }
+    fun release(token: Long): Boolean = token > 0L && active.compareAndSet(token, 0L)
 }
 
 /** Process-scoped ordering shared by the app UI and its in-process playback service. */

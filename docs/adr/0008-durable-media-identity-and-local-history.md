@@ -7,7 +7,7 @@
 
 The playback bootstrap currently uses a selected URI string as both the media
 and queue identifier. Inside the playback service, a `content://` URI is opened
-as a process-local file descriptor and libmpv receives `/proc/self/fd/<n>`.
+as a process-local file descriptor and libmpv borrows `fd://<n>`.
 Neither a queue occurrence nor that transport locator is a durable media
 identity. Persisting either would attach history and resume state to the wrong
 object after queue changes or process restart.
@@ -29,7 +29,7 @@ pretending that a complete media library already exists.
   separately and uniquely; `QueueItemId` remains an occurrence ID and is never
   a database key.
 - Android persists the original `content://` URI. It never stores
-  `/proc/self/fd` paths, `ParcelFileDescriptor`, `Surface`, HTTP authorization
+  `fd://`/`fdclose://` locators, `/proc/self/fd` paths, `ParcelFileDescriptor`, `Surface`, HTTP authorization
   headers, or an Android `Uri` object in the database.
 - A failed persistable read grant may still permit one temporary playback, but
   that selection is not promised as restart-safe history. Access is rechecked

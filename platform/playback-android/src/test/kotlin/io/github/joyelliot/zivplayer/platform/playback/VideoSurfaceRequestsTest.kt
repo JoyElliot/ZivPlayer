@@ -12,9 +12,11 @@ class VideoSurfaceRequestsTest {
         val old = VideoSurfaceRequests.claim()
         val current = VideoSurfaceRequests.claim()
         assertFalse(VideoSurfaceRequests.isCurrent(old))
-        VideoSurfaceRequests.release(old)
+        assertFalse(VideoSurfaceRequests.release(old))
         assertTrue(VideoSurfaceRequests.isCurrent(current))
-        VideoSurfaceRequests.release(current)
+        assertTrue(VideoSurfaceRequests.release(current))
         assertFalse(VideoSurfaceRequests.isCurrent(current))
+        assertFalse(VideoSurfaceRequests.release(current))
+        assertFalse(VideoSurfaceRequests.release(0))
     }
 }

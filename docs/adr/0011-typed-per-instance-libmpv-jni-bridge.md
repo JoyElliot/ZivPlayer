@@ -99,8 +99,8 @@ policy, and receipt remain immutable historical evidence.
   The wrapper therefore owns one process-lifetime global reference and does not
   delete it from `JNI_OnUnload`.
 - Keep Storage Access Framework descriptors in the Kotlin/Media3 owner. JNI
-  receives only the existing `/proc/self/fd/<n>` locator and never closes or
-  duplicates that descriptor.
+  receives only a borrowed `fd://<n>` locator and never closes or duplicates that
+  descriptor. The selected mpv fd protocol borrows it too; `fdclose://` is not used.
 - Build the wrapper separately with locked NDK 29 `ndk-build`, native API 26,
   the two selected ABIs, shared libc++, a Release configuration, and 16-KiB load
   alignment. The additive profile snapshots `Android.mk`, `Application.mk`, the

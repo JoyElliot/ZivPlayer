@@ -11,7 +11,9 @@ import io.github.joyelliot.zivplayer.core.model.Milliseconds
 value class DurableMediaUri(val value: String) {
     init {
         require(value.isNotBlank()) { "Durable media URI must not be blank." }
-        require(!value.contains(PROCESS_FILE_DESCRIPTOR_PATH)) {
+        require(!value.contains(PROCESS_FILE_DESCRIPTOR_PATH) &&
+            !value.startsWith("fd://", ignoreCase = true) &&
+            !value.startsWith("fdclose://", ignoreCase = true)) {
             "A process-local file descriptor cannot be a durable media URI."
         }
     }
