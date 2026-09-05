@@ -39,7 +39,8 @@ import org.junit.Rule
 import org.junit.Test
 
 class PlayerUiContractTest {
-    @get:Rule
+    @get:Rule(order = 0) val foreground = DeviceForegroundRule()
+    @get:Rule(order = 1)
     val composeRule = createComposeRule()
 
     @Test

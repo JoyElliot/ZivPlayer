@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Only Debug device tests resolve fixtures from the separately installed test APK. -->
+    <queries>
+        <provider android:authorities="io.github.joyelliot.zivplayer.test.fixtures" />
+    </queries>
+</manifest>

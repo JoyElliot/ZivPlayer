@@ -20,6 +20,16 @@ class MediaRecordsTest {
     }
 
     @Test(expected = IllegalArgumentException::class)
+    fun `durable media URI rejects borrowed mpv descriptors`() {
+        DurableMediaUri("fd://42")
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `durable media URI rejects transferred mpv descriptors`() {
+        DurableMediaUri("fdclose://42")
+    }
+
+    @Test(expected = IllegalArgumentException::class)
     fun `epoch milliseconds reject negative values`() {
         EpochMilliseconds(-1L)
     }

@@ -145,13 +145,18 @@ class PlaybackService : MediaSessionService() {
                 session.isAutomotiveController(controller) ||
                 session.isAutoCompanionController(controller)
             if (!allowed) return MediaSession.ConnectionResult.reject()
-            val result = super.onConnect(session, controller)
-            if (controller.uid != Process.myUid()) return result
-            return MediaSession.ConnectionResult.AcceptedResultBuilder(session, controller)
-                .setAvailableSessionCommands(result.availableSessionCommands.buildUpon()
+            val sessionCommands = MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
+            if (controller.uid == Process.myUid()) {
+                sessionCommands
                     .add(SessionCommand(SubtitleRequestContract.ACTION_ADD, Bundle.EMPTY))
-                    .add(SessionCommand(VideoSurfaceRequestContract.ACTION_RESIZE, Bundle.EMPTY)).build())
-                .setAvailablePlayerCommands(result.availablePlayerCommands)
+                    .add(SessionCommand(VideoSurfaceRequestContract.ACTION_RESIZE, Bundle.EMPTY))
+            }
+            // Media3 1.11's deprecated default callback returns an empty command set.
+            // This is the connection's static ceiling; the player's current capabilities
+            // still constrain it, including commands that become available after prepare.
+            return MediaSession.ConnectionResult.AcceptedResultBuilder(session, controller)
+                .setAvailableSessionCommands(sessionCommands.build())
+                .setAvailablePlayerCommands(MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS)
                 .build()
         }
 

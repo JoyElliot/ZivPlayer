@@ -2,6 +2,9 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
+        <activity
+            android:name="io.github.joyelliot.zivplayer.FocusInterruptionActivity"
+            android:exported="true" />
         <!-- Installed only with the test APK; exposes only the four generated test fixtures. -->
         <provider
             android:name="io.github.joyelliot.zivplayer.PlaybackFixtureProvider"

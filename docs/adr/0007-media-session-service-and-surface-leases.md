@@ -29,8 +29,10 @@ report Surface attach, detach, command, or property-write failures.
   futures; ordinary queued work is rejected after shutdown begins.
 - A Storage Access Framework `content://` selection is resolved inside the
   service to a read-only process file descriptor. The descriptor remains open
-  for the active item while libmpv reads `/proc/self/fd/<n>` and is closed only
-  after replacement, reset, or shutdown.
+  for the active item while libmpv borrows `fd://<n>` and is closed only after
+  replacement, reset, or shutdown. Reopening `/proc/self/fd/<n>` can fail Android
+  access checks even when the provider granted a readable descriptor; `fdclose://`
+  would incorrectly transfer ownership to mpv and prevent safe replay.
 - A direct `Surface` reaches the service through Media3's video-output command.
   Media3 1.11's experimental legacy Surface handling remains enabled because
   its modern Binder path wraps the output in a `SurfaceHolder`, which this
@@ -60,9 +62,10 @@ report Surface attach, detach, command, or property-write failures.
 
 Activity recreation and background transitions preserve the service-owned
 player and Activity-scoped controller while replacing only the view and render
-lease. Keeping one controller also preserves Media3's client-side Surface
-identity/FIFO semantics, so a late clear from the old view cannot erase the new
-view's Surface. Local JVM tests can verify command/state projections and lease
+lease. A process-wide Surface token also guards disposal across distinct Activity
+instances: only the current token may issue Media3's null-output clear. This
+preserves the new target when an older Activity disposes its own controller's
+Surface. Local JVM tests can verify command/state projections and lease
 ordering, while an Android device is still required to prove foreground
 notification behavior, real Surface rendering, rotation, audio focus, and
 native shutdown.

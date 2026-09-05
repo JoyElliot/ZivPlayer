@@ -875,7 +875,7 @@ class DefaultPlayerSessionTest {
         val backend = FakeBackend()
         val session = newSession(backend)
         runCurrent()
-        val source = SubtitleSource("/proc/self/fd/77", "External ASS")
+        val source = SubtitleSource("fd://77", "External ASS")
         assertTrue(dispatch(session, PlayerCommand.AddSubtitle(source)) is CommandResult.Rejected)
         dispatch(session, PlayerCommand.SetQueue(items()))
         backend.emit(BackendEvent.Prepared(backend.loads.last().generation, null, capabilities = allCapabilities()))
@@ -921,7 +921,7 @@ class DefaultPlayerSessionTest {
         ), mapOf(TrackKind.AUDIO to TrackId("audio:1"), TrackKind.SUBTITLE to null))
         backend.emit(BackendEvent.Prepared(backend.loads.last().generation, null, tracks, allCapabilities()))
         runCurrent()
-        dispatch(session, PlayerCommand.AddSubtitle(SubtitleSource("/proc/self/fd/77")))
+        dispatch(session, PlayerCommand.AddSubtitle(SubtitleSource("fd://77")))
         dispatch(session, PlayerCommand.SelectTrack(TrackKind.AUDIO, TrackId("audio:2")))
         // Even if the previous asynchronous snapshot already says off, remember explicit intent.
         dispatch(session, PlayerCommand.SelectTrack(TrackKind.SUBTITLE, null))

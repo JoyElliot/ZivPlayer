@@ -474,10 +474,11 @@ private fun PlayerVideoSurface(
                 }
 
                 override fun surfaceDestroyed(surfaceHolder: SurfaceHolder) {
-                    VideoSurfaceRequests.release(surfaceToken)
-                    attachedSurface?.let { surface ->
-                        if (player.canSetVideoSurface()) {
-                            player.clearVideoSurface(surface)
+                    if (VideoSurfaceRequests.release(surfaceToken)) {
+                        attachedSurface?.let { surface ->
+                            if (player.canSetVideoSurface()) {
+                                player.clearVideoSurface(surface)
+                            }
                         }
                     }
                     attachedSurface = null
@@ -486,11 +487,12 @@ private fun PlayerVideoSurface(
             holder.addCallback(callback)
             attachSurface(holder.surface)
             onDispose {
-                VideoSurfaceRequests.release(surfaceToken)
                 holder.removeCallback(callback)
-                attachedSurface?.let { surface ->
-                    if (player.canSetVideoSurface()) {
-                        player.clearVideoSurface(surface)
+                if (VideoSurfaceRequests.release(surfaceToken)) {
+                    attachedSurface?.let { surface ->
+                        if (player.canSetVideoSurface()) {
+                            player.clearVideoSurface(surface)
+                        }
                     }
                 }
                 attachedSurface = null

@@ -956,8 +956,9 @@ The remaining native milestones must:
    retaining every option and patch hash;
 2. produce the release SBOM, notices, complete corresponding source and
    retained builder/license evidence;
-3. validate ART registration, actual playback, subtitles and Surface/service
-   lifecycles on supported devices; and
+3. extend the completed Android 15 arm64 ART/playback/subtitle/Surface smoke
+   to the supported API/ABI/device matrix (see
+   [initial acceptance](../docs/validation/2026-09-05-initial-build.md)); and
 4. repeat the native/DEX closure checks for the final signed release artifacts.
 
 The current APKs are local development/inspection outputs. Public release
