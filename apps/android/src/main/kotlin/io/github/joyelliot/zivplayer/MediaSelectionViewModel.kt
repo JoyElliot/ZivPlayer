@@ -20,6 +20,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.UUID
 
@@ -181,8 +182,11 @@ class MediaSelectionViewModel(
                     MediaDocumentForgetResult.NOT_FOUND ->
                         MediaSelectionNotice.HISTORY_FORGET_FAILED
 
-                    MediaDocumentForgetResult.REMOVED ->
-                        MediaSelectionNotice.HISTORY_FORGOTTEN
+                    MediaDocumentForgetResult.REMOVED -> {
+                        if (dependencies.documentTreeLibrary.releaseUnusedTreeGrants() == 0)
+                            MediaSelectionNotice.HISTORY_FORGOTTEN
+                        else MediaSelectionNotice.HISTORY_FORGOTTEN_WITH_ORPHANED_GRANT
+                    }
 
                     MediaDocumentForgetResult.REMOVED_WITH_ORPHANED_GRANT ->
                         MediaSelectionNotice.HISTORY_FORGOTTEN_WITH_ORPHANED_GRANT
@@ -242,19 +246,20 @@ class MediaSelectionViewModel(
         return requestId
     }
 
-    private fun publishPlayback(
+    private suspend fun publishPlayback(
         requestId: Long,
         opened: OpenedMediaDocument,
         checkpoint: PlaybackCheckpoint?,
         notice: MediaSelectionNotice?,
         startFromBeginning: Boolean = false,
     ) {
+        val resumeEnabled = dependencies.playerPreferences.preferences.first().resumePlayback
         if (requestId != latestRequestId) return
         mutablePendingPlayback.value = PendingMediaPlayback(
             requestId = requestId,
             dispatchToken = UUID.randomUUID().toString(),
             document = opened,
-            startPositionMs = checkpoint.resumePositionMs(startFromBeginning),
+            startPositionMs = checkpoint.resumePositionMs(startFromBeginning || !resumeEnabled),
         )
         mutableNotice.value = notice
     }

@@ -44,6 +44,7 @@ fun PlayerHomeScreen(
     onOpenRecent: (String) -> Unit = {},
     onForgetRecent: (String) -> Unit = {},
     videoContent: @Composable () -> Unit = {},
+    extraControls: @Composable () -> Unit = {},
 ) {
     ZivScreen(title = stringResource(R.string.player_title)) {
         ZivCard {
@@ -56,6 +57,7 @@ fun PlayerHomeScreen(
         PlayerStatus(state)
         statusMessage?.let { ZivStatusText(text = it) }
         PlayerTimeline(state = state, onSeekTo = onSeekTo)
+        extraControls()
         PlayerTransportControls(
             state = state,
             onOpenMedia = onOpenMedia,

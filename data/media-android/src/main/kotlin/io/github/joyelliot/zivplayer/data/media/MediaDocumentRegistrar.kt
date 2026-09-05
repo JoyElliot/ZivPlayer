@@ -55,8 +55,8 @@ data class OpenedMediaDocument(
 class MediaDocumentRegistrar private constructor(
     private val coordinator: MediaDocumentRegistrationCoordinator,
     private val ioDispatcher: CoroutineDispatcher,
+    private val operationMutex: Mutex,
 ) {
-    private val operationMutex = Mutex()
 
     suspend fun open(
         uri: Uri,
@@ -82,6 +82,7 @@ class MediaDocumentRegistrar private constructor(
         fun create(
             context: Context,
             repository: RecentMediaRepository,
+            operationMutex: Mutex = Mutex(),
         ): MediaDocumentRegistrar = MediaDocumentRegistrar(
             coordinator = MediaDocumentRegistrationCoordinator(
                 repository = repository,
@@ -90,6 +91,7 @@ class MediaDocumentRegistrar private constructor(
                 sessionIdFactory = { MediaId("session:${UUID.randomUUID()}") },
             ),
             ioDispatcher = Dispatchers.IO,
+            operationMutex = operationMutex,
         )
     }
 }
@@ -285,9 +287,9 @@ private class AndroidDocumentAccess(
         )
     }
 
-    private fun hasPersistedReadGrant(uri: Uri): Boolean = persistedPermissions(uri)
-        .getOrElse { return false }
-        .any(UriPermission::isReadPermission)
+    private fun hasPersistedReadGrant(uri: Uri): Boolean = runCatching {
+        contentResolver.hasPersistedDocumentRead(uri)
+    }.getOrDefault(false)
 
     private fun persistedPermissions(uri: Uri): Result<List<UriPermission>> = runCatching {
         contentResolver.persistedUriPermissions.filter { permission ->

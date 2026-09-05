@@ -1,0 +1,33 @@
+<resources>
+    <string name="library_title">媒体库</string>
+    <string name="library_add_folder">添加文件夹</string>
+    <string name="library_folders">文件夹 (%1$d)</string>
+    <string name="library_folder_hint">选择媒体文件夹。扫描只更新媒体库索引，原文件始终保留。</string>
+    <string name="library_never_scanned">尚未扫描</string>
+    <string name="library_scanning">扫描中</string>
+    <string name="library_ready">已更新</string>
+    <string name="library_interrupted">扫描已中断</string>
+    <string name="library_access_lost">授权失效 · 请重新添加文件夹</string>
+    <string name="library_failed">扫描失败</string>
+    <string name="library_folder_status">%1$s · %2$s</string>
+    <plurals name="library_items"><item quantity="other">%1$d 项</item></plurals>
+    <plurals name="library_found"><item quantity="other">已找到 %1$d 个媒体文件</item></plurals>
+    <string name="library_cancel">取消扫描</string>
+    <string name="library_rescan">重新扫描</string>
+    <string name="library_remove">移除索引</string>
+    <string name="library_search">搜索名称或路径</string>
+    <string name="library_all">全部媒体</string>
+    <string name="library_video">视频</string>
+    <string name="library_audio">音频</string>
+    <string name="library_favorites">收藏</string>
+    <string name="library_hidden">已隐藏</string>
+    <string name="library_sort_name">排序：名称</string>
+    <string name="library_sort_modified">排序：修改时间</string>
+    <string name="library_sort_size">排序：大小</string>
+    <plurals name="library_results"><item quantity="other">%1$d 项结果 · 点击文件播放</item></plurals>
+    <string name="library_favorite">收藏</string>
+    <string name="library_unfavorite">取消收藏</string>
+    <string name="library_hide">隐藏</string>
+    <string name="library_unhide">恢复显示</string>
+    <string name="library_empty">没有匹配的媒体。请添加文件夹、扫描或调整筛选条件。</string>
+</resources>

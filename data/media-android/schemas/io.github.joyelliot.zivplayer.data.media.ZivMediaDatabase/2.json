@@ -1,0 +1,422 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 2,
+    "identityHash": "1e905115f0b82697843438cc740175ec",
+    "entities": [
+      {
+        "tableName": "recent_media",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`media_id` TEXT NOT NULL, `source_uri` TEXT NOT NULL, `mime_type` TEXT, `title` TEXT, `artist` TEXT, `album` TEXT, `artwork_uri` TEXT, `added_at_epoch_ms` INTEGER NOT NULL, `last_opened_at_epoch_ms` INTEGER NOT NULL, `checkpoint_position_ms` INTEGER, `checkpoint_duration_ms` INTEGER, `checkpoint_completed` INTEGER, `checkpoint_updated_at_epoch_ms` INTEGER, PRIMARY KEY(`media_id`))",
+        "fields": [
+          {
+            "fieldPath": "mediaId",
+            "columnName": "media_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceUri",
+            "columnName": "source_uri",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mimeType",
+            "columnName": "mime_type",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "artist",
+            "columnName": "artist",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "album",
+            "columnName": "album",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "artworkUri",
+            "columnName": "artwork_uri",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "addedAtEpochMs",
+            "columnName": "added_at_epoch_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastOpenedAtEpochMs",
+            "columnName": "last_opened_at_epoch_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "checkpointPositionMs",
+            "columnName": "checkpoint_position_ms",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "checkpointDurationMs",
+            "columnName": "checkpoint_duration_ms",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "checkpointCompleted",
+            "columnName": "checkpoint_completed",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "checkpointUpdatedAtEpochMs",
+            "columnName": "checkpoint_updated_at_epoch_ms",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "media_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_recent_media_source_uri",
+            "unique": true,
+            "columnNames": [
+              "source_uri"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_recent_media_source_uri` ON `${TABLE_NAME}` (`source_uri`)"
+          }
+        ]
+      },
+      {
+        "tableName": "library_folders",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`folder_id` TEXT NOT NULL, `source_uri` TEXT NOT NULL, `name` TEXT NOT NULL, `status` TEXT NOT NULL, `last_scan_epoch_ms` INTEGER, `media_count` INTEGER NOT NULL, `message` TEXT, `scan_token` TEXT, PRIMARY KEY(`folder_id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "folder_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceUri",
+            "columnName": "source_uri",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastScanEpochMs",
+            "columnName": "last_scan_epoch_ms",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "mediaCount",
+            "columnName": "media_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "message",
+            "columnName": "message",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "scanToken",
+            "columnName": "scan_token",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "folder_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_library_folders_source_uri",
+            "unique": true,
+            "columnNames": [
+              "source_uri"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_library_folders_source_uri` ON `${TABLE_NAME}` (`source_uri`)"
+          }
+        ]
+      },
+      {
+        "tableName": "library_media",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`folder_id` TEXT NOT NULL, `source_uri` TEXT NOT NULL, `title` TEXT NOT NULL, `mime_type` TEXT, `relative_path` TEXT NOT NULL, `size_bytes` INTEGER, `modified_epoch_ms` INTEGER, `favorite` INTEGER NOT NULL, `hidden` INTEGER NOT NULL, PRIMARY KEY(`folder_id`, `source_uri`), FOREIGN KEY(`folder_id`) REFERENCES `library_folders`(`folder_id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "folderId",
+            "columnName": "folder_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceUri",
+            "columnName": "source_uri",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mimeType",
+            "columnName": "mime_type",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "relativePath",
+            "columnName": "relative_path",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sizeBytes",
+            "columnName": "size_bytes",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "modifiedEpochMs",
+            "columnName": "modified_epoch_ms",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "favorite",
+            "columnName": "favorite",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hidden",
+            "columnName": "hidden",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "folder_id",
+            "source_uri"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_library_media_source_uri",
+            "unique": false,
+            "columnNames": [
+              "source_uri"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_library_media_source_uri` ON `${TABLE_NAME}` (`source_uri`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "library_folders",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "folder_id"
+            ],
+            "referencedColumns": [
+              "folder_id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "media_track_choices",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`media_id` TEXT NOT NULL, `kind` TEXT NOT NULL, `track_index` INTEGER, `language` TEXT, `label` TEXT, `codec` TEXT, `external` INTEGER NOT NULL, `disabled` INTEGER NOT NULL, PRIMARY KEY(`media_id`, `kind`), FOREIGN KEY(`media_id`) REFERENCES `recent_media`(`media_id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "mediaId",
+            "columnName": "media_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "index",
+            "columnName": "track_index",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "language",
+            "columnName": "language",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "label",
+            "columnName": "label",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "codec",
+            "columnName": "codec",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "external",
+            "columnName": "external",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "disabled",
+            "columnName": "disabled",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "media_id",
+            "kind"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "recent_media",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "media_id"
+            ],
+            "referencedColumns": [
+              "media_id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "media_external_subtitles",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`media_id` TEXT NOT NULL, `resource_id` TEXT NOT NULL, `title` TEXT NOT NULL, PRIMARY KEY(`media_id`, `resource_id`), FOREIGN KEY(`media_id`) REFERENCES `recent_media`(`media_id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "mediaId",
+            "columnName": "media_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "resourceId",
+            "columnName": "resource_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "media_id",
+            "resource_id"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "recent_media",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "media_id"
+            ],
+            "referencedColumns": [
+              "media_id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "playback_resources",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`resource_id` TEXT NOT NULL, `kind` TEXT NOT NULL, `title` TEXT NOT NULL, `extension` TEXT NOT NULL, `size_bytes` INTEGER NOT NULL, `font_family` TEXT, PRIMARY KEY(`resource_id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "resource_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "extension",
+            "columnName": "extension",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sizeBytes",
+            "columnName": "size_bytes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fontFamily",
+            "columnName": "font_family",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "resource_id"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '1e905115f0b82697843438cc740175ec')"
+    ]
+  }
+}

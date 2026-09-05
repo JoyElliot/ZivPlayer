@@ -5,6 +5,9 @@ package io.github.joyelliot.zivplayer.designsystem
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -13,6 +16,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.liveRegion
@@ -27,6 +31,8 @@ import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Slider
 import top.yukonga.miuix.kmp.basic.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextField
+import top.yukonga.miuix.kmp.basic.Switch
 
 @Composable
 fun ZivScreen(
@@ -143,4 +149,33 @@ fun ZivStatusText(
         text = text,
         modifier = modifier.semantics { liveRegion = LiveRegionMode.Polite },
     )
+}
+
+@Composable
+fun ZivToggleRow(title: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit,
+    detail: String? = null, enabled: Boolean = true) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(title)
+            detail?.let { Text(it) }
+        }
+        Spacer(Modifier.width(12.dp))
+        Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
+    }
+}
+
+@Composable
+fun ZivTextField(value: String, onValueChange: (String) -> Unit, label: String,
+    modifier: Modifier = Modifier) {
+    TextField(value = value, onValueChange = onValueChange, label = label,
+        singleLine = true, modifier = modifier.fillMaxWidth())
+}
+
+/** A non-scrolling scaffold for virtualized lists owned by the feature. */
+@Composable
+fun ZivListScreen(title: String, modifier: Modifier = Modifier,
+    content: @Composable (Modifier) -> Unit) {
+    Scaffold(modifier = modifier, topBar = { SmallTopAppBar(title = title) }) { padding ->
+        content(Modifier.fillMaxSize().padding(padding))
+    }
 }

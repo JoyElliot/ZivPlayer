@@ -32,8 +32,8 @@ and forgetting history reports an orphaned grant instead of hiding it.
 The application now selects the source-owned `SourceMpvClient` JNI bridge.
 The bootstrap AAR and adapter have been removed. Twenty source-built native
 libraries (ten per ABI) are staged through a receipt-bound verifier before
-Gradle packages them. The APK also contains the separately locked AndroidX
-graphics helper used by Compose. JVM and Android build checks
+Gradle packages them. The APK also contains separately locked AndroidX
+graphics-path and DataStore shared-counter helpers for both ABIs. JVM and Android build checks
 cover state projection, command policy, reset recovery, Surface lease ordering,
 and service manifest composition. The initial build has now passed seven
 instrumentation tests on an Android 15 arm64 phone, including real JNI playback,
@@ -42,6 +42,17 @@ Device acceptance also covers visible ASS/SRT Chinese subtitles, audible output,
 system media controls, and SAF/history reopening after process death. See the
 [initial-build acceptance record](docs/validation/2026-09-05-initial-build.md)
 for evidence, environment constraints and the remaining compatibility matrix.
+
+The subsequent personal-device expansion adds a SAF folder library with scanning,
+favorites, hidden items and sorting; persistent playback settings; fullscreen and
+picture-in-picture controls; managed fonts and shader chains; per-media audio and
+subtitle restoration; and sampled diagnostics with JSON export. Room v1 history is
+preserved by an additive v2 migration. Native event delivery, provider workers and
+history retry queues now have explicit capacity and failure behavior.
+These changes have passed host tests and builds; their phone acceptance is pending.
+See [ADR 0012](docs/adr/0012-library-preferences-and-managed-playback-resources.md)
+and the [expansion verification and device checklist](docs/validation/2026-09-06-personal-device-expansion.md).
+The broader device/API matrix and public release work remain deferred.
 
 The source adapter preserves event payloads and observer identities under a
 single-instance, serialized stop/load policy. Track discovery uses fresh
@@ -183,8 +194,8 @@ python -B tools/verify-android-artifact.py apps/android/build/outputs/apk/debug/
 .\gradlew.bat --offline :apps:android:connectedDebugAndroidTest
 ```
 
-The artifact verifier checks the twenty audited library hashes, the two
-AndroidX helpers against their verified Gradle AAR, uncompressed 16-KiB ZIP
+The artifact verifier checks the twenty audited library hashes, the four
+AndroidX helpers against their verified Gradle AARs, uncompressed 16-KiB ZIP
 alignment, and all sixteen native method descriptors in the actual DEX.
 `NativePlaybackSmokeTest` exercises the real service/JNI path; compiling it
 does not establish a device pass. Its screenshots require visual review, and

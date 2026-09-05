@@ -10,6 +10,8 @@ import io.github.joyelliot.zivplayer.core.model.SubtitleSource
 import io.github.joyelliot.zivplayer.core.model.TrackId
 import io.github.joyelliot.zivplayer.core.model.TrackKind
 import io.github.joyelliot.zivplayer.core.model.VolumePercent
+import io.github.joyelliot.zivplayer.core.model.PlaybackOptions
+import io.github.joyelliot.zivplayer.core.model.PlaybackDiagnostics
 import io.github.joyelliot.zivplayer.core.player.ErrorRecovery
 import io.github.joyelliot.zivplayer.core.player.PlayerCapabilities
 import io.github.joyelliot.zivplayer.core.player.PlayerCapability
@@ -34,24 +36,27 @@ import kotlin.concurrent.withLock
  *
  * The player session serializes backend commands. Native callbacks and Surface
  * lifecycle calls may arrive on other threads, so every client call also passes
- * through [nativeGate]. Events enter one lossless channel so seek completion
- * cannot overtake an earlier position sample.
+ * through [nativeGate]. Events share one bounded ordered channel. Overflow stops
+ * delivery and publishes RESET, because dropping a seek/transition silently is unsafe.
  */
 class LibmpvBackend internal constructor(
     context: Context,
     private val clientFactory: MpvClientFactory,
     private val prepareConfigDirectory: () -> String,
-) : PlayerBackend, LibmpvSurfacePort {
+) : PlayerBackend, LibmpvSurfacePort, LibmpvConfigurationPort {
     constructor(context: Context) : this(context, SourceMpvClient,
         { MpvFontConfig.prepare(context.applicationContext).absolutePath })
 
     private val applicationContext = context.applicationContext
-    private val nativeEvents = Channel<BackendEvent>(capacity = Channel.UNLIMITED)
+    private val nativeEvents = Channel<BackendEvent>(capacity = MAX_NATIVE_EVENTS)
+    private var eventDeliveryFailed = false // guarded by nativeGate
 
     override val events: Flow<BackendEvent> = nativeEvents.receiveAsFlow()
 
     private val lifecycleGate = Mutex()
     private val nativeGate = ReentrantLock(true)
+    private var configuration = MpvPlaybackConfiguration()
+    private val diagnostics = MpvDiagnosticsObserver()
     private val generationFence = LoadGenerationFence()
     private val seekCorrelation = SeekCorrelation()
     private val trackObserver = MpvTrackObserver(
@@ -96,6 +101,7 @@ class LibmpvBackend internal constructor(
 
     private val observer = object : MpvClient.Observer {
         override fun onPropertyChanged(change: MpvPropertyChange) {
+            if (nativeGate.withLock { diagnostics.onProperty(change) }) return
             if (nativeGate.withLock { trackObserver.onProperty(change) }) return
             val property = change.name
             when (val value = change.value) {
@@ -184,19 +190,7 @@ class LibmpvBackend internal constructor(
                 }
 
                 MpvEventType.QUEUE_OVERFLOW -> {
-                    val generation = generationFence.failCurrent() ?: return
-                    fileLoadedGeneration = null
-                    resetSeekCorrelation()
-                    emitSemantic(
-                        BackendEvent.Failure(
-                            generation = generation,
-                            error = PlayerError(
-                                kind = PlayerErrorKind.BACKEND_OPERATION_FAILED,
-                                message = "The playback event queue overflowed.",
-                                recovery = ErrorRecovery.RESET,
-                            ),
-                        ),
-                    )
+                    nativeGate.withLock { failEventDelivery("The native playback event queue overflowed.") }
                 }
 
                 else -> Unit
@@ -257,6 +251,43 @@ class LibmpvBackend internal constructor(
             runCatching { withExistingPlayer { it.command(arrayOf(COMMAND_STOP)) } }
             throw failure
         }
+    }
+
+    override suspend fun configure(options: PlaybackOptions, resources: LibmpvResourcePaths) = lifecycleGate.withLock {
+        val next = MpvPlaybackConfiguration(options, resources)
+        nativeGate.withLock {
+            check(!closed && !nativeUnusable) { "The playback engine must be reopened before changing settings." }
+            val previous = configuration.properties()
+            val changed = next.properties().filter { (name, value) -> previous[name] != value }
+            val applied = mutableListOf<String>()
+            val player = instance
+            if (player != null) try {
+                changed.forEach { (name, value) -> applied += name; player.setPropertyString(name, value) }
+            } catch (failure: Exception) {
+                applied.asReversed().forEach { name ->
+                    runCatching { player.setPropertyString(name, previous.getValue(name)) }.exceptionOrNull()?.let {
+                        failure.addSuppressed(it)
+                        nativeUnusable = true
+                    }
+                }
+                if (nativeUnusable) {
+                    runCatching { player.setPropertyBoolean(PROPERTY_PAUSED, true) }
+                    fileLoadedGeneration = null
+                    resetSeekCorrelation()
+                    generationFence.failCurrent()?.let { generation ->
+                        emitSemantic(BackendEvent.Failure(generation, PlayerError(PlayerErrorKind.BACKEND_OPERATION_FAILED,
+                            "Playback settings could not be restored. Reopen the media.", ErrorRecovery.RESET)))
+                    }
+                }
+                throw failure
+            }
+            configuration = next
+        }
+    }
+
+    override suspend fun readDiagnostics(): PlaybackDiagnostics = nativeGate.withLock {
+        diagnostics.snapshot(instance?.takeUnless { closed || nativeUnusable },
+            fileLoadedGeneration != null && fileLoadedGeneration == generationFence.activeGeneration())
     }
 
     override suspend fun play() = lifecycleGate.withLock {
@@ -457,7 +488,9 @@ class LibmpvBackend internal constructor(
             player.setOptionString("opengl-es", "yes")
             player.setOptionString("hwdec", "mediacodec,mediacodec-copy")
             player.setOptionString("ao", "audiotrack,opensles")
+            configuration.properties().forEach { (name, value) -> player.setOptionString(name, value) }
             player.initialize()
+            diagnostics.start(player)
             player.observeProperty(
                 PROPERTY_POSITION,
                 MpvPropertyFormat.DOUBLE,
@@ -538,7 +571,7 @@ class LibmpvBackend internal constructor(
     }
 
     private fun resetPlaybackState(position: Milliseconds) {
-        nativeGate.withLock { trackObserver.reset() }
+        nativeGate.withLock { trackObserver.reset(); diagnostics.clearMedia() }
         fileLoadedGeneration = null
         lastPosition = position
         lastDuration = null
@@ -552,7 +585,7 @@ class LibmpvBackend internal constructor(
         }
         val generation = generationFence.activeGeneration() ?: return
         val seekGeneration = seekCorrelation.positionEpoch(generation)
-        nativeEvents.trySend(
+        enqueueEvent(
             BackendEvent.PositionChanged(
                 generation = generation,
                 position = lastPosition,
@@ -565,14 +598,34 @@ class LibmpvBackend internal constructor(
 
     private fun emitSemantic(event: BackendEvent) {
         if (!closed) {
-            nativeEvents.trySend(event)
+            enqueueEvent(event)
         }
     }
 
     private fun emitActiveSemantic(event: BackendEvent) {
         if (!closed && generationFence.activeGeneration() == event.generation) {
-            nativeEvents.trySend(event)
+            enqueueEvent(event)
         }
+    }
+
+    private fun enqueueEvent(event: BackendEvent) = nativeGate.withLock {
+        if (closed || eventDeliveryFailed) return@withLock
+        if (nativeEvents.trySend(event).isFailure) failEventDelivery("Playback events exceeded the bounded delivery queue.", event.generation)
+    }
+
+    private fun failEventDelivery(message: String, fallbackGeneration: LoadGeneration? = null) {
+        if (closed || eventDeliveryFailed) return
+        eventDeliveryFailed = true
+        // Stop audible playback before refusing further commands. Teardown remains on the
+        // lifecycle owner, never on the native event-pump callback thread.
+        runCatching { instance?.setPropertyBoolean(PROPERTY_PAUSED, true) }
+        nativeUnusable = true
+        val generation = generationFence.failCurrent() ?: fallbackGeneration
+        fileLoadedGeneration = null
+        resetSeekCorrelation()
+        while (nativeEvents.tryReceive().isSuccess) { }
+        if (generation != null) nativeEvents.trySend(BackendEvent.Failure(generation,
+            PlayerError(PlayerErrorKind.BACKEND_OPERATION_FAILED, message, ErrorRecovery.RESET)))
     }
 
     private fun endFileEvent(
@@ -669,6 +722,7 @@ class LibmpvBackend internal constructor(
         const val MILLIS_PER_SECOND = 1_000.0
         const val PERMILLE_DIVISOR = 1_000.0
         const val NATIVE_STOP_TIMEOUT_MILLIS = 5_000L
+        const val MAX_NATIVE_EVENTS = 256
 
         const val OBSERVER_POSITION = 1L
         const val OBSERVER_DURATION = 2L
