@@ -9,6 +9,8 @@ import io.github.joyelliot.zivplayer.core.model.Milliseconds
 import io.github.joyelliot.zivplayer.core.model.PlaybackRatePermille
 import io.github.joyelliot.zivplayer.core.model.QueueItem
 import io.github.joyelliot.zivplayer.core.model.QueueItemId
+import io.github.joyelliot.zivplayer.core.model.SubtitleSource
+import io.github.joyelliot.zivplayer.core.model.TrackDescriptor
 import io.github.joyelliot.zivplayer.core.model.TrackId
 import io.github.joyelliot.zivplayer.core.model.TrackKind
 import io.github.joyelliot.zivplayer.core.model.VolumePercent
@@ -844,6 +846,96 @@ class DefaultPlayerSessionTest {
         assertEquals(PlayerErrorKind.SESSION_CLOSED, (afterClose as CommandResult.Rejected).error.kind)
     }
 
+    @Test
+    fun trackUpdatesEnableSelectionAndCannotCrossLoadGenerations() = runTest {
+        val backend = FakeBackend()
+        val session = newSession(backend)
+        runCurrent()
+        dispatch(session, PlayerCommand.SetQueue(items()))
+        val first = backend.loads.last().generation
+        backend.emit(BackendEvent.Prepared(first, null, capabilities = allCapabilities()))
+        runCurrent()
+        val tracks = TrackSnapshot.of(listOf(TrackDescriptor(TrackId("audio:1"), TrackKind.AUDIO)),
+            mapOf(TrackKind.AUDIO to TrackId("audio:1")))
+        backend.emit(BackendEvent.TracksChanged(first, tracks))
+        runCurrent()
+        assertEquals(tracks, session.snapshot.value.tracks)
+        assertTrue(PlayerCapability.SELECT_TRACK in session.snapshot.value.capabilities.available)
+        dispatch(session, PlayerCommand.SetQueue(listOf(queueItem("replacement"))))
+        val second = backend.loads.last().generation
+        backend.emit(BackendEvent.Prepared(second, null, capabilities = allCapabilities()))
+        backend.emit(BackendEvent.TracksChanged(first, tracks))
+        runCurrent()
+        assertEquals(TrackSnapshot.EMPTY, session.snapshot.value.tracks)
+        close(session)
+    }
+
+    @Test
+    fun externalSubtitleRestoresOnReplayButDoesNotCrossQueueReplacement() = runTest {
+        val backend = FakeBackend()
+        val session = newSession(backend)
+        runCurrent()
+        val source = SubtitleSource("/proc/self/fd/77", "External ASS")
+        assertTrue(dispatch(session, PlayerCommand.AddSubtitle(source)) is CommandResult.Rejected)
+        dispatch(session, PlayerCommand.SetQueue(items()))
+        backend.emit(BackendEvent.Prepared(backend.loads.last().generation, null, capabilities = allCapabilities()))
+        runCurrent()
+        assertTrue(dispatch(session, PlayerCommand.AddSubtitle(source)) is CommandResult.Accepted)
+        dispatch(session, PlayerCommand.Stop)
+        dispatch(session, PlayerCommand.Play)
+        backend.emit(BackendEvent.Prepared(backend.loads.last().generation, null, capabilities = allCapabilities()))
+        runCurrent()
+        assertEquals(listOf(source, source), backend.subtitles)
+        dispatch(session, PlayerCommand.SetQueue(listOf(queueItem("replacement"))))
+        backend.emit(BackendEvent.Prepared(backend.loads.last().generation, null, capabilities = allCapabilities()))
+        runCurrent()
+        assertEquals(listOf(source, source), backend.subtitles)
+        close(session)
+    }
+
+    @Test
+    fun invalidSubtitleDoesNotInterruptTheActiveVideo() = runTest {
+        val backend = FakeBackend()
+        val session = newSession(backend)
+        runCurrent()
+        dispatch(session, PlayerCommand.SetQueue(items(), playWhenReady = true))
+        backend.emit(BackendEvent.Prepared(backend.loads.last().generation, null, capabilities = allCapabilities()))
+        runCurrent()
+        backend.subtitleFailure = IllegalArgumentException("Invalid subtitle")
+        assertTrue(dispatch(session, PlayerCommand.AddSubtitle(SubtitleSource("bad"))) is CommandResult.Failed)
+        assertEquals(PlayerStatus.PLAYING, session.snapshot.value.status)
+        assertEquals(null, session.snapshot.value.error)
+        close(session)
+    }
+
+    @Test
+    fun replayRestoresExplicitAudioAndSubtitleOffAfterAddingCachedSubtitles() = runTest {
+        val backend = FakeBackend()
+        val session = newSession(backend)
+        runCurrent()
+        dispatch(session, PlayerCommand.SetQueue(items()))
+        val tracks = TrackSnapshot.of(listOf(
+            TrackDescriptor(TrackId("audio:1"), TrackKind.AUDIO),
+            TrackDescriptor(TrackId("audio:2"), TrackKind.AUDIO),
+            TrackDescriptor(TrackId("sub:1"), TrackKind.SUBTITLE),
+        ), mapOf(TrackKind.AUDIO to TrackId("audio:1"), TrackKind.SUBTITLE to null))
+        backend.emit(BackendEvent.Prepared(backend.loads.last().generation, null, tracks, allCapabilities()))
+        runCurrent()
+        dispatch(session, PlayerCommand.AddSubtitle(SubtitleSource("/proc/self/fd/77")))
+        dispatch(session, PlayerCommand.SelectTrack(TrackKind.AUDIO, TrackId("audio:2")))
+        // Even if the previous asynchronous snapshot already says off, remember explicit intent.
+        dispatch(session, PlayerCommand.SelectTrack(TrackKind.SUBTITLE, null))
+        dispatch(session, PlayerCommand.Stop)
+        dispatch(session, PlayerCommand.Play)
+        backend.callOrder.clear()
+        backend.emit(BackendEvent.Prepared(backend.loads.last().generation, null, tracks, allCapabilities()))
+        runCurrent()
+        assertEquals(listOf("subtitle", "track", "track", "play"), backend.callOrder)
+        assertEquals(listOf(TrackKind.AUDIO to TrackId("audio:2"), TrackKind.SUBTITLE to null),
+            backend.trackSelections.takeLast(2))
+        close(session)
+    }
+
     private fun TestScope.newSession(
         backend: FakeBackend,
         loadReadinessTimeoutMillis: Long = 15_000L,
@@ -894,6 +986,9 @@ class DefaultPlayerSessionTest {
         val loads = mutableListOf<BackendLoadRequest>()
         val seekRequests = mutableListOf<BackendSeekRequest>()
         val callOrder = mutableListOf<String>()
+        val subtitles = mutableListOf<SubtitleSource>()
+        val trackSelections = mutableListOf<Pair<TrackKind, TrackId?>>()
+        var subtitleFailure: Throwable? = null
         var playCount = 0
         var pauseCount = 0
         var stopCount = 0
@@ -953,6 +1048,13 @@ class DefaultPlayerSessionTest {
 
         override suspend fun selectTrack(kind: TrackKind, trackId: TrackId?) {
             callOrder += "track"
+            trackSelections += kind to trackId
+        }
+
+        override suspend fun addSubtitle(source: SubtitleSource) {
+            callOrder += "subtitle"
+            subtitleFailure?.let { throw it }
+            subtitles += source
         }
 
         override suspend fun close() {

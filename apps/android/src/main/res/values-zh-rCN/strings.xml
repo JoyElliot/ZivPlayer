@@ -9,4 +9,7 @@
     <string name="media_history_forgotten">已移除最近媒体记录及其持久访问权限。</string>
     <string name="media_history_forgotten_orphaned_grant">历史记录已移除，但 Android 未能确认已释放其持久访问权限。</string>
     <string name="media_history_forget_failed">无法移除最近媒体记录。</string>
+    <string name="subtitle_loading">正在打开字幕…</string>
+    <string name="subtitle_added">字幕已添加，可用后会显示在轨道列表中。</string>
+    <string name="subtitle_failed">无法打开此字幕。</string>
 </resources>

@@ -6,12 +6,12 @@ import io.github.joyelliot.zivplayer.core.player.runtime.LoadGeneration
 import kotlinx.coroutines.CompletableDeferred
 
 /**
- * Correlates the payload-free callbacks exposed by the bootstrap MPV wrapper.
+ * Correlates ordered START_FILE/END_FILE boundaries for the single-file backend.
  *
  * Only one load may be pending. A replacement first waits for the active file's
  * END_FILE callback, and a new generation is armed only by the following
- * START_FILE callback. This is deliberately narrower than the entry-ID mapping
- * required from the release-grade native wrapper.
+ * START_FILE callback. The adapter deliberately retains this serialized policy;
+ * it does not submit overlapping native playlist operations.
  */
 internal class LoadGenerationFence {
     private val monitor = Any()

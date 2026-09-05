@@ -219,7 +219,6 @@ commons-io:commons-io:2.16.1=androidLintTool,unified-test-platform-android-test-
 commons-logging:commons-logging:1.2=androidLintTool,unified-test-platform-android-test-plugin-result-listener-gradle
 dev.drewhamilton.poko:poko-annotations-jvm:0.21.1=debugAndroidTestLintChecksClasspath,debugLintChecksClasspath,debugRuntimeClasspath,debugUnitTestLintChecksClasspath,debugUnitTestRuntimeClasspath,releaseLintChecksClasspath,releaseRuntimeClasspath
 dev.drewhamilton.poko:poko-annotations:0.21.1=debugAndroidTestLintChecksClasspath,debugLintChecksClasspath,debugRuntimeClasspath,debugUnitTestLintChecksClasspath,debugUnitTestRuntimeClasspath,releaseLintChecksClasspath,releaseRuntimeClasspath
-dev.jdtech.mpv:libmpv:1.0.0=debugAndroidTestLintChecksClasspath,debugLintChecksClasspath,debugRuntimeClasspath,debugUnitTestLintChecksClasspath,debugUnitTestRuntimeClasspath,releaseLintChecksClasspath,releaseRuntimeClasspath
 io.grpc:grpc-api:1.57.2=unified-test-platform-core
 io.grpc:grpc-api:1.69.1=unified-test-platform-android-test-plugin-host-emulator-control
 io.grpc:grpc-context:1.57.2=unified-test-platform-core

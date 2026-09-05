@@ -1,14 +1,14 @@
 # ZivPlayer libmpv JNI wrapper
 
-This directory contains the source-only `libzivplayer_mpv.so` bridge specified
-by ADR 0011. No backend factory selects it, and it is not a Gradle or release
-input yet. The additive build profile now prepares these sources, but that
-preparation is not compiled or release evidence.
+This directory contains the `libzivplayer_mpv.so` bridge specified by ADR 0011.
+The default backend now selects `SourceMpvClient`. The additive executor has
+built and audited the bridge and its stack for both ABIs; Gradle consumes only
+verified generated staging. These are inspection artifacts, not release inputs.
 
 `native/native-wrapper-build-profile.toml` snapshots six exact inputs into the
 host `<build-workspace>/wrapper` tree. The accepted wrapper-specific namespace
-probe binds that tree read-only at `/build/wrapper`; the future build executor
-must preserve that contract. Its locked execution path is
+probe binds that tree read-only at `/build/wrapper`; the wrapper executor
+preserves that contract. Its locked execution path is
 Android NDK 29.0.14206865 `ndk-build` through `Android.mk` and
 `Application.mk`, with API 26, `arm64-v8a`/`x86_64`, shared libc++, Release,
 and 16-KiB linker settings. It builds separately against each audited stack
@@ -28,18 +28,20 @@ safe but not byte-preserving. Android `Surface` global references which have
 successfully reached mpv's asynchronous `wid` option are retained until mpv is
 fully terminated.
 
-The additive profile, verified preparation, and a non-building wrapper namespace
-probe now exist; the build runner and compiled audit do not. The accepted probe
+The additive profile, verified preparation, namespace probe, build runner and
+compiled 20-library audit now exist. The accepted probe
 policy SHA-256 is
 `e38767eb0e8e095364d13040a9ce3f49479f9147e1a2740d4f81860c496d1647`
 and its exact transcript SHA-256 is
 `e182d70ac1a76b00f7f3a622835c23621ba3df4654a339b945f66094f959dc9f`.
-The preparation receipt therefore remains `buildExecuted=false`, `ready=false`,
-and `releaseInput=false`. The next build executor must audit ten libraries per
-ABI (20 in total), validate this registration table against the compiled Kotlin
-descriptors, and keep `ready=false` / `releaseInput=false` until all staging,
-Gradle, compliance, and device gates pass. Do not amend the historical
-stack-only receipt or package this source tree directly from Gradle.
+The preparation receipt remains `buildExecuted=false`, `ready=false`, and
+`releaseInput=false`. A separate 82,508-byte execution receipt with SHA-256
+`f987da92cc0fb22704221cf2d249054bc8bf6ce27a2a1b22efb1aa16cec01d17`
+records the successful build/audit. `native/android-staging-lock.json` binds
+the exported bytes. `tools/verify-android-artifact.py` checks the actual APK
+DEX descriptors and native bytes. ART registration, device output and release
+acceptance remain separate; `ready=false` / `releaseInput=false` are preserved.
+Do not amend historical receipts or package this source tree directly from Gradle.
 
 `jni-contract.toml` is the checked-in registration and event-buffer ABI.
 Validate it against both implementations with:

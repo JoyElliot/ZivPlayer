@@ -23,23 +23,27 @@ checkpoints without using transient file-descriptor paths as durable data.
 The MIUIX-backed player screen now observes immutable state from a
 generation-fenced, reconnecting MediaController. It exposes the single-item
 playback commands currently implemented by the adapter: open, play/pause,
-replay, stop, seek, speed, volume, and repeat-one. Restart-safe recent documents
+replay, stop, seek, speed, volume, repeat-one, audio/subtitle track selection,
+subtitles off, and external subtitle import through the document picker. Restart-safe recent documents
 can be reopened only after their current SAF grant is checked, incomplete
 checkpoints resume at their recorded position, completed media starts at zero,
 and forgetting history reports an orphaned grant instead of hiding it.
 
-The reviewed bootstrap libmpv AAR is now packaged behind the Android adapter
-module and connected to the application APK. JVM and Android build checks
+The application now selects the source-owned `SourceMpvClient` JNI bridge.
+The bootstrap AAR and adapter have been removed. Twenty source-built native
+libraries (ten per ABI) are staged through a receipt-bound verifier before
+Gradle packages them. The APK also contains the separately locked AndroidX
+graphics helper used by Compose. JVM and Android build checks
 cover state projection, command policy, reset recovery, Surface lease ordering,
 and service manifest composition. A physical device or configured emulator is
 still required to prove actual media output, foreground notification behavior,
 Surface recreation, audio focus, native shutdown, Room behavior, document
 provider permission persistence, and process-death reopening.
 
-The bootstrap adapter fences callbacks only under a single-instance,
-serialized stop/load policy. Its reviewed AAR discards event payloads and
-playlist-entry identity, so this is not a release-grade stale-callback
-guarantee. Native callbacks enter one ordered adapter event stream, and an
+The source adapter preserves event payloads and observer identities under a
+single-instance, serialized stop/load policy. Track discovery uses fresh
+primitive-observer tokens and convergent snapshots after list invalidation;
+it does not claim atomic multi-property reads. Native callbacks enter one ordered adapter event stream, and an
 accepted load that never prepares or fails is terminated by a bounded runtime
 readiness deadline instead of remaining in `LOADING` indefinitely. A reset
 error makes that session non-reusable; its Android owner closes and recreates
@@ -115,17 +119,21 @@ six-file contents. The accepted policy SHA-256 is
 `e38767eb0e8e095364d13040a9ce3f49479f9147e1a2740d4f81860c496d1647`;
 its seven-record transcript SHA-256 is
 `e182d70ac1a76b00f7f3a622835c23621ba3df4654a339b945f66094f959dc9f`.
-The existing stack-only build executor still cannot consume this receipt; a
-separately locked wrapper build runner and 20-artifact compiled audit are still
-required.
+The separate wrapper executor has now completed that workspace's one-shot
+build and ELF audit for all 20 libraries. Its 82,508-byte execution receipt has
+SHA-256 `f987da92cc0fb22704221cf2d249054bc8bf6ce27a2a1b22efb1aa16cec01d17`.
+The workspace is consumed and must not be prepared or executed again.
+`native/android-staging-lock.json` binds the accepted execution receipt,
+profile and policy; `native/tools/android_staging_tool.py` verifies the
+portable staging bytes without changing the original audit evidence.
 
 These WSL runs are inspection evidence rather than accepted release
 provenance. The SDK tree is deliberately marked as a standalone mountable
 projection, not a release input: its accepted release-input binding to the
 verified APT environment, accepted Android license evidence, an accepted
-release-builder source/build run and artifact audit, a wrapper-inclusive native
-receipt, SBOM, system notices, retention/corresponding-source bundles, and
-bootstrap-AAR retirement remain pending.
+release-builder provenance, SBOM, system notices, and
+retention/corresponding-source bundles remain pending. The successful wrapper
+inspection receipt still has `ready=false` and `releaseInput=false`.
 
 ## Baseline
 
@@ -151,6 +159,34 @@ point.
 
 Dependency versions, locks, and verification metadata are committed so that
 the same source revision resolves the same reviewed dependency set.
+
+The Android build requires verified generated staging at `native/out/android`.
+It fails before packaging when the receipt, source contract, native bytes or
+inventory differs; it does not fall back to a vendor AAR. On the build host,
+export a successful execution with its independently accepted receipt hash:
+
+```sh
+python3 -B native/tools/android_staging_tool.py export \
+  --build-workspace /var/tmp/zivplayer-native-build-wrapper-d6cf2a36-20260905-a1 \
+  --receipt-sha256 f987da92cc0fb22704221cf2d249054bc8bf6ce27a2a1b22efb1aa16cec01d17
+```
+
+```powershell
+python -B native/tools/android_staging_tool.py verify
+.\gradlew.bat --offline :apps:android:assembleDebug
+python -B tools/verify-android-artifact.py apps/android/build/outputs/apk/debug/android-debug.apk
+# Generate original AV/subtitle assets for the instrumentation APK, then use a USB device.
+.\tools\create-device-fixtures.ps1
+.\gradlew.bat --offline :apps:android:connectedDebugAndroidTest
+```
+
+The artifact verifier checks the twenty audited library hashes, the two
+AndroidX helpers against their verified Gradle AAR, uncompressed 16-KiB ZIP
+alignment, and all sixteen native method descriptors in the actual DEX.
+`NativePlaybackSmokeTest` exercises the real service/JNI path; compiling it
+does not establish a device pass. Audible output, ASS/CJK appearance, system
+notification controls, audio interruptions and document-provider persistence
+still require device acceptance. No emulator is required for the USB workflow.
 
 The native source manifest has a separate explicit cache gate:
 
@@ -402,12 +438,11 @@ input only; the additive profile's locked build path is NDK `ndk-build` through
 `Android.mk` and `Application.mk`. The source validator does not execute that
 path or prove input gates, wire use sites, compiled/R8 identity, included-header
 or toolchain macro effects, ELF metadata, or runtime behavior. The additive
-profile, preparation, and wrapper-specific namespace probe now exist, but no
-wrapper-inclusive build has run and nothing has been staged into Gradle,
-selected by `LibmpvBackend`, or accepted as device/release evidence. The
-immutable historical receipt therefore correctly continues to report
-`pending-source-wrapper`; a new build executor must build and audit all 20
-outputs (ten libraries per ABI) under the additive contract.
+profile, preparation and wrapper-specific namespace probe are now followed by
+the successful 20-library execution receipt and verified Gradle staging.
+`LibmpvBackend` selects the source bridge. The immutable historical stack-only
+receipt continues to report `pending-source-wrapper`; its evidence has not
+been rewritten. Device and release acceptance remain separate gates.
 
 Two final WSL inspection runs of the fixed composition profile produced
 byte-identical receipts with SHA-256

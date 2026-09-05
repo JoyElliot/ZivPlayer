@@ -48,6 +48,9 @@ internal class SurfaceLeaseController<SurfaceType>(
         currentToken = null
     }
 
+    fun owns(lease: LibmpvSurfaceLease): Boolean =
+        !closed && lease.owner === owner && lease.token == currentToken
+
     fun close() {
         if (closed) {
             return

@@ -37,6 +37,7 @@ class LibmpvBackendTest {
                 createCalls += 1
                 throw creationFailure
             },
+            prepareConfigDirectory = { "/test/mpv" },
         )
 
         val actualFailure = runCatching {
@@ -51,7 +52,7 @@ class LibmpvBackendTest {
     @Test
     fun endFileErrorIsNotReportedAsNaturalCompletion() = runBlocking {
         val client = FakeMpvClient()
-        val backend = LibmpvBackend(TestContext, MpvClientFactory { client })
+        val backend = LibmpvBackend(TestContext, MpvClientFactory { client }, { "/test/mpv" })
 
         backend.load(loadRequest())
         client.emit(MpvClientEvent(rawEventId = MpvEventType.START_FILE.rawValue))
@@ -75,7 +76,7 @@ class LibmpvBackendTest {
     @Test
     fun eventPumpFailureFailsActiveGenerationAndRequiresBackendReset() = runBlocking {
         val client = FakeMpvClient()
-        val backend = LibmpvBackend(TestContext, MpvClientFactory { client })
+        val backend = LibmpvBackend(TestContext, MpvClientFactory { client }, { "/test/mpv" })
 
         backend.load(loadRequest())
         client.fail(MpvClientFailure.EVENT_PUMP_STOPPED)
@@ -92,7 +93,7 @@ class LibmpvBackendTest {
     @Test
     fun failedNativeTeardownIsRetainedForALaterClose() = runBlocking {
         val client = FakeMpvClient(destroyFailuresRemaining = 1)
-        val backend = LibmpvBackend(TestContext, MpvClientFactory { client })
+        val backend = LibmpvBackend(TestContext, MpvClientFactory { client }, { "/test/mpv" })
         backend.play()
 
         val firstFailure = runCatching { backend.close() }.exceptionOrNull()
@@ -109,7 +110,7 @@ class LibmpvBackendTest {
     fun observerRemovalFailureIsReportedAfterSuccessfulDestroy() = runBlocking {
         val removalFailure = IllegalStateException("expected observer removal failure")
         val client = FakeMpvClient(observerRemovalFailure = removalFailure)
-        val backend = LibmpvBackend(TestContext, MpvClientFactory { client })
+        val backend = LibmpvBackend(TestContext, MpvClientFactory { client }, { "/test/mpv" })
         backend.play()
 
         val actualFailure = runCatching { backend.close() }.exceptionOrNull()

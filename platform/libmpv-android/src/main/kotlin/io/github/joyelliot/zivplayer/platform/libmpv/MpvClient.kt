@@ -10,8 +10,7 @@ import android.view.Surface
  *
  * A source implementation must report every available native status by
  * throwing [MpvOperationException] on failure, keep event ordering intact,
- * and make [destroy] idempotent. The bootstrap implementation explicitly
- * cannot recover statuses which its AAR discards. Raw mpv identifiers and
+ * and make [destroy] idempotent. Raw mpv identifiers and
  * property names stop at this module.
  *
  * Observer callbacks may arrive on the client's dedicated event thread and

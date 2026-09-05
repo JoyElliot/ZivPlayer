@@ -4,7 +4,9 @@ package io.github.joyelliot.zivplayer.core.player.runtime
 
 import io.github.joyelliot.zivplayer.core.model.Milliseconds
 import io.github.joyelliot.zivplayer.core.model.QueueItemId
+import io.github.joyelliot.zivplayer.core.model.SubtitleSource
 import io.github.joyelliot.zivplayer.core.model.TrackKind
+import io.github.joyelliot.zivplayer.core.model.TrackId
 import io.github.joyelliot.zivplayer.core.player.CommandResult
 import io.github.joyelliot.zivplayer.core.player.ErrorRecovery
 import io.github.joyelliot.zivplayer.core.player.ItemTransitionReason
@@ -104,6 +106,8 @@ class DefaultPlayerSession(
     private var backendEventsFailed = false
     private var backendResetRequired = false
     private var loadReadinessTimeoutJob: Job? = null
+    private val externalSubtitles = mutableMapOf<QueueItemId, MutableList<SubtitleSource>>()
+    private val trackChoices = mutableMapOf<QueueItemId, MutableMap<TrackKind, TrackId?>>()
 
     private val backendEventsJob: Job = scope.launchBackendCollector()
     private val actorJob: Job = scope.launchSessionActor()
@@ -237,6 +241,7 @@ class DefaultPlayerSession(
             is PlayerCommand.SetPlaybackRate -> handleSetPlaybackRate(command)
             is PlayerCommand.SetMuted -> handleSetMuted(command)
             is PlayerCommand.SelectTrack -> handleSelectTrack(command)
+            is PlayerCommand.AddSubtitle -> handleAddSubtitle(command)
             PlayerCommand.ClearQueue -> handleClearQueue()
         }
     }
@@ -252,6 +257,8 @@ class DefaultPlayerSession(
             return reject("The queue has duplicate IDs or an invalid start index.")
         }
 
+        externalSubtitles.clear()
+        trackChoices.clear()
         val previous = mutableSnapshot.value.queue.currentItem?.id
         val error = startLoad(
             queue = queue,
@@ -560,10 +567,8 @@ class DefaultPlayerSession(
                 return reject("The selected track has a different kind.")
             }
         }
-        if (current.tracks.selected[command.kind] == command.trackId) {
-            return accepted(changed = false)
-        }
-
+        // Track observations converge asynchronously. Reapply explicit intent even
+        // when the last snapshot matches, e.g. Off immediately after sub-add.
         val error = callBackend("select a track") {
             selectTrack(command.kind, command.trackId)
         }
@@ -575,6 +580,10 @@ class DefaultPlayerSession(
         val selected = current.tracks.selected.toMutableMap().apply {
             put(command.kind, command.trackId)
         }
+        current.queue.currentItem?.id?.let { item ->
+            trackChoices.getOrPut(item) { mutableMapOf() }[command.kind] = command.trackId
+        }
+        if (current.tracks.selected[command.kind] == command.trackId) return accepted(changed = false)
         publish(
             current.copy(tracks = TrackSnapshot.of(current.tracks.available, selected)),
             StateChangeCause.COMMAND,
@@ -582,7 +591,25 @@ class DefaultPlayerSession(
         return accepted(changed = true)
     }
 
+    private suspend fun handleAddSubtitle(command: PlayerCommand.AddSubtitle): CommandResult {
+        capabilityRejection(PlayerCapability.ADD_SUBTITLE)?.let { return it }
+        val itemId = mutableSnapshot.value.queue.currentItem?.id ?: return reject("No media is loaded.")
+        val sources = externalSubtitles.getOrPut(itemId) { mutableListOf() }
+        if (sources.size >= 16) return reject("At most 16 external subtitles may be attached to one item.")
+        val error = callBackend("add the subtitle") { addSubtitle(command.source) }
+        if (error != null) {
+            // A bad subtitle must not replace the active video's playback state with ERROR.
+            return CommandResult.Failed(mutableSnapshot.value.revision, error)
+        }
+        sources += command.source
+        // An explicit import selects the new subtitle. Its next observation is authoritative.
+        trackChoices[itemId]?.remove(TrackKind.SUBTITLE)
+        return accepted(changed = true)
+    }
+
     private suspend fun handleClearQueue(): CommandResult {
+        externalSubtitles.clear()
+        trackChoices.clear()
         val current = mutableSnapshot.value
         if (current.queue.items.isEmpty()) {
             return accepted(changed = false)
@@ -638,6 +665,12 @@ class DefaultPlayerSession(
 
         when (event) {
             is BackendEvent.Prepared -> handlePrepared(event)
+            is BackendEvent.TracksChanged -> {
+                val current = mutableSnapshot.value
+                if (current.status != PlayerStatus.LOADING && current.tracks != event.tracks) {
+                    publish(current.copy(tracks = event.tracks), StateChangeCause.BACKEND_EVENT)
+                }
+            }
             is BackendEvent.PositionChanged -> {
                 if (inFlightSeek != null || event.seekGeneration != completedSeekGeneration) {
                     return
@@ -712,6 +745,21 @@ class DefaultPlayerSession(
             ),
             StateChangeCause.BACKEND_EVENT,
         )
+
+        // Stop/replay and repeat-one recreate the native file. The platform keeps
+        // the descriptors alive, so restore this queue occurrence's subtitle sources.
+        externalSubtitles[current.queue.currentItem?.id]?.toList()?.forEach { source ->
+            callBackend("restore the subtitle") { addSubtitle(source) }?.let { error ->
+                // Keep the bounded source cache paired with the platform's retained descriptor.
+                // A later replay can retry it; replacing the queue releases both ownerships.
+                emitError(error)
+            }
+        }
+        // sub-add selects its input. Restore explicit audio/subtitle choices afterwards,
+        // before autoplay, including sid=no for a previously disabled subtitle output.
+        trackChoices[current.queue.currentItem?.id]?.toMap()?.forEach { (kind, id) ->
+            callBackend("restore the track selection") { selectTrack(kind, id) }?.let { error -> emitError(error) }
+        }
 
         if (current.playWhenReady) {
             if (PlayerCapability.PLAY !in mutableSnapshot.value.capabilities.available) {
@@ -1075,6 +1123,9 @@ class DefaultPlayerSession(
                 add(PlayerCapability.SET_MUTED)
                 if (snapshot.tracks.available.isNotEmpty()) {
                     add(PlayerCapability.SELECT_TRACK)
+                }
+                if (snapshot.status in setOf(PlayerStatus.READY, PlayerStatus.PLAYING, PlayerStatus.PAUSED, PlayerStatus.BUFFERING)) {
+                    add(PlayerCapability.ADD_SUBTITLE)
                 }
             }
         }

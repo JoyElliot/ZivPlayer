@@ -5,6 +5,8 @@ package io.github.joyelliot.zivplayer
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.net.Uri
+import android.util.Log
 import android.view.Surface
 import android.view.SurfaceHolder
 import android.view.SurfaceView
@@ -27,12 +29,17 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionResult
 import io.github.joyelliot.zivplayer.designsystem.ZivTheme
 import io.github.joyelliot.zivplayer.feature.player.PlayerHomeScreen
 import io.github.joyelliot.zivplayer.feature.player.PlayerRepeatMode
 import io.github.joyelliot.zivplayer.feature.player.PlayerUiState
+import io.github.joyelliot.zivplayer.feature.player.PlayerTrackKind
 import io.github.joyelliot.zivplayer.feature.player.RecentMediaUiItem
 import io.github.joyelliot.zivplayer.platform.playback.PlaybackRequestMetadata
+import io.github.joyelliot.zivplayer.platform.playback.VideoSurfaceRequestContract
+import io.github.joyelliot.zivplayer.platform.playback.VideoSurfaceRequests
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeout
@@ -57,11 +64,17 @@ fun ZivPlayerApp(
     onPlaybackSpeedChange: (Float) -> Unit = {},
     onVolumeChange: (Float) -> Unit = {},
     onRepeatModeChange: (PlayerRepeatMode) -> Unit = {},
+    onSelectTrack: (PlayerTrackKind, String?) -> Unit = { _, _ -> },
+    onBeginSubtitleSelection: () -> Boolean = { false },
+    onSubtitleSelected: (Uri?) -> Unit = {},
     onOpenRecent: (String) -> Unit = {},
     onForgetRecent: (String) -> Unit = {},
 ) {
     val openMedia = rememberLauncherForActivityResult(OpenMediaDocument()) { selection ->
         selection?.let(onDocumentSelected)
+    }
+    val openSubtitle = rememberLauncherForActivityResult(OpenMediaDocument()) { selection ->
+        onSubtitleSelected(selection?.uri)
     }
     LaunchedEffect(controller, pendingPlayback?.requestId) {
         val activeController = controller ?: return@LaunchedEffect
@@ -154,6 +167,13 @@ fun ZivPlayerApp(
             onPlaybackSpeedChange = onPlaybackSpeedChange,
             onVolumeChange = onVolumeChange,
             onRepeatModeChange = onRepeatModeChange,
+            onSelectTrack = onSelectTrack,
+            onOpenSubtitle = {
+                if (onBeginSubtitleSelection()) {
+                    // SAF providers frequently classify ASS/SRT as generic binary documents.
+                    openSubtitle.launch(arrayOf("*/*"))
+                }
+            },
             onOpenRecent = onOpenRecent,
             onForgetRecent = onForgetRecent,
             videoContent = {
@@ -414,10 +434,29 @@ private fun PlayerVideoSurface(
             onDispose { }
         } else {
             var attachedSurface: Surface? = null
+            var surfaceToken = 0L
+            fun resizeSurface(width: Int, height: Int) {
+                if (width <= 0 || height <= 0 || !VideoSurfaceRequests.isCurrent(surfaceToken) || !player.isConnected) return
+                val command = SessionCommand(VideoSurfaceRequestContract.ACTION_RESIZE, Bundle.EMPTY)
+                if (!player.isSessionCommandAvailable(command)) return
+                val future = player.sendCustomCommand(command, Bundle().apply {
+                    putLong(VideoSurfaceRequestContract.TOKEN, surfaceToken)
+                    putInt(VideoSurfaceRequestContract.WIDTH, width)
+                    putInt(VideoSurfaceRequestContract.HEIGHT, height)
+                })
+                future.addListener({
+                    val result = runCatching { future.get() }
+                    if (result.getOrNull()?.resultCode != SessionResult.RESULT_SUCCESS) {
+                        Log.w("ZivVideoSurface", "Surface resize was not accepted.", result.exceptionOrNull())
+                    }
+                }, java.util.concurrent.Executor { it.run() })
+            }
             fun attachSurface(surface: Surface) {
                 if (surface.isValid && player.canSetVideoSurface() && attachedSurface != surface) {
                     attachedSurface = surface
+                    surfaceToken = VideoSurfaceRequests.claim()
                     player.setVideoSurface(surface)
+                    resizeSurface(holder.surfaceFrame.width(), holder.surfaceFrame.height())
                 }
             }
             val callback = object : SurfaceHolder.Callback {
@@ -430,9 +469,12 @@ private fun PlayerVideoSurface(
                     format: Int,
                     width: Int,
                     height: Int,
-                ) = Unit
+                ) {
+                    if (surfaceHolder.surface == attachedSurface) resizeSurface(width, height)
+                }
 
                 override fun surfaceDestroyed(surfaceHolder: SurfaceHolder) {
+                    VideoSurfaceRequests.release(surfaceToken)
                     attachedSurface?.let { surface ->
                         if (player.canSetVideoSurface()) {
                             player.clearVideoSurface(surface)
@@ -444,6 +486,7 @@ private fun PlayerVideoSurface(
             holder.addCallback(callback)
             attachSurface(holder.surface)
             onDispose {
+                VideoSurfaceRequests.release(surfaceToken)
                 holder.removeCallback(callback)
                 attachedSurface?.let { surface ->
                     if (player.canSetVideoSurface()) {

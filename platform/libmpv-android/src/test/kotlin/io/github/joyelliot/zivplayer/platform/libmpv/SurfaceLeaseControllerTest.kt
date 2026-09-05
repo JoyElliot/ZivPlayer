@@ -5,9 +5,24 @@ package io.github.joyelliot.zivplayer.platform.libmpv
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
 import org.junit.Test
 
 class SurfaceLeaseControllerTest {
+    @Test
+    fun `only the current live lease may resize the native surface`() {
+        val controller = controller(mutableListOf())
+        val foreign = controller(mutableListOf()).attach("foreign")
+        val old = controller.attach("old")
+        val current = controller.attach("current")
+        assertFalse(controller.owns(old))
+        assertFalse(controller.owns(foreign))
+        assertTrue(controller.owns(current))
+        controller.detach(current)
+        assertFalse(controller.owns(current))
+    }
+
     @Test
     fun `replacement detaches the old surface before attaching the new one`() {
         val operations = mutableListOf<String>()

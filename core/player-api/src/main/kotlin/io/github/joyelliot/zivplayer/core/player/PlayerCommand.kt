@@ -5,6 +5,7 @@ package io.github.joyelliot.zivplayer.core.player
 import io.github.joyelliot.zivplayer.core.model.Milliseconds
 import io.github.joyelliot.zivplayer.core.model.PlaybackRatePermille
 import io.github.joyelliot.zivplayer.core.model.QueueItem
+import io.github.joyelliot.zivplayer.core.model.SubtitleSource
 import io.github.joyelliot.zivplayer.core.model.TrackId
 import io.github.joyelliot.zivplayer.core.model.TrackKind
 import io.github.joyelliot.zivplayer.core.model.VolumePercent
@@ -43,6 +44,8 @@ sealed interface PlayerCommand {
         val kind: TrackKind,
         val trackId: TrackId?,
     ) : PlayerCommand
+
+    data class AddSubtitle(val source: SubtitleSource) : PlayerCommand
 
     data object ClearQueue : PlayerCommand
 }

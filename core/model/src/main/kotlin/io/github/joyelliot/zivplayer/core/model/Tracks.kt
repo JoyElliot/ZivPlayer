@@ -16,6 +16,14 @@ enum class TrackRole {
     VISUAL_IMPAIRED,
 }
 
+/** Locator lifetime is owned by the platform; the core never owns an OS handle. */
+data class SubtitleSource(val locator: String, val title: String? = null) {
+    init {
+        require(locator.isNotBlank()) { "Subtitle locator must not be blank." }
+        require(title == null || title.isNotBlank()) { "Subtitle title must not be blank." }
+    }
+}
+
 class TrackDescriptor(
     val id: TrackId,
     val kind: TrackKind,

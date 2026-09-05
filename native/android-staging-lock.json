@@ -1,0 +1,10 @@
+{
+  "kind": "ziv-android-inspection-staging-v1",
+  "policySha256": "1d46ecc732f4aa548fb77b2bf63e96be66b217a8aee869ce8bbcd4626ec1401c",
+  "profileSha256": "d6cf2a360b4c8f159e49fc9a9872faf4a21e3dc5e8a225905d3b3ccaf4fe42ce",
+  "ready": false,
+  "receiptSha256": "f987da92cc0fb22704221cf2d249054bc8bf6ce27a2a1b22efb1aa16cec01d17",
+  "receiptSizeBytes": 82508,
+  "releaseInput": false,
+  "schemaVersion": 1
+}

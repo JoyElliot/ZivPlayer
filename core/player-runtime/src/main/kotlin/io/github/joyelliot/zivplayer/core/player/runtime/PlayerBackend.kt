@@ -5,6 +5,7 @@ package io.github.joyelliot.zivplayer.core.player.runtime
 import io.github.joyelliot.zivplayer.core.model.Milliseconds
 import io.github.joyelliot.zivplayer.core.model.PlaybackRatePermille
 import io.github.joyelliot.zivplayer.core.model.QueueItem
+import io.github.joyelliot.zivplayer.core.model.SubtitleSource
 import io.github.joyelliot.zivplayer.core.model.TrackId
 import io.github.joyelliot.zivplayer.core.model.TrackKind
 import io.github.joyelliot.zivplayer.core.model.VolumePercent
@@ -58,6 +59,11 @@ sealed interface BackendEvent {
         val seekGeneration: SeekGeneration? = null,
     ) : BackendEvent
 
+    data class TracksChanged(
+        override val generation: LoadGeneration,
+        val tracks: TrackSnapshot,
+    ) : BackendEvent
+
     data class PlaybackStarted(
         override val generation: LoadGeneration,
     ) : BackendEvent
@@ -108,6 +114,8 @@ interface PlayerBackend {
     suspend fun setMuted(muted: Boolean)
 
     suspend fun selectTrack(kind: TrackKind, trackId: TrackId?)
+
+    suspend fun addSubtitle(source: SubtitleSource)
 
     suspend fun close()
 }

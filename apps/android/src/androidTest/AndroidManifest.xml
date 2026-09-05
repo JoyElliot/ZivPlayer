@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- Installed only with the test APK; exposes only the four generated test fixtures. -->
+        <provider
+            android:name="io.github.joyelliot.zivplayer.PlaybackFixtureProvider"
+            android:authorities="io.github.joyelliot.zivplayer.test.fixtures"
+            android:exported="true" />
+    </application>
+</manifest>

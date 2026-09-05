@@ -39,6 +39,8 @@ fun PlayerHomeScreen(
     onPlaybackSpeedChange: (Float) -> Unit = {},
     onVolumeChange: (Float) -> Unit = {},
     onRepeatModeChange: (PlayerRepeatMode) -> Unit = {},
+    onSelectTrack: (PlayerTrackKind, String?) -> Unit = { _, _ -> },
+    onOpenSubtitle: () -> Unit = {},
     onOpenRecent: (String) -> Unit = {},
     onForgetRecent: (String) -> Unit = {},
     videoContent: @Composable () -> Unit = {},
@@ -66,12 +68,61 @@ fun PlayerHomeScreen(
             onVolumeChange = onVolumeChange,
             onRepeatModeChange = onRepeatModeChange,
         )
+        PlayerTrackControls(state, onSelectTrack, onOpenSubtitle)
         RecentMediaSection(
             recentMedia = recentMedia,
             currentMediaId = state.mediaId,
             onOpenRecent = onOpenRecent,
             onForgetRecent = onForgetRecent,
         )
+    }
+}
+
+@Composable
+private fun PlayerTrackControls(
+    state: PlayerUiState,
+    onSelectTrack: (PlayerTrackKind, String?) -> Unit,
+    onOpenSubtitle: () -> Unit,
+) {
+    if (!state.hasMedia) return
+    var expanded by remember(state.mediaId) { mutableStateOf<PlayerTrackKind?>(null) }
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        PlayerTrackKind.entries.forEach { kind ->
+            ZivPrimaryButton(
+                text = stringResource(if (kind == PlayerTrackKind.AUDIO) R.string.player_audio_tracks else R.string.player_subtitles),
+                onClick = { expanded = if (expanded == kind) null else kind },
+                enabled = state.connectionStatus == PlayerConnectionStatus.CONNECTED,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+    val kind = expanded ?: return
+    val tracks = state.tracks.filter { it.kind == kind }
+    ZivCard {
+        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (tracks.isEmpty()) ZivText(stringResource(R.string.player_no_tracks))
+            tracks.forEach { track ->
+                ZivPrimaryButton(
+                    text = if (track.selected) stringResource(R.string.player_selected_track, track.label) else track.label,
+                    onClick = { onSelectTrack(kind, track.id) },
+                    enabled = state.canSelectTracks && !track.selected,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            if (kind == PlayerTrackKind.SUBTITLE) {
+                ZivPrimaryButton(
+                    text = stringResource(R.string.player_subtitles_off),
+                    onClick = { onSelectTrack(PlayerTrackKind.SUBTITLE, null) },
+                    enabled = state.canSelectTracks && tracks.any { it.selected },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                ZivPrimaryButton(
+                    text = stringResource(R.string.player_open_subtitle), onClick = onOpenSubtitle,
+                    enabled = state.canAddSubtitle, modifier = Modifier.fillMaxWidth(),
+                )
+                state.subtitleMessage?.let { ZivStatusText(it) }
+            }
+        }
     }
 }
 

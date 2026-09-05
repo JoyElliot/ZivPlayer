@@ -30,4 +30,10 @@
     <string name="player_recent_resume">Resume at %1$s</string>
     <string name="player_recent_open">Open</string>
     <string name="player_recent_forget">Forget</string>
+    <string name="player_audio_tracks">Audio tracks</string>
+    <string name="player_subtitles">Subtitles</string>
+    <string name="player_no_tracks">No tracks available</string>
+    <string name="player_selected_track">Selected: %1$s</string>
+    <string name="player_subtitles_off">Turn subtitles off</string>
+    <string name="player_open_subtitle">Open subtitle file</string>
 </resources>

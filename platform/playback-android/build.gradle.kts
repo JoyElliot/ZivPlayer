@@ -40,6 +40,7 @@ dependencies {
     implementation(project(":platform:libmpv-android"))
 
     implementation(libs.androidx.media3.common)
+    implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.media3.session)
     implementation(libs.kotlinx.coroutines.android)
 

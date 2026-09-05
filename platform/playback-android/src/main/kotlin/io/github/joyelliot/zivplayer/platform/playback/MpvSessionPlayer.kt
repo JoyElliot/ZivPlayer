@@ -11,14 +11,20 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.os.ParcelFileDescriptor
+import android.provider.OpenableColumns
+import android.util.Log
 import android.view.Surface
+import androidx.core.net.toUri
 import androidx.media3.common.C
+import androidx.media3.common.AudioAttributes
 import androidx.media3.common.MediaItem as Media3MediaItem
 import androidx.media3.common.MediaMetadata as Media3MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.SimpleBasePlayer
+import androidx.media3.common.TrackSelectionParameters
+import androidx.media3.common.Tracks
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
@@ -30,6 +36,7 @@ import io.github.joyelliot.zivplayer.core.model.Milliseconds
 import io.github.joyelliot.zivplayer.core.model.PlaybackRatePermille
 import io.github.joyelliot.zivplayer.core.model.QueueItem
 import io.github.joyelliot.zivplayer.core.model.QueueItemId
+import io.github.joyelliot.zivplayer.core.model.SubtitleSource
 import io.github.joyelliot.zivplayer.core.model.VolumePercent
 import io.github.joyelliot.zivplayer.core.player.CommandResult
 import io.github.joyelliot.zivplayer.core.player.ErrorRecovery
@@ -132,14 +139,21 @@ internal class MpvSessionPlayer(
     private val queueItemIdGenerator: QueueItemIdGenerator = QueueItemIdGenerator(),
     private val setMediaRequestFence: SetMediaRequestFence = SetMediaRequestFence(),
     private val progressRecorder: PlaybackProgressRecorder,
+    private val ensurePlaybackForeground: () -> Unit,
+    private val cancelPendingForeground: () -> Unit,
+    private val onPlaybackPublished: () -> Unit,
     private val engineFactory: () -> PlaybackEngine,
 ) : SimpleBasePlayer(applicationLooper) {
+    private val applicationHandler = Handler(applicationLooper)
     private val scope = CoroutineScope(
-        SupervisorJob() + Handler(applicationLooper).asCoroutineDispatcher("ZivMedia3Player"),
+        SupervisorJob() + applicationHandler.asCoroutineDispatcher("ZivMedia3Player"),
     )
     private val shutdownStarted = AtomicBoolean(false)
     private val shutdownCompletion = CompletableDeferred<Unit>()
     private val operationGate = Mutex()
+    private val audioFocusPolicy = PlaybackAudioFocusPolicy()
+    private val audioFocus = AndroidPlaybackAudioFocus(context, applicationLooper, ::onAudioFocusChanged)
+    private var playWhenReadyChangeReason = Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST
 
     private var engine = engineFactory()
     private var engineEpoch = 0L
@@ -148,9 +162,13 @@ internal class MpvSessionPlayer(
     private var snapshot: PlaybackSnapshot = engine.session.snapshot.value
 
     private var videoOutput: Any? = null
+    private var videoSurfaceRequestToken = 0L
+    private var videoSurfaceSize: Pair<Int, Int>? = null
     private var surfaceLease: LibmpvSurfaceLease? = null
     private var activeDescriptor: ParcelFileDescriptor? = null
     private var activeMediaItem: Media3MediaItem? = null
+    private val subtitleDescriptors = mutableListOf<ParcelFileDescriptor>()
+    private var subtitleRequestGeneration = 0L
     private var snapshotCollector: Job
     private var eventCollector: Job
 
@@ -168,7 +186,7 @@ internal class MpvSessionPlayer(
             .setAvailableCommands(snapshot.availableMedia3Commands())
             .setPlayWhenReady(
                 snapshot.playWhenReady,
-                Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST,
+                playWhenReadyChangeReason,
             )
             .setPlaybackState(projection.playbackState)
             .setIsLoading(projection.isLoading)
@@ -178,6 +196,10 @@ internal class MpvSessionPlayer(
             )
             .setVolume(if (snapshot.muted) 0f else volume)
             .setUnmuteVolume(volume)
+            .setAudioAttributes(PLAYBACK_AUDIO_ATTRIBUTES)
+            .setTrackSelectionParameters(snapshot.queue.currentItem?.id?.value?.let {
+                snapshot.tracks.toMedia3SelectionParameters(it)
+            } ?: TrackSelectionParameters.DEFAULT)
 
         if (projection.exposesError) {
             builder.setPlayerError(snapshot.error?.toPlaybackException())
@@ -202,12 +224,29 @@ internal class MpvSessionPlayer(
     override fun handleSetPlayWhenReady(playWhenReady: Boolean): ListenableFuture<*> {
         // The request-owned Play sent after installation must not cancel a newer media
         // request that may already be resolving. Pause remains an explicit cancellation.
-        if (!playWhenReady) setMediaRequestFence.invalidate()
+        if (!playWhenReady) {
+            setMediaRequestFence.invalidate()
+            releaseAudioFocus()
+        }
         if (playWhenReady && setMediaRequestFence.hasPendingRequest()) {
             return Futures.immediateVoidFuture()
         }
         return launchFuture {
-            dispatchOrThrow(if (playWhenReady) PlayerCommand.Play else PlayerCommand.Pause)
+            playWhenReadyChangeReason = Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST
+            if (playWhenReady) {
+                try {
+                    check(audioFocusPolicy.requestPlay {
+                        ensurePlaybackForeground()
+                        audioFocus.request()
+                    }) { "Audio focus is unavailable. Playback remains paused." }
+                    dispatchOrThrow(PlayerCommand.Play)
+                } catch (failure: Throwable) {
+                    releaseAudioFocus()
+                    throw failure
+                }
+            } else {
+                dispatchOrThrow(PlayerCommand.Pause)
+            }
             if (!playWhenReady) {
                 progressRecorder.flushPause(engineEpoch, engine.session.snapshot.value)
             }
@@ -218,6 +257,8 @@ internal class MpvSessionPlayer(
 
     override fun handleStop(): ListenableFuture<*> {
         setMediaRequestFence.invalidate()
+        subtitleRequestGeneration++
+        releaseAudioFocus()
         return launchFuture {
             val beforeStop = engine.session.snapshot.value
             dispatchOrThrow(PlayerCommand.Stop)
@@ -232,6 +273,14 @@ internal class MpvSessionPlayer(
     override fun handleSetRepeatMode(repeatMode: Int): ListenableFuture<*> = dispatch(
         PlayerCommand.SetRepeatMode(repeatMode.toCoreRepeatMode()),
     )
+
+    override fun handleSetTrackSelectionParameters(parameters: TrackSelectionParameters): ListenableFuture<*> = launchFuture {
+        val current = engine.session.snapshot.value
+        val queueItem = checkNotNull(current.queue.currentItem) { "No media is loaded." }
+        val commands = current.tracks.selectionCommands(queueItem.id.value, parameters)
+        commands.forEach { dispatchOrThrow(it) }
+        invalidateState()
+    }
 
     override fun handleSetPlaybackParameters(
         playbackParameters: PlaybackParameters,
@@ -267,7 +316,10 @@ internal class MpvSessionPlayer(
         if (videoOutput !is Surface) {
             return failedFuture("Only direct Surface output is supported.")
         }
+        val token = VideoSurfaceRequests.current()
         return launchFuture {
+            if (videoSurfaceRequestToken != token) videoSurfaceSize = null
+            videoSurfaceRequestToken = token
             this.videoOutput = videoOutput
             if (!requiresEngineReset()) {
                 surfaceLease = engine.surfacePort.attachSurface(videoOutput)
@@ -281,11 +333,22 @@ internal class MpvSessionPlayer(
                 return@launchFuture
             }
             this.videoOutput = null
+            videoSurfaceRequestToken = 0L
+            videoSurfaceSize = null
             if (!requiresEngineReset()) {
                 surfaceLease?.let(engine.surfacePort::detachSurface)
                 surfaceLease = null
             }
         }
+    }
+
+    internal fun resizeVideoSurface(token: Long, width: Int, height: Int): ListenableFuture<*> = launchFuture {
+        require(width in 1..32768 && height in 1..32768) { "Invalid Surface dimensions." }
+        if (!VideoSurfaceRequests.isCurrent(token) || token != videoSurfaceRequestToken || videoOutput == null) {
+            return@launchFuture
+        }
+        videoSurfaceSize = width to height
+        if (!requiresEngineReset()) surfaceLease?.let { engine.surfacePort.resizeSurface(it, width, height) }
     }
 
     override fun handleSetMediaItems(
@@ -294,7 +357,7 @@ internal class MpvSessionPlayer(
         startPositionMs: Long,
     ): ListenableFuture<*> {
         if (mediaItems.size != 1) {
-            return failedFuture("This bootstrap adapter accepts one media item at a time.")
+            return failedFuture("This player accepts one media item at a time.")
         }
         val normalizedIndex = if (startIndex == C.INDEX_UNSET) 0 else startIndex
         val normalizedPosition = if (startPositionMs == C.TIME_UNSET) 0L else startPositionMs
@@ -323,6 +386,7 @@ internal class MpvSessionPlayer(
                     return@launchFuture
                 }
                 try {
+                    releaseAudioFocus()
                     dispatchOrThrow(
                         PlayerCommand.SetQueue(
                             items = listOf(resolved.queueItem),
@@ -334,6 +398,7 @@ internal class MpvSessionPlayer(
                             playWhenReady = false,
                         ),
                     )
+                    clearSubtitleDescriptors()
                     runCatching { activeDescriptor?.close() }
                     activeDescriptor = resolved.descriptor
                     activeMediaItem = resolved.mediaItem
@@ -385,6 +450,8 @@ internal class MpvSessionPlayer(
 
     internal fun shutdownAsync(): ListenableFuture<*> {
         setMediaRequestFence.invalidate()
+        subtitleRequestGeneration++
+        releaseAudioFocus()
         return launchFuture(allowAfterShutdown = true) {
             shutdown()
         }
@@ -435,6 +502,7 @@ internal class MpvSessionPlayer(
                     shutdownFailure?.addSuppressed(failure) ?: run { shutdownFailure = failure }
                 }
             activeDescriptor = null
+            clearSubtitleDescriptors()
             activeMediaItem = null
             videoOutput = null
             shutdownFailure?.let(shutdownCompletion::completeExceptionally)
@@ -448,6 +516,12 @@ internal class MpvSessionPlayer(
             observedEngine.session.snapshot.collect { next ->
                 if (engine === observedEngine && engineEpoch == observedEpoch) {
                     snapshot = next
+                    if (next.status in setOf(PlayerStatus.IDLE, PlayerStatus.ENDED, PlayerStatus.ERROR, PlayerStatus.CLOSED)) {
+                        releaseAudioFocus()
+                    } else {
+                        audioFocus.setNoisyEnabled(next.playWhenReady)
+                        if (next.status == PlayerStatus.PLAYING) onPlaybackPublished()
+                    }
                     progressRecorder.observeSnapshot(observedEpoch, next)
                     invalidateState()
                 }
@@ -473,6 +547,7 @@ internal class MpvSessionPlayer(
             return
         }
         snapshot = authoritativeSnapshot
+        releaseAudioFocus()
 
         val previousEngine = engine
         val previousEpoch = engineEpoch
@@ -484,6 +559,7 @@ internal class MpvSessionPlayer(
         }
         runCatching { activeDescriptor?.close() }
         activeDescriptor = null
+        clearSubtitleDescriptors()
         activeMediaItem = null
         surfaceLease = null
 
@@ -497,12 +573,105 @@ internal class MpvSessionPlayer(
         val surface = videoOutput as? Surface
         if (surface?.isValid == true) {
             surfaceLease = replacement.surfacePort.attachSurface(surface)
+            videoSurfaceSize?.let { (width, height) ->
+                replacement.surfacePort.resizeSurface(checkNotNull(surfaceLease), width, height)
+            }
         }
         invalidateState()
     }
 
     private fun requiresEngineReset(): Boolean =
         engine.session.snapshot.value.error?.recovery == ErrorRecovery.RESET
+
+    internal fun addSubtitle(
+        uri: Uri,
+        expectedMediaId: String,
+        expectedRequestSequence: Long,
+        title: String?,
+    ): ListenableFuture<*> {
+        if (uri.scheme != CONTENT_SCHEME) return failedFuture("Choose a subtitle through the document picker.")
+        val request = ++subtitleRequestGeneration
+        val epoch = engineEpoch
+        val itemId = snapshot.queue.currentItem?.id
+        fun isCurrent(): Boolean = request == subtitleRequestGeneration && epoch == engineEpoch &&
+            itemId != null && engine.session.snapshot.value.queue.currentItem?.id == itemId &&
+            activeMediaItem?.mediaId == expectedMediaId &&
+            activeMediaItem?.mediaMetadata?.extras?.getLong(PlaybackRequestMetadata.SEQUENCE_EXTRA) == expectedRequestSequence &&
+            !setMediaRequestFence.hasPendingRequest()
+        return launchFuture {
+            check(isCurrent()) { "The selected media changed while choosing a subtitle." }
+            check(subtitleDescriptors.size < 16) { "At most 16 external subtitles may be attached." }
+            val (descriptor, displayName) = withContext(NonCancellable + Dispatchers.IO) {
+                val displayName = title?.takeIf(String::isNotBlank) ?: runCatching {
+                    context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+                        if (cursor.moveToFirst()) cursor.getString(0)?.takeIf(String::isNotBlank) else null
+                    }
+                }.getOrNull() ?: uri.lastPathSegment ?: "External subtitle"
+                checkNotNull(context.contentResolver.openFileDescriptor(uri, READ_ONLY_MODE)) {
+                    "The subtitle could not be opened."
+                } to displayName
+            }
+            try {
+                check(isCurrent()) { "The selected media changed while opening a subtitle." }
+                dispatchOrThrow(PlayerCommand.AddSubtitle(SubtitleSource(
+                    "$FILE_DESCRIPTOR_PATH_PREFIX${descriptor.fd}", displayName,
+                )))
+                subtitleDescriptors += descriptor
+            } catch (failure: Throwable) {
+                runCatching { descriptor.close() }.exceptionOrNull()?.let(failure::addSuppressed)
+                throw failure
+            }
+        }
+    }
+
+    private fun clearSubtitleDescriptors() {
+        subtitleRequestGeneration++
+        subtitleDescriptors.forEach { descriptor ->
+            runCatching { descriptor.close() }.onFailure { Log.w("ZivMedia3Player", "Subtitle handle could not be closed.", it) }
+        }
+        subtitleDescriptors.clear()
+    }
+
+    private fun releaseAudioFocus() {
+        audioFocusPolicy.cancelPlaybackIntent()
+        audioFocus.abandon()
+        cancelPendingForeground()
+    }
+
+    private fun onAudioFocusChanged(token: Long, change: PlaybackFocusChange) {
+        val future = launchFuture {
+            if (!audioFocus.isCurrent(token)) return@launchFuture
+            playWhenReadyChangeReason = if (change == PlaybackFocusChange.NOISY) {
+                Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_BECOMING_NOISY
+            } else {
+                Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_FOCUS_LOSS
+            }
+            when (audioFocusPolicy.onChange(change)) {
+                PlaybackFocusAction.NONE -> Unit
+                PlaybackFocusAction.PAUSE, PlaybackFocusAction.PAUSE_AND_ABANDON -> {
+                    if (change == PlaybackFocusChange.LOSS || change == PlaybackFocusChange.NOISY) releaseAudioFocus()
+                    if (PlayerCapability.PAUSE in engine.session.snapshot.value.capabilities.available) {
+                        dispatchOrThrow(PlayerCommand.Pause)
+                        progressRecorder.flushPause(engineEpoch, engine.session.snapshot.value)
+                    }
+                }
+                PlaybackFocusAction.RESUME -> {
+                    if (PlayerCapability.PLAY in engine.session.snapshot.value.capabilities.available) {
+                        ensurePlaybackForeground()
+                        dispatchOrThrow(PlayerCommand.Play)
+                    } else {
+                        releaseAudioFocus()
+                    }
+                }
+            }
+        }
+        future.addListener({
+            runCatching { future.get() }.onFailure {
+                releaseAudioFocus()
+                Log.w("ZivMedia3Player", "Audio interruption could not be applied.", it)
+            }
+        }, java.util.concurrent.Executor { applicationHandler.post(it) })
+    }
 
     private suspend fun resolveMediaItem(mediaItem: Media3MediaItem): ResolvedMediaItem {
         val configuration = checkNotNull(mediaItem.localConfiguration) {
@@ -612,6 +781,10 @@ internal class MpvSessionPlayer(
     )
 
     private companion object {
+        val PLAYBACK_AUDIO_ATTRIBUTES = AudioAttributes.Builder()
+            .setUsage(C.USAGE_MEDIA)
+            .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+            .build()
         const val PERCENT_DIVISOR = 100f
         const val PERMILLE_DIVISOR = 1_000f
         const val MIN_RATE_PERMILLE = 250
@@ -677,6 +850,7 @@ internal fun PlaybackSnapshot.media3CommandPolicy(): Set<Int> {
         ) {
             add(Player.COMMAND_SET_VOLUME)
         }
+        if (PlayerCapability.SELECT_TRACK in available) add(Player.COMMAND_SET_TRACK_SELECTION_PARAMETERS)
     }
 }
 
@@ -691,6 +865,7 @@ private fun PlaybackSnapshot.toMedia3Playlist(
         .setMediaItem(mediaItem)
         .setMediaMetadata(mediaItem.mediaMetadata)
         .setIsSeekable(PlayerCapability.SEEK in capabilities.available)
+        .setTracks(if (isCurrent) tracks.toMedia3Tracks(item.id.value) else Tracks.EMPTY)
         .setDurationUs(
             if (isCurrent) {
                 timeline.duration?.value
@@ -716,7 +891,7 @@ private fun MediaMetadata.toMedia3Metadata(): Media3MediaMetadata = Media3MediaM
         title?.let(::setTitle)
         artist?.let(::setArtist)
         album?.let(::setAlbumTitle)
-        artworkLocator?.let { setArtworkUri(Uri.parse(it)) }
+        artworkLocator?.let { setArtworkUri(it.toUri()) }
     }
     .build()
 

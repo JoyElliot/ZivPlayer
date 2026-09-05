@@ -44,6 +44,9 @@ class MainActivity : ComponentActivity() {
                 onPlaybackSpeedChange = playbackController::setPlaybackSpeed,
                 onVolumeChange = playbackController::setVolume,
                 onRepeatModeChange = playbackController::setRepeatMode,
+                onSelectTrack = playbackController::selectTrack,
+                onBeginSubtitleSelection = playbackController::beginSubtitleSelection,
+                onSubtitleSelected = playbackController::onSubtitleSelected,
                 onOpenRecent = { mediaId ->
                     mediaSelection.onRecentSelected(
                         mediaId = mediaId,

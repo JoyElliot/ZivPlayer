@@ -95,6 +95,7 @@ enum class PlayerCapability {
     SET_RATE,
     SET_MUTED,
     SELECT_TRACK,
+    ADD_SUBTITLE,
 }
 
 @ConsistentCopyVisibility

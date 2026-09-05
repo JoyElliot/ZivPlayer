@@ -9,4 +9,7 @@
     <string name="media_history_forgotten">The recent media record and its stored access were removed.</string>
     <string name="media_history_forgotten_orphaned_grant">The history record was removed, but Android could not confirm release of its stored access.</string>
     <string name="media_history_forget_failed">The recent media record could not be removed.</string>
+    <string name="subtitle_loading">Opening subtitle…</string>
+    <string name="subtitle_added">Subtitle added. Its track appears in the list when available.</string>
+    <string name="subtitle_failed">The subtitle could not be opened.</string>
 </resources>

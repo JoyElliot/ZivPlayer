@@ -41,6 +41,7 @@ android {
     packaging {
         jniLibs {
             useLegacyPackaging = false
+            keepDebugSymbols += "**/*.so"
         }
     }
 
@@ -48,6 +49,12 @@ android {
         abortOnError = true
         checkReleaseBuilds = true
     }
+}
+
+androidComponents.onVariants { variant ->
+    variant.androidTest?.sources?.assets?.addStaticSourceDirectory(
+        rootProject.layout.projectDirectory.dir("native/out/device-fixtures").asFile.absolutePath,
+    )
 }
 
 kotlin {

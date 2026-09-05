@@ -26,6 +26,15 @@ enum class PlayerRepeatMode {
     ONE,
 }
 
+enum class PlayerTrackKind { AUDIO, SUBTITLE }
+
+data class PlayerTrackUiItem(
+    val id: String,
+    val kind: PlayerTrackKind,
+    val label: String,
+    val selected: Boolean,
+)
+
 /** Media3-free state consumed by the player feature. */
 data class PlayerUiState(
     val connectionStatus: PlayerConnectionStatus = PlayerConnectionStatus.CONNECTING,
@@ -47,6 +56,10 @@ data class PlayerUiState(
     val canSetVolume: Boolean = false,
     val canSetRepeat: Boolean = false,
     val canRenderVideo: Boolean = false,
+    val tracks: List<PlayerTrackUiItem> = emptyList(),
+    val canSelectTracks: Boolean = false,
+    val canAddSubtitle: Boolean = false,
+    val subtitleMessage: String? = null,
     val errorMessage: String? = null,
 ) {
     val hasMedia: Boolean

@@ -6,6 +6,7 @@ import android.content.Context
 import android.view.Surface
 import io.github.joyelliot.zivplayer.core.model.Milliseconds
 import io.github.joyelliot.zivplayer.core.model.PlaybackRatePermille
+import io.github.joyelliot.zivplayer.core.model.SubtitleSource
 import io.github.joyelliot.zivplayer.core.model.TrackId
 import io.github.joyelliot.zivplayer.core.model.TrackKind
 import io.github.joyelliot.zivplayer.core.model.VolumePercent
@@ -39,8 +40,10 @@ import kotlin.concurrent.withLock
 class LibmpvBackend internal constructor(
     context: Context,
     private val clientFactory: MpvClientFactory,
+    private val prepareConfigDirectory: () -> String,
 ) : PlayerBackend, LibmpvSurfacePort {
-    constructor(context: Context) : this(context, BootstrapMpvClient)
+    constructor(context: Context) : this(context, SourceMpvClient,
+        { MpvFontConfig.prepare(context.applicationContext).absolutePath })
 
     private val applicationContext = context.applicationContext
     private val nativeEvents = Channel<BackendEvent>(capacity = Channel.UNLIMITED)
@@ -51,6 +54,11 @@ class LibmpvBackend internal constructor(
     private val nativeGate = ReentrantLock(true)
     private val generationFence = LoadGenerationFence()
     private val seekCorrelation = SeekCorrelation()
+    private val trackObserver = MpvTrackObserver(
+        observe = { name, format, token -> withExistingPlayer { it.observeProperty(name, format, token) } },
+        unobserve = { token -> withExistingPlayer { it.unobserveProperty(token) } },
+        publish = { generation, tracks -> emitActiveSemantic(BackendEvent.TracksChanged(generation, tracks)) },
+    )
     private val surfaceController = SurfaceLeaseController<Surface>(
         attachNative = ::attachSurfaceLocked,
         detachNative = ::detachSurfaceLocked,
@@ -88,6 +96,7 @@ class LibmpvBackend internal constructor(
 
     private val observer = object : MpvClient.Observer {
         override fun onPropertyChanged(change: MpvPropertyChange) {
+            if (nativeGate.withLock { trackObserver.onProperty(change) }) return
             val property = change.name
             when (val value = change.value) {
                 is MpvPropertyValue.DoubleValue -> onDoubleProperty(property, value.value)
@@ -149,9 +158,10 @@ class LibmpvBackend internal constructor(
                         BackendEvent.Prepared(
                             generation = generation,
                             duration = duration,
-                            capabilities = BOOTSTRAP_CAPABILITIES,
+                            capabilities = SOURCE_CAPABILITIES,
                         ),
                     )
+                    nativeGate.withLock { if (!closed && !nativeUnusable) trackObserver.start(generation) }
                 }
 
                 MpvEventType.PLAYBACK_RESTART -> {
@@ -166,6 +176,7 @@ class LibmpvBackend internal constructor(
                     val generation = generationFence.onEndFile()
                     val fileWasLoaded = generation != null && fileLoadedGeneration == generation
                     fileLoadedGeneration = null
+                    nativeGate.withLock { trackObserver.reset() }
                     resetSeekCorrelation()
                     if (generation != null) {
                         emitSemantic(endFileEvent(generation, fileWasLoaded, event))
@@ -306,8 +317,23 @@ class LibmpvBackend internal constructor(
             TrackKind.VIDEO -> PROPERTY_VIDEO_TRACK
             TrackKind.SUBTITLE -> PROPERTY_SUBTITLE_TRACK
         }
-        val selection = trackId?.value ?: TRACK_DISABLED
+        val selection = trackId?.let {
+            val prefix = "${kind.mpvTrackPrefix()}:"
+            check(it.value.startsWith(prefix)) { "The track ID has a different kind." }
+            val nativeId = it.value.removePrefix(prefix).toLongOrNull()
+            check(nativeId != null && nativeId > 0) { "The track ID is not a positive mpv ID." }
+            nativeId.toString()
+        } ?: TRACK_DISABLED
         withPlayer { it.setPropertyString(property, selection) }
+    }
+
+    override suspend fun addSubtitle(source: SubtitleSource) = lifecycleGate.withLock {
+        check(fileLoadedGeneration == generationFence.activeGeneration() && fileLoadedGeneration != null) {
+            "Subtitles require a loaded media item."
+        }
+        withPlayer { player ->
+            player.command(arrayOf("sub-add", source.locator, "select", source.title.orEmpty()))
+        }
     }
 
     override fun attachSurface(surface: Surface): LibmpvSurfaceLease = nativeGate.withLock {
@@ -319,6 +345,13 @@ class LibmpvBackend internal constructor(
     override fun detachSurface(lease: LibmpvSurfaceLease) = nativeGate.withLock {
         if (!closed) {
             surfaceController.detach(lease)
+        }
+    }
+
+    override fun resizeSurface(lease: LibmpvSurfaceLease, width: Int, height: Int) = nativeGate.withLock {
+        require(width > 0 && height > 0) { "Surface dimensions must be positive." }
+        if (surfaceController.owns(lease) && !nativeUnusable) {
+            instance?.setPropertyString("android-surface-size", "${width}x$height")
         }
     }
 
@@ -415,8 +448,15 @@ class LibmpvBackend internal constructor(
         }
         try {
             player.addObserver(observer)
-            player.setOptionString(OPTION_CONFIG, OPTION_DISABLED)
-            player.setOptionString(OPTION_FORCE_WINDOW, OPTION_ENABLED)
+            player.setOptionString("config-dir", prepareConfigDirectory())
+            player.setOptionString(OPTION_CONFIG, OPTION_ENABLED)
+            player.setOptionString(OPTION_FORCE_WINDOW, OPTION_DISABLED)
+            // Android GPU output is enabled only after the wrapper owns a valid Surface.
+            player.setOptionString("vo", "null")
+            player.setOptionString("gpu-context", "android")
+            player.setOptionString("opengl-es", "yes")
+            player.setOptionString("hwdec", "mediacodec,mediacodec-copy")
+            player.setOptionString("ao", "audiotrack,opensles")
             player.initialize()
             player.observeProperty(
                 PROPERTY_POSITION,
@@ -498,6 +538,7 @@ class LibmpvBackend internal constructor(
     }
 
     private fun resetPlaybackState(position: Milliseconds) {
+        nativeGate.withLock { trackObserver.reset() }
         fileLoadedGeneration = null
         lastPosition = position
         lastDuration = null
@@ -588,7 +629,10 @@ class LibmpvBackend internal constructor(
     private fun attachSurfaceLocked(surface: Surface) {
         val player = requireInstanceLocked()
         surfaceAttachmentAttempted = true
+        player.setPropertyString("android-surface-size", "0x0")
         player.attachSurface(surface)
+        player.setPropertyString("vo", "gpu")
+        player.setPropertyString(OPTION_FORCE_WINDOW, OPTION_ENABLED)
     }
 
     private fun detachSurfaceLocked() {
@@ -596,6 +640,8 @@ class LibmpvBackend internal constructor(
             return
         }
         val player = instance ?: pendingDestroy ?: return
+        player.setPropertyString(OPTION_FORCE_WINDOW, OPTION_DISABLED)
+        player.setPropertyString("vo", "null")
         player.detachSurface()
         surfaceAttachmentAttempted = false
     }
@@ -656,6 +702,6 @@ class LibmpvBackend internal constructor(
         const val PROPERTY_AUDIO_TRACK = "aid"
         const val PROPERTY_VIDEO_TRACK = "vid"
         const val PROPERTY_SUBTITLE_TRACK = "sid"
-        val BOOTSTRAP_CAPABILITIES = PlayerCapabilities.of(PlayerCapability.entries.toSet())
+        val SOURCE_CAPABILITIES = PlayerCapabilities.of(PlayerCapability.entries.toSet())
     }
 }

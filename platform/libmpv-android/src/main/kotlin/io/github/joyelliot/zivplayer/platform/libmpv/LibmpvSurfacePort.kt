@@ -14,6 +14,8 @@ interface LibmpvSurfacePort {
     fun attachSurface(surface: Surface): LibmpvSurfaceLease
 
     fun detachSurface(lease: LibmpvSurfaceLease)
+
+    fun resizeSurface(lease: LibmpvSurfaceLease, width: Int, height: Int)
 }
 
 class LibmpvSurfaceLease internal constructor(

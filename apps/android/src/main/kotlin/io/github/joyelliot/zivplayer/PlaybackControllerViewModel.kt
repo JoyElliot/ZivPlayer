@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+@file:androidx.annotation.OptIn(markerClass = [androidx.media3.common.util.UnstableApi::class])
+
 package io.github.joyelliot.zivplayer
 
 import android.app.Application
 import android.content.ComponentName
 import android.os.Looper
+import android.os.Bundle
+import android.net.Uri
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.content.ContextCompat
@@ -12,6 +16,9 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.C
 import androidx.media3.common.Player
+import androidx.media3.common.TrackSelectionOverride
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionResult
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
@@ -19,6 +26,10 @@ import io.github.joyelliot.zivplayer.feature.player.PlayerConnectionStatus
 import io.github.joyelliot.zivplayer.feature.player.PlayerPlaybackStatus
 import io.github.joyelliot.zivplayer.feature.player.PlayerRepeatMode
 import io.github.joyelliot.zivplayer.feature.player.PlayerUiState
+import io.github.joyelliot.zivplayer.feature.player.PlayerTrackKind
+import io.github.joyelliot.zivplayer.feature.player.PlayerTrackUiItem
+import io.github.joyelliot.zivplayer.platform.playback.PlaybackRequestMetadata
+import io.github.joyelliot.zivplayer.platform.playback.SubtitleRequestContract
 import io.github.joyelliot.zivplayer.platform.playback.PlaybackService
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -54,6 +65,11 @@ class PlaybackControllerViewModel(
     private var positionTickerJob: Job? = null
     private var cleared = false
     private var lastCompletedMediaId: String? = null
+    private var subtitleTarget: Pair<String, Long>? = null
+    private var subtitleMessage: String? = null
+    private var subtitleMessageMediaId: String? = null
+    private var subtitleMessageSequence: Long? = null
+    private var subtitleOperationGeneration = 0L
 
     private val playerListener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) {
@@ -105,6 +121,62 @@ class PlaybackControllerViewModel(
                 PlayerRepeatMode.ONE -> Player.REPEAT_MODE_ONE
             }
         }
+
+    fun selectTrack(kind: PlayerTrackKind, groupId: String?) =
+        withControllerCommand(Player.COMMAND_SET_TRACK_SELECTION_PARAMETERS) { active ->
+            if (groupId == null && kind != PlayerTrackKind.SUBTITLE) return@withControllerCommand
+            val type = if (kind == PlayerTrackKind.AUDIO) C.TRACK_TYPE_AUDIO else C.TRACK_TYPE_TEXT
+            val builder = active.trackSelectionParameters.buildUpon().clearOverridesOfType(type)
+                .setTrackTypeDisabled(type, groupId == null)
+            if (groupId != null) {
+                val group = active.currentTracks.groups.singleOrNull { it.mediaTrackGroup.id == groupId && it.type == type }
+                    ?: return@withControllerCommand
+                builder.setOverrideForType(TrackSelectionOverride(group.mediaTrackGroup, 0))
+            }
+            active.trackSelectionParameters = builder.build()
+        }
+
+    fun beginSubtitleSelection(): Boolean {
+        val active = mutableController.value ?: return false
+        val item = active.currentMediaItem ?: return false
+        val sequence = item.mediaMetadata.extras?.getLong(PlaybackRequestMetadata.SEQUENCE_EXTRA) ?: return false
+        if (!playerState.value.canAddSubtitle || sequence <= 0) return false
+        subtitleTarget = item.mediaId to sequence
+        return true
+    }
+
+    fun onSubtitleSelected(uri: Uri?) {
+        val target = subtitleTarget
+        subtitleTarget = null
+        if (uri == null || target == null) return
+        val active = mutableController.value ?: return
+        val generation = connectionGeneration
+        val operation = ++subtitleOperationGeneration
+        val command = SessionCommand(SubtitleRequestContract.ACTION_ADD, Bundle.EMPTY)
+        if (!active.isConnected || !active.isSessionCommandAvailable(command)) return
+        subtitleMessage = applicationContext.getString(R.string.subtitle_loading)
+        subtitleMessageMediaId = target.first
+        subtitleMessageSequence = target.second
+        refreshState(active)
+        val future = active.sendCustomCommand(command, Bundle().apply {
+            putString(SubtitleRequestContract.URI, uri.toString())
+            putString(SubtitleRequestContract.MEDIA_ID, target.first)
+            putLong(SubtitleRequestContract.REQUEST_SEQUENCE, target.second)
+        })
+        future.addListener({
+            if (cleared || operation != subtitleOperationGeneration || generation != connectionGeneration || mutableController.value !== active ||
+                active.currentMediaItem?.mediaId != target.first ||
+                active.currentMediaItem?.mediaMetadata?.extras?.getLong(PlaybackRequestMetadata.SEQUENCE_EXTRA) != target.second) return@addListener
+            val result = runCatching { future.get() }.getOrNull()
+            subtitleMessage = if (result?.resultCode == SessionResult.RESULT_SUCCESS) {
+                applicationContext.getString(R.string.subtitle_added)
+            } else {
+                result?.extras?.getString(SubtitleRequestContract.ERROR_MESSAGE)
+                    ?: applicationContext.getString(R.string.subtitle_failed)
+            }
+            refreshState(active)
+        }, mainExecutor)
+    }
 
     /** Covers the short interval before the service's completed checkpoint reaches Room. */
     fun hasObservedCompletion(mediaId: String): Boolean = lastCompletedMediaId == mediaId
@@ -234,6 +306,10 @@ class PlaybackControllerViewModel(
             else -> PlayerPlaybackStatus.PAUSED
         }
         val currentMediaId = currentItem?.mediaId
+        if (currentMediaId != subtitleMessageMediaId ||
+            currentItem?.mediaMetadata?.extras?.getLong(PlaybackRequestMetadata.SEQUENCE_EXTRA) != subtitleMessageSequence) {
+            subtitleMessage = null
+        }
         if (playbackStatus == PlayerPlaybackStatus.ENDED && currentMediaId != null) {
             lastCompletedMediaId = currentMediaId
         } else if (currentMediaId == lastCompletedMediaId) {
@@ -271,6 +347,25 @@ class PlaybackControllerViewModel(
             canSetRepeat = currentItem != null &&
                 player.isCommandAvailable(Player.COMMAND_SET_REPEAT_MODE),
             canRenderVideo = player.isCommandAvailable(Player.COMMAND_SET_VIDEO_SURFACE),
+            tracks = player.currentTracks.groups.mapNotNull { group ->
+                val kind = when (group.type) {
+                    C.TRACK_TYPE_AUDIO -> PlayerTrackKind.AUDIO
+                    C.TRACK_TYPE_TEXT -> PlayerTrackKind.SUBTITLE
+                    else -> return@mapNotNull null
+                }
+                if (group.length != 1) return@mapNotNull null
+                val format = group.getTrackFormat(0)
+                PlayerTrackUiItem(
+                    id = group.mediaTrackGroup.id, kind = kind,
+                    label = listOfNotNull(format.label, format.language, format.codecs)
+                        .filter(String::isNotBlank).distinct().joinToString(" · ").ifBlank { format.id ?: "Track" },
+                    selected = group.isTrackSelected(0),
+                )
+            },
+            canSelectTracks = player.isCommandAvailable(Player.COMMAND_SET_TRACK_SELECTION_PARAMETERS),
+            canAddSubtitle = currentItem != null && player.playbackState == Player.STATE_READY &&
+                player.isSessionCommandAvailable(SessionCommand(SubtitleRequestContract.ACTION_ADD, Bundle.EMPTY)),
+            subtitleMessage = subtitleMessage,
             errorMessage = error?.message?.takeUnless(String::isBlank),
         )
     }
@@ -295,6 +390,8 @@ class PlaybackControllerViewModel(
             canSetVolume = false,
             canSetRepeat = false,
             canRenderVideo = false,
+            canSelectTracks = false,
+            canAddSubtitle = false,
         )
 
     private fun detachConnectedController(controller: MediaController) {

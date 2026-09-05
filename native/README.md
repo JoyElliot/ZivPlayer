@@ -1,7 +1,8 @@
 # Native source supply chain
 
 The native tree owns the source-built libmpv supply-chain inputs used by
-ZivPlayer. It does not turn the current bootstrap AAR into a release artifact.
+ZivPlayer. The Maven bootstrap AAR has been retired; source-built inspection
+artifacts still do not constitute accepted release inputs.
 
 `source-manifest.toml` is the canonical byte-level lock for the selected
 mpv-android 2026-08-11 source closure. It records 23 inputs (22 source archives
@@ -933,25 +934,31 @@ implemented and have been run against the complete locked cache in inspection
 mode. Both the historical stack-only namespace probe and the additive wrapper
 namespace probe have passed through the canonical executor in inspection mode,
 and the fourth stack-only WSL one-shot build has published its successful
-non-release receipt. The next native milestones must:
+non-release receipt. The wrapper-inclusive executor has also completed its
+one-shot build and full 20-library ELF audit in
+`/var/tmp/zivplayer-native-build-wrapper-d6cf2a36-20260905-a1`.
+Its separate 82,508-byte execution receipt has SHA-256
+`f987da92cc0fb22704221cf2d249054bc8bf6ce27a2a1b22efb1aa16cec01d17`;
+the workspace is consumed. Historical receipts are unchanged and the new
+receipt retains `ready=false` / `releaseInput=false`.
 
-1. finish independent review and read-only input verification of the checked-in
-   wrapper build executor against one fresh, exact prepared workspace;
-2. run the two locked `mpv+zivplayer_mpv` commands once in that fresh workspace and
-   audit exactly 20 outputs, including ELF class/machine, API 26, SONAME/NEEDED,
-   strong/weak symbol closure, 16-KiB LOAD alignment, and the exact JNI export
-   and registration contract;
-3. publish a separate non-release wrapper receipt without changing any
-   historical stack receipt;
-4. close the portable offline Gradle artifact set and generate a complete,
-   receipt-bound native staging manifest before Gradle consumes any wrapper;
-5. reproduce the source build and audit on the accepted release builder while
+`android-staging-lock.json` binds the accepted receipt, policy and profile.
+`tools/android_staging_tool.py` exports/verifies the portable inspection
+staging at `out/android`; Gradle rehashes it before packaging. Debug and
+unsigned Release inspection APKs pass `../tools/verify-android-artifact.py`:
+twenty source-native bytes match the receipt, two separate AndroidX graphics
+helpers match their locked/verified AAR, all native ZIP entries are stored and
+16-KiB aligned, and the actual DEX has exactly the sixteen JNI descriptors
+with no bootstrap classes. The offline Gradle dependency closure is verified.
+The remaining native milestones must:
+
+1. reproduce the source build and audit on the accepted release builder while
    retaining every option and patch hash;
-6. package both selected API-26 ABIs and prove their Gradle/APK native closure;
-7. produce per-artifact hashes, SBOM, notices, complete corresponding source,
-   and device lifecycle/playback evidence; and
-8. prove the release APK contains no `dev.jdtech.mpv:libmpv:1.0.0` bootstrap
-   artifact.
+2. produce the release SBOM, notices, complete corresponding source and
+   retained builder/license evidence;
+3. validate ART registration, actual playback, subtitles and Surface/service
+   lifecycles on supported devices; and
+4. repeat the native/DEX closure checks for the final signed release artifacts.
 
-Until those gates pass, the Maven bootstrap AAR remains development-only and
-public release is blocked.
+The current APKs are local development/inspection outputs. Public release
+acceptance remains incomplete.
