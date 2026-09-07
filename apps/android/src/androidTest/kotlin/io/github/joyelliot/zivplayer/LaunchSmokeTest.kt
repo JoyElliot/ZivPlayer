@@ -9,7 +9,7 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.test.platform.app.InstrumentationRegistry
-import io.github.joyelliot.zivplayer.feature.player.R as PlayerR
+import io.github.joyelliot.zivplayer.feature.library.R as LibraryR
 import org.junit.Rule
 import org.junit.Test
 
@@ -21,9 +21,9 @@ class LaunchSmokeTest {
     @Test
     fun appShellShowsOpenMediaAction() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val action = context.getString(PlayerR.string.player_open_media)
+        val action = context.getString(LibraryR.string.library_open_file)
 
-        // The transport's Open action precedes the per-history-entry Open actions.
+        // The folder home keeps direct document opening available.
         composeRule.onAllNodesWithText(action).onFirst().assertIsDisplayed().assertHasClickAction().assertIsEnabled()
     }
 }

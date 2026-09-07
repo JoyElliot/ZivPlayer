@@ -21,6 +21,17 @@ import org.junit.Test
 
 class MediaDocumentRegistrationCoordinatorTest {
     @Test
+    fun `library queue uses existing identity without publishing history or taking new grants`() = runBlocking {
+        val repository = FakeRepository()
+        val access = FakeDocumentAccess(PersistedReadGrant.PREEXISTING)
+        val opened = coordinator(repository, access).open(SOURCE_URI, persistableReadOffered = false, visibleInHistory = false)
+        assertEquals(STABLE_ID, opened.mediaId)
+        assertFalse(repository.remembered.single().visibleInHistory)
+        assertEquals(listOf(false), access.takePolicy)
+        assertTrue(access.released.isEmpty())
+    }
+
+    @Test
     fun `persisted selection uses repository identity and metadata`() = runBlocking {
         val repository = FakeRepository()
         val access = FakeDocumentAccess(PersistedReadGrant.ACQUIRED)

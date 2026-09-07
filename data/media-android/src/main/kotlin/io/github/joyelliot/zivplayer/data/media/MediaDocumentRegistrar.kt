@@ -61,10 +61,11 @@ class MediaDocumentRegistrar private constructor(
     suspend fun open(
         uri: Uri,
         persistableReadOffered: Boolean,
+        visibleInHistory: Boolean = true,
     ): OpenedMediaDocument = withContext(ioDispatcher) {
         operationMutex.withLock {
             withContext(NonCancellable) {
-                coordinator.open(uri.toString(), persistableReadOffered)
+                coordinator.open(uri.toString(), persistableReadOffered, visibleInHistory)
             }
         }
     }
@@ -105,6 +106,7 @@ internal class MediaDocumentRegistrationCoordinator(
     suspend fun open(
         sourceUri: String,
         persistableReadOffered: Boolean = true,
+        visibleInHistory: Boolean = true,
     ): OpenedMediaDocument {
         require(sourceUri.isNotBlank()) { "Selected document URI must not be blank." }
         val grant = try {
@@ -139,6 +141,7 @@ internal class MediaDocumentRegistrationCoordinator(
                     mimeType = details.mimeType,
                     metadata = details.metadata,
                     openedAt = EpochMilliseconds(clock()),
+                    visibleInHistory = visibleInHistory,
                 ),
             )
             return OpenedMediaDocument(

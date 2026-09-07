@@ -10,6 +10,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.joyelliot.zivplayer.core.media.PlaybackCheckpoint
 import io.github.joyelliot.zivplayer.core.media.RecentMedia
+import io.github.joyelliot.zivplayer.core.media.LibraryMedia
 import io.github.joyelliot.zivplayer.core.model.MediaId
 import io.github.joyelliot.zivplayer.data.media.MediaDocumentForgetResult
 import io.github.joyelliot.zivplayer.data.media.MediaDocumentPersistence
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.ensureActive
 import java.util.UUID
 
 data class PendingMediaPlayback(
@@ -29,12 +31,15 @@ data class PendingMediaPlayback(
     val dispatchToken: String,
     val document: OpenedMediaDocument,
     val startPositionMs: Long,
+    val documents: List<OpenedMediaDocument> = listOf(document),
+    val startIndex: Int = 0,
 )
 
 enum class MediaSelectionNotice {
     SESSION_ONLY_PERMISSION,
     SESSION_ONLY_HISTORY,
     OPEN_FAILED,
+    QUEUE_TOO_LARGE,
     RECENT_ACCESS_LOST,
     HISTORY_UNAVAILABLE,
     HISTORY_FORGOTTEN,
@@ -171,6 +176,32 @@ class MediaSelectionViewModel(
             } catch (_: Exception) {
                 publishFailure(requestId, MediaSelectionNotice.OPEN_FAILED)
             }
+        }
+    }
+
+    fun onLibraryPlaylist(items: List<LibraryMedia>, startIndex: Int) {
+        val requestId = beginPlaybackOperation()
+        if (items.isEmpty() || startIndex !in items.indices || items.size > 500) {
+            publishFailure(requestId, MediaSelectionNotice.QUEUE_TOO_LARGE)
+            return
+        }
+        val selected = items.toList()
+        mediaOperationJob = viewModelScope.launch {
+            try {
+                val documents = selected.map { item ->
+                    kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                    dependencies.mediaDocumentRegistrar.open(Uri.parse(item.sourceUri.value),
+                        persistableReadOffered = false, visibleInHistory = false)
+                }
+                val opened = documents[startIndex]
+                val checkpoint = repository.findById(opened.mediaId)?.checkpoint
+                val resume = dependencies.playerPreferences.preferences.first().resumePlayback
+                if (requestId != latestRequestId) return@launch
+                mutablePendingPlayback.value = PendingMediaPlayback(requestId, UUID.randomUUID().toString(), opened,
+                    checkpoint.resumePositionMs(!resume), documents, startIndex)
+                mutableNotice.value = documents.firstNotNullOfOrNull { it.persistence.toNotice() }
+            } catch (failure: CancellationException) { throw failure
+            } catch (_: Exception) { publishFailure(requestId, MediaSelectionNotice.OPEN_FAILED) }
         }
     }
 

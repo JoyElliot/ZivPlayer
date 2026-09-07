@@ -36,4 +36,27 @@
     <string name="player_selected_track">已选择：%1$s</string>
     <string name="player_subtitles_off">关闭字幕</string>
     <string name="player_open_subtitle">打开外挂字幕</string>
+    <string name="player_quick_menu">快捷菜单</string>
+    <string name="player_close_menu">关闭菜单</string>
+    <string name="player_back">返回</string>
+    <string name="player_speed_title">播放速度</string>
+    <string name="player_video_fit">画面适配</string>
+    <string name="player_repeat_title">循环播放</string>
+    <string name="player_gesture_help">单击显隐控制 · 双击暂停或继续\n横滑调整进度 · 长按 2 倍速，再左右滑动调速</string>
+    <string name="player_hold_speed">%1$s · 松手恢复</string>
+    <string name="player_seek_preview">%1$s / %2$s</string>
+    <string name="player_seek_backward">快退</string>
+    <string name="player_seek_forward">快进</string>
+    <string name="player_previous">上一项</string>
+    <string name="player_next">下一项</string>
+    <string name="player_queue">播放列表</string>
+    <string name="player_video_area">视频手势区</string>
+    <string name="player_exit_fullscreen">退出全屏</string>
+    <string name="player_repeat_all">列表循环</string>
+    <string name="player_close_queue">关闭播放列表</string>
+    <string name="player_queue_count">播放列表 · %1$d 项</string>
+    <string name="player_queue_empty">在文件夹中选择“播放全部”即可建立播放列表。</string>
+    <string name="player_lock_controls">锁定控制</string>
+    <string name="player_unlock_controls">解锁控制</string>
+    <string name="player_speed_temporary_hint">长按画面可临时 2 倍速播放，左右滑动调整倍率，松手后恢复此速度。</string>
 </resources>

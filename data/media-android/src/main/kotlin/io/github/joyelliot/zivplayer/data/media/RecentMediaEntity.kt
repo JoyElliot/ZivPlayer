@@ -45,6 +45,8 @@ internal data class RecentMediaEntity(
     val checkpointCompleted: Boolean?,
     @ColumnInfo(name = "checkpoint_updated_at_epoch_ms")
     val checkpointUpdatedAtEpochMs: Long?,
+    @ColumnInfo(name = "visible_in_history", defaultValue = "1")
+    val visibleInHistory: Boolean = true,
 )
 
 internal fun MediaRegistration.toNewEntity(id: MediaId): RecentMediaEntity = RecentMediaEntity(
@@ -61,6 +63,7 @@ internal fun MediaRegistration.toNewEntity(id: MediaId): RecentMediaEntity = Rec
     checkpointDurationMs = null,
     checkpointCompleted = null,
     checkpointUpdatedAtEpochMs = null,
+    visibleInHistory = visibleInHistory,
 )
 
 internal fun RecentMediaEntity.merge(registration: MediaRegistration): RecentMediaEntity {
@@ -73,7 +76,8 @@ internal fun RecentMediaEntity.merge(registration: MediaRegistration): RecentMed
         artist = registration.metadata.artist ?: artist,
         album = registration.metadata.album ?: album,
         artworkUri = registration.metadata.artworkLocator ?: artworkUri,
-        lastOpenedAtEpochMs = registration.openedAt.value,
+        lastOpenedAtEpochMs = if (registration.visibleInHistory) registration.openedAt.value else lastOpenedAtEpochMs,
+        visibleInHistory = visibleInHistory || registration.visibleInHistory,
     )
 }
 

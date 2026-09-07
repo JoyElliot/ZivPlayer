@@ -20,6 +20,11 @@ sealed interface PlayerCommand {
         val items: List<QueueItem> = items.toList()
     }
 
+    /** Changes surrounding items while retaining the exact current item and playback resources. */
+    class EditQueue(items: List<QueueItem>) : PlayerCommand {
+        val items: List<QueueItem> = items.toList()
+    }
+
     data object Play : PlayerCommand
 
     data object Pause : PlayerCommand

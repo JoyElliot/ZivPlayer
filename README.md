@@ -20,11 +20,11 @@ The playback service owns a serialized progress recorder that samples active
 position and flushes pause, stop, completion, transition, reset, and shutdown
 checkpoints without using transient file-descriptor paths as durable data.
 
-The MIUIX-backed player screen now observes immutable state from a
-generation-fenced, reconnecting MediaController. It exposes the single-item
-playback commands currently implemented by the adapter: open, play/pause,
-replay, stop, seek, speed, volume, repeat-one, audio/subtitle track selection,
-subtitles off, and external subtitle import through the document picker. Restart-safe recent documents
+The MIUIX-backed player screen observes immutable state from a
+generation-fenced, reconnecting MediaController. It exposes open, play/pause,
+replay, stop, seek, speed, volume, queue navigation, repeat-one/all,
+audio/subtitle track selection, subtitles off, and external subtitle import
+through the document picker. Restart-safe recent documents
 can be reopened only after their current SAF grant is checked, incomplete
 checkpoints resume at their recorded position, completed media starts at zero,
 and forgetting history reports an orphaned grant instead of hiding it.
@@ -49,10 +49,23 @@ picture-in-picture controls; managed fonts and shader chains; per-media audio an
 subtitle restoration; and sampled diagnostics with JSON export. Room v1 history is
 preserved by an additive v2 migration. Native event delivery, provider workers and
 history retry queues now have explicit capacity and failure behavior.
-These changes have passed host tests and builds; their phone acceptance is pending.
+These changes have passed host checks and scoped acceptance on the owner's Android phone.
 See [ADR 0012](docs/adr/0012-library-preferences-and-managed-playback-resources.md)
-and the [expansion verification and device checklist](docs/validation/2026-09-06-personal-device-expansion.md).
+and the [personal-device acceptance record](docs/validation/2026-09-07-personal-device-expansion.md).
 The broader device/API matrix and public release work remain deferred.
+
+The folder home now opens the filtered, ordered selection as a service-owned
+playlist of up to 500 items. A compact fullscreen player provides a thin timeline,
+centered transport controls, audio/subtitle shortcuts, a side menu and a queue
+drawer. Double tap toggles playback, horizontal swipes seek, and holding starts
+temporary 2x playback; sliding while held adjusts it from 0.25x to 4x. Touch lock
+disables video gestures. Temporary speed is restored by the service on release,
+pause, item changes or controller disconnection. Incremental queue edits preserve
+the current item and playback position whenever that item survives the edit.
+Room v3 keeps pre-registered queue identities out of recent history until played,
+and media descriptors are opened lazily for the current item. See
+[ADR 0013](docs/adr/0013-playback-interactions-and-folder-queues.md) and the
+[interaction acceptance record](docs/validation/2026-09-07-playback-interactions.md).
 
 The source adapter preserves event payloads and observer identities under a
 single-instance, serialized stop/load policy. Track discovery uses fresh

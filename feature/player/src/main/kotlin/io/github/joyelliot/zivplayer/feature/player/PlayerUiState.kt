@@ -24,9 +24,12 @@ enum class PlayerPlaybackStatus {
 enum class PlayerRepeatMode {
     OFF,
     ONE,
+    ALL,
 }
 
 enum class PlayerTrackKind { AUDIO, SUBTITLE }
+
+data class PlayerQueueUiItem(val index: Int, val title: String, val selected: Boolean)
 
 data class PlayerTrackUiItem(
     val id: String,
@@ -40,6 +43,11 @@ data class PlayerUiState(
     val connectionStatus: PlayerConnectionStatus = PlayerConnectionStatus.CONNECTING,
     val playbackStatus: PlayerPlaybackStatus = PlayerPlaybackStatus.EMPTY,
     val mediaId: String? = null,
+    val playbackIdentity: String? = null,
+    val queue: List<PlayerQueueUiItem> = emptyList(),
+    val canPrevious: Boolean = false,
+    val canNext: Boolean = false,
+    val canSelectQueueItem: Boolean = false,
     val title: String? = null,
     val supportingText: String? = null,
     val positionMs: Long = 0L,

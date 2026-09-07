@@ -12,6 +12,7 @@ internal interface RecentMediaDao {
     @Query(
         """
         SELECT * FROM recent_media
+        WHERE visible_in_history = 1
         ORDER BY last_opened_at_epoch_ms DESC, media_id ASC
         LIMIT :limit
         """,
@@ -26,6 +27,9 @@ internal interface RecentMediaDao {
 
     @Query("SELECT source_uri FROM recent_media")
     suspend fun allSourceUris(): List<String>
+
+    @Query("UPDATE recent_media SET visible_in_history = 1, last_opened_at_epoch_ms = :openedAt WHERE media_id = :mediaId")
+    suspend fun markOpened(mediaId: String, openedAt: Long): Int
 
     @Upsert
     suspend fun upsert(entity: RecentMediaEntity)

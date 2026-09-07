@@ -38,6 +38,8 @@ data class MediaRegistration(
     val mimeType: String? = null,
     val metadata: MediaMetadata = MediaMetadata(),
     val openedAt: EpochMilliseconds,
+    /** Queue preparation allocates stable identity without appearing in recently played media. */
+    val visibleInHistory: Boolean = true,
 ) {
     init {
         require(mimeType == null || mimeType.isNotBlank()) { "MIME type must not be blank." }

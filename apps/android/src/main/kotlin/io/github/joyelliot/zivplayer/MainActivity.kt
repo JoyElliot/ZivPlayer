@@ -47,7 +47,8 @@ class MainActivity : ComponentActivity() {
     private var inPictureInPicture by mutableStateOf(false)
     private var playerVisible by mutableStateOf(true)
     private var pipEntryPending = false
-    private var started = false
+    private var started by mutableStateOf(false)
+    private var windowFocused by mutableStateOf(false)
     private var diagnosticsPageVisible = false
     private var pendingDiagnosticJson: String? = null
     private val exportDiagnostics = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
@@ -97,6 +98,10 @@ class MainActivity : ComponentActivity() {
             ZivPlayerApp(
                 library = library,
                 settings = settings,
+                interactionEnabled = started && windowFocused,
+                onBeginTemporarySpeed = playbackController::beginTemporarySpeed,
+                onTemporarySpeedChange = playbackController::updateTemporarySpeed,
+                onEndTemporarySpeed = playbackController::endTemporarySpeed,
                 fullscreen = fullscreen,
                 pictureInPicture = inPictureInPicture,
                 onFullscreenChange = ::changeFullscreen,
@@ -124,12 +129,20 @@ class MainActivity : ComponentActivity() {
                 selectionNotice = mediaSelection.notice.value,
                 historyUnavailable = mediaSelection.historyUnavailable.value,
                 onDocumentSelected = { selection ->
+                    playbackController.cancelTemporarySpeed()
                     mediaSelection.onDocumentSelected(
                         selection = selection,
                         hasObservedCompletion = playbackController::hasObservedCompletion,
                     )
                 },
                 onPlaybackConsumed = mediaSelection::onPlaybackConsumed,
+                onLibraryPlaylist = { items, index ->
+                    playbackController.cancelTemporarySpeed()
+                    mediaSelection.onLibraryPlaylist(items, index)
+                },
+                onSelectQueueItem = { index -> mediaSelection.cancelPendingPlayback(); playbackController.selectQueueItem(index) },
+                onPrevious = { mediaSelection.cancelPendingPlayback(); playbackController.previous() },
+                onNext = { mediaSelection.cancelPendingPlayback(); playbackController.next() },
                 onPlaybackFailed = mediaSelection::onPlaybackFailed,
                 isPlaybackPending = mediaSelection::isPlaybackPending,
                 onPlayPause = {
@@ -140,7 +153,7 @@ class MainActivity : ComponentActivity() {
                     mediaSelection.cancelPendingPlayback()
                     playbackController.stop()
                 },
-                onSeekTo = playbackController::seekTo,
+                onSeekTo = { position -> mediaSelection.cancelPendingPlayback(); playbackController.seekTo(position) },
                 onPlaybackSpeedChange = playbackController::setPlaybackSpeed,
                 onVolumeChange = playbackController::setVolume,
                 onRepeatModeChange = playbackController::setRepeatMode,
@@ -148,6 +161,7 @@ class MainActivity : ComponentActivity() {
                 onBeginSubtitleSelection = playbackController::beginSubtitleSelection,
                 onSubtitleSelected = playbackController::onSubtitleSelected,
                 onOpenRecent = { mediaId ->
+                    playbackController.cancelTemporarySpeed()
                     mediaSelection.onRecentSelected(
                         mediaId = mediaId,
                         startFromBeginning = playbackController.hasObservedCompletion(mediaId),
@@ -159,6 +173,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun changeFullscreen(value: Boolean) {
+        playbackController.cancelTemporarySpeed()
         fullscreen = value
         requestedOrientation = if (value) ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE else ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
     }
@@ -206,6 +221,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         super.onStop()
+        playbackController.cancelTemporarySpeed()
         started = false
         playbackController.setDiagnosticsVisible(false)
         if (!isChangingConfigurations && !isInPictureInPictureMode && !pipEntryPending &&
@@ -220,6 +236,12 @@ class MainActivity : ComponentActivity() {
         started = true
         pipEntryPending = false
         playbackController.setDiagnosticsVisible(diagnosticsPageVisible)
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        windowFocused = hasFocus
+        if (!hasFocus) playbackController.cancelTemporarySpeed()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {

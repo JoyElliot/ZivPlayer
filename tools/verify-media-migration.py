@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Compare the actual v1->v2 migration with exported Room schemas using host SQLite."""
+"""Compare the actual v1->v2->v3 migrations with exported Room schemas using host SQLite."""
 import json
 from pathlib import Path
 import re
@@ -38,15 +38,23 @@ def rejects(connection, statement, parameters=()):
     raise AssertionError(f"Expected a constraint violation: {statement}")
 
 
+def migration_sql(source, name):
+    migration = source.split(f"val {name}:", 1)[1].split("internal val MIGRATION_", 1)[0]
+    # Keep statement order and bound extraction to one migration declaration.
+    return [multiline or single for multiline, single in
+            re.findall(r'db\.execSQL\((?:"""(.*?)"""|"([^"\n]*)")\)', migration, re.S)]
+
+
 def main():
     v1 = json.loads((SCHEMAS / "1.json").read_text(encoding="utf-8"))
     v2 = json.loads((SCHEMAS / "2.json").read_text(encoding="utf-8"))
+    v3 = json.loads((SCHEMAS / "3.json").read_text(encoding="utf-8"))
     source = SOURCE.read_text(encoding="utf-8")
-    migration = source.split("val MIGRATION_1_2", 1)[1]
     # Read literal SQL from the implementation, rather than maintaining a second migration.
-    sql = re.findall(r'db\.execSQL\("""(.*?)"""\)', migration, re.S)
-    sql += re.findall(r'db\.execSQL\("([^"\n]*)"\)', migration)
+    sql = migration_sql(source, "MIGRATION_1_2")
+    visibility_sql = migration_sql(source, "MIGRATION_2_3")
     assert len(sql) == 7, f"Unexpected migration shape: {len(sql)} statements"
+    assert len(visibility_sql) == 1, f"Unexpected visibility migration shape: {len(visibility_sql)} statements"
     migrated = sqlite3.connect(":memory:")
     fresh = sqlite3.connect(":memory:")
     for connection in (migrated, fresh):
@@ -71,6 +79,14 @@ def main():
     assert list(migrated.execute("SELECT * FROM recent_media")) == before, "History changed during migration"
     for statement in sql:
         migrated.execute(statement)
+    # v2->v3 adds visibility without rebuilding history, identity or checkpoint columns.
+    fresh_v3 = sqlite3.connect(":memory:")
+    execute_schema(fresh_v3, v3)
+    for statement in visibility_sql:
+        migrated.execute(statement)
+    assert structure(migrated) == structure(fresh_v3), "Migrated schema differs from a fresh v3 database"
+    assert list(migrated.execute(f"SELECT {','.join(columns)} FROM recent_media")) == before, "History changed during v3 migration"
+    assert list(migrated.execute("SELECT visible_in_history FROM recent_media")) == [(1,)], "Existing history became hidden"
     rejects(migrated, "INSERT INTO recent_media(media_id,source_uri,added_at_epoch_ms,last_opened_at_epoch_ms) VALUES ('duplicate','content://test/sentinel',0,0)")
     migrated.execute("INSERT INTO media_track_choices VALUES ('sentinel','AUDIO',0,'en',NULL,'aac',0,0)")
     migrated.execute("INSERT INTO media_external_subtitles VALUES ('sentinel','resource','Subtitle')")
@@ -83,8 +99,8 @@ def main():
         assert migrated.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0] == 0, table
     assert not list(migrated.execute("PRAGMA foreign_key_check"))
     assert migrated.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
-    print(json.dumps({"kind": "host-room-migration", "from": 1, "to": 2,
-                      "statements": len(sql), "tables": len(structure(fresh)),
+    print(json.dumps({"kind": "host-room-migration", "from": 1, "to": 3,
+                      "statements": len(sql) + len(visibility_sql), "tables": len(structure(fresh_v3)),
                       "schemaParity": "passed", "historyPreserved": "passed", "constraintsAndCascades": "passed",
                       "deviceRoomOpen": "not run"}, indent=2))
 

@@ -22,6 +22,8 @@ import android.content.res.Configuration
 import android.os.ParcelFileDescriptor
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -183,6 +185,7 @@ class PersonalDevicePlaybackTest {
         try {
             updateConfiguration(controller) { it.copy(backgroundPlayback = true, autoPictureInPicture = false) }
             open(controller, "avc-1080p50mbps.mp4")
+            activity.onNodeWithText(app.getString(R.string.app_player)).performClick()
             onMain { controller.repeatMode = Player.REPEAT_MODE_ONE; controller.play() }
             await(controller, "video playing") { isPlaying && currentPosition > 400 }
             activity.onNodeWithText(app.getString(R.string.app_fullscreen)).performScrollTo().performClick()
@@ -195,7 +198,7 @@ class PersonalDevicePlaybackTest {
             activity.activityRule.scenario.recreate()
             await(controller, "fullscreen recreation preserves playback") { isPlaying }
             captureVideoFrame("fullscreen-recreated-video.png")
-            activity.onNodeWithText(app.getString(R.string.app_exit_fullscreen)).performClick()
+            activity.onNodeWithContentDescription(app.getString(io.github.joyelliot.zivplayer.feature.player.R.string.player_exit_fullscreen)).performClick()
             awaitCondition("portrait player") {
                 onMain { activity.activity.resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT }
             }
@@ -268,9 +271,9 @@ class PersonalDevicePlaybackTest {
             assertFalse(onMain { activity.activity.isInPictureInPictureMode })
         } finally {
             foregroundPlayer()
-            activity.onAllNodesWithText(app.getString(R.string.app_exit_fullscreen)).fetchSemanticsNodes()
+            activity.onAllNodesWithContentDescription(app.getString(io.github.joyelliot.zivplayer.feature.player.R.string.player_exit_fullscreen)).fetchSemanticsNodes()
                 .takeIf { it.isNotEmpty() }?.let {
-                    activity.onNodeWithText(app.getString(R.string.app_exit_fullscreen)).performClick()
+                    activity.onNodeWithContentDescription(app.getString(io.github.joyelliot.zivplayer.feature.player.R.string.player_exit_fullscreen)).performClick()
                 }
             onMain { activity.activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED }
             onMain { controller.repeatMode = repeat }
@@ -483,6 +486,7 @@ class PersonalDevicePlaybackTest {
                 }).buildAsync()
         }.get(15, TimeUnit.SECONDS)
         activity.waitForIdle()
+        activity.onNodeWithText(app.getString(R.string.app_player)).performClick()
         try { block(controller) } finally { onMain { controller.stop(); controller.release() } }
     }
 

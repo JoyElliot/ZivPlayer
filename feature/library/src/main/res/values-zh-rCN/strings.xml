@@ -30,4 +30,10 @@
     <string name="library_hide">隐藏</string>
     <string name="library_unhide">恢复显示</string>
     <string name="library_empty">没有匹配的媒体。请添加文件夹、扫描或调整筛选条件。</string>
+    <string name="library_open_file">打开文件</string>
+    <string name="library_all_media">全部文件</string>
+    <string name="library_manage_folders">管理文件夹</string>
+    <string name="library_back_folders">返回文件夹</string>
+    <string name="library_play_all">播放全部</string>
+    <string name="library_item_actions">更多操作</string>
 </resources>

@@ -50,6 +50,81 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class DefaultPlayerSessionTest {
     @Test
+    fun editingSurroundingQueueKeepsCurrentLoadTracksAndPlaybackIntent() = runTest {
+        val backend = FakeBackend()
+        val session = newSession(backend)
+        runCurrent()
+        val original = items()
+        dispatch(session, PlayerCommand.SetQueue(original, playWhenReady = true))
+        backend.emit(BackendEvent.Prepared(backend.loads.single().generation, Milliseconds(10_000), capabilities = allCapabilities()))
+        runCurrent()
+        val before = session.snapshot.value
+        val replacement = listOf(queueItem("three"), original[0], original[1])
+        assertTrue(dispatch(session, PlayerCommand.EditQueue(replacement)) is CommandResult.Accepted)
+        assertEquals(1, backend.loads.size)
+        assertEquals(1, session.snapshot.value.queue.currentIndex)
+        assertEquals(before.status, session.snapshot.value.status)
+        assertEquals(before.playWhenReady, session.snapshot.value.playWhenReady)
+        assertEquals(before.tracks, session.snapshot.value.tracks)
+        assertTrue(dispatch(session, PlayerCommand.EditQueue(listOf(original[1]))) is CommandResult.Rejected)
+        assertEquals(replacement, session.snapshot.value.queue.items)
+        close(session)
+    }
+
+    @Test
+    fun delegatedCompletionPublishesEndedWithoutLoadingUntilOwnerAdvances() = runTest {
+        val backend = FakeBackend()
+        val requested = mutableListOf<Pair<QueueItemId, Int>>()
+        val session = DefaultPlayerSession(backend, dispatcher = StandardTestDispatcher(testScheduler),
+            onAutomaticTransition = { from, target -> requested += from to target })
+        runCurrent()
+        dispatch(session, PlayerCommand.SetQueue(items(), playWhenReady = true))
+        val generation = backend.loads.single().generation
+        backend.emit(BackendEvent.Prepared(generation, Milliseconds(10_000), capabilities = allCapabilities()))
+        runCurrent()
+        backend.emit(BackendEvent.Ended(generation))
+        runCurrent()
+        assertEquals(listOf(QueueItemId("one") to 1), requested)
+        assertEquals(PlayerStatus.ENDED, session.snapshot.value.status)
+        assertFalse(session.snapshot.value.playWhenReady)
+        assertEquals(Milliseconds(10_000), session.snapshot.value.timeline.position)
+        assertEquals(1, backend.loads.size)
+        assertEquals(1, backend.playCount)
+        dispatch(session, PlayerCommand.SetQueue(items(), startIndex = 1))
+        assertEquals(2, backend.loads.size)
+        assertFalse(session.snapshot.value.playWhenReady)
+        close(session)
+    }
+
+    @Test
+    fun delegatedOwnerDoesNotReceiveRepeatOneOrPausedCompletion() = runTest {
+        val backend = FakeBackend()
+        val requested = mutableListOf<Pair<QueueItemId, Int>>()
+        val session = DefaultPlayerSession(backend, dispatcher = StandardTestDispatcher(testScheduler),
+            onAutomaticTransition = { from, target -> requested += from to target })
+        runCurrent()
+        dispatch(session, PlayerCommand.SetQueue(items(), playWhenReady = true))
+        dispatch(session, PlayerCommand.SetRepeatMode(RepeatMode.ONE))
+        val first = backend.loads.last().generation
+        backend.emit(BackendEvent.Prepared(first, Milliseconds(10_000), capabilities = allCapabilities()))
+        runCurrent()
+        backend.emit(BackendEvent.Ended(first))
+        runCurrent()
+        assertEquals(2, backend.loads.size)
+        assertTrue(requested.isEmpty())
+        val second = backend.loads.last().generation
+        backend.emit(BackendEvent.Prepared(second, Milliseconds(10_000), capabilities = allCapabilities()))
+        runCurrent()
+        dispatch(session, PlayerCommand.Pause)
+        dispatch(session, PlayerCommand.SetRepeatMode(RepeatMode.ALL))
+        backend.emit(BackendEvent.Ended(second))
+        runCurrent()
+        assertEquals(2, backend.loads.size)
+        assertTrue(requested.isEmpty())
+        close(session)
+    }
+
+    @Test
     fun setQueueLoadsSelectedItemAndPreparedMovesToReady() = runTest {
         val backend = FakeBackend()
         val session = newSession(backend)

@@ -52,6 +52,9 @@ class RoomRecentMediaRepository internal constructor(
             true
         }
 
+    override suspend fun markOpened(id: MediaId, openedAt: io.github.joyelliot.zivplayer.core.media.EpochMilliseconds): Boolean =
+        dao.markOpened(id.value, openedAt.value) > 0
+
     override suspend fun remove(id: MediaId): Boolean = dao.deleteById(id.value) > 0
 
     override fun close() {
@@ -66,7 +69,7 @@ class RoomRecentMediaRepository internal constructor(
                 context.applicationContext,
                 ZivMediaDatabase::class.java,
                 DATABASE_NAME,
-            ).addMigrations(MIGRATION_1_2).build(),
+            ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build(),
             idFactory = { MediaId(UUID.randomUUID().toString()) },
         )
     }

@@ -9,6 +9,8 @@ import android.os.Bundle
 import android.os.SystemClock
 import android.view.WindowManager
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
@@ -50,6 +52,7 @@ class NativePlaybackSmokeTest {
         }
         val controller = future.get(15, TimeUnit.SECONDS)
         activity.waitForIdle()
+        activity.onNodeWithText(context.getString(R.string.app_player)).performClick()
         val sequence = PlaybackRequestSequencer.next()
         val mediaId = "zivplayer-generated-device-fixture"
         try {

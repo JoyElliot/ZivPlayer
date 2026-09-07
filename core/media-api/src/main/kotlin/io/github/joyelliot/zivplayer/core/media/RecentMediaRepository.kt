@@ -21,6 +21,13 @@ interface RecentMediaRepository {
 
     suspend fun remember(registration: MediaRegistration): MediaRecord
 
+    /** Promotes a prepared queue item only when the playback service starts that item. */
+    suspend fun markOpened(id: MediaId, openedAt: EpochMilliseconds): Boolean {
+        val stored = findById(id)?.record ?: return false
+        remember(MediaRegistration(stored.sourceUri, stored.mimeType, stored.metadata, openedAt))
+        return true
+    }
+
     /** Returns false when the media record no longer exists. */
     suspend fun saveCheckpoint(checkpoint: PlaybackCheckpoint): Boolean
 
