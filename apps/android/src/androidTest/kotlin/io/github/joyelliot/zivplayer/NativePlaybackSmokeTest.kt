@@ -50,16 +50,10 @@ class NativePlaybackSmokeTest {
         }
         val controller = future.get(15, TimeUnit.SECONDS)
         activity.waitForIdle()
-        val playWhenReadyReason = AtomicInteger()
         val sequence = PlaybackRequestSequencer.next()
         val mediaId = "zivplayer-generated-device-fixture"
         try {
             onMain {
-                controller.addListener(object : Player.Listener {
-                    override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
-                        playWhenReadyReason.set(reason)
-                    }
-                })
                 val commands = controller.availableCommands
                 val description = (0 until commands.size()).map(commands::get).toString()
                 check(controller.isCommandAvailable(Player.COMMAND_SET_MEDIA_ITEM)) {
@@ -144,6 +138,37 @@ class NativePlaybackSmokeTest {
             await(controller, "playback after Activity and Surface recreation") { isPlaying && currentPosition > 800 }
             captureScreen("native-recreated-surface.png")
             assertTrue(onMain { controller.playbackParameters.speed == 1.25f })
+        } finally {
+            onMain { controller.stop(); controller.release() }
+        }
+    }
+
+    /** Kept separate so an explicit OEM focus-policy exception does not skip native playback coverage. */
+    @Test
+    fun realTransientAudioFocusPausesAndResumes() {
+        val context = instrumentation.targetContext
+        onMain { activity.activity.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
+        val controller = onMain {
+            MediaController.Builder(context, SessionToken(context, ComponentName(context, PlaybackService::class.java))).buildAsync()
+        }.get(15, TimeUnit.SECONDS)
+        val playWhenReadyReason = AtomicInteger()
+        try {
+            onMain {
+                controller.addListener(object : Player.Listener {
+                    override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+                        playWhenReadyReason.set(reason)
+                    }
+                })
+                val sequence = PlaybackRequestSequencer.next()
+                controller.setMediaItem(MediaItem.Builder().setMediaId("zivplayer-focus-fixture")
+                    .setUri(fixture("tracks-subtitles.mkv"))
+                    .setMediaMetadata(MediaMetadata.Builder().setTitle("Audio focus test")
+                        .setExtras(Bundle().apply { putLong(PlaybackRequestMetadata.SEQUENCE_EXTRA, sequence) }).build()).build())
+                controller.prepare()
+            }
+            await(controller, "focus fixture ready") { playbackState == Player.STATE_READY }
+            onMain { controller.play() }
+            await(controller, "focus fixture playing") { isPlaying && currentPosition > 300 }
             val interruptedPosition = onMain { controller.currentPosition }
             try {
                 DeviceForegroundRule.startActivity("${context.packageName}.test/io.github.joyelliot.zivplayer.FocusInterruptionActivity")

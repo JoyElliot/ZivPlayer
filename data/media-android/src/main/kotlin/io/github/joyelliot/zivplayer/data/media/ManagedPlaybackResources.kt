@@ -129,7 +129,7 @@ class ManagedPlaybackResources internal constructor(
         PlaybackResourceKind.entries.forEach { kind ->
             directory(kind).listFiles()?.forEach { entry ->
                 if (entry.name.startsWith(".import-") ||
-                    (entry.name.matches(Regex("[a-f0-9]{64}\\.[a-z0-9]+")) && entry.absolutePath !in livePaths)) {
+                    (entry.name.matches(Regex("[a-f0-9]{64}\\.[a-z0-9]+")) && entry.canonicalPath !in livePaths)) {
                     check(entry.delete()) { "无法清理上次中断的导入文件，请重试" }
                 }
             }

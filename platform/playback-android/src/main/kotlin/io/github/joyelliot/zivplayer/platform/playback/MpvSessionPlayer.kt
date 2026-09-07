@@ -835,6 +835,9 @@ internal class MpvSessionPlayer(
         val current = engine.session.snapshot.value
         if (current.queue.currentItem?.id != pending.itemId || current.status !in setOf(
                 PlayerStatus.READY, PlayerStatus.PLAYING, PlayerStatus.PAUSED, PlayerStatus.BUFFERING)) return
+        // FILE_LOADED can precede native track discovery. Keep the pending choice
+        // until the session can select tracks, including the subtitle-off command.
+        if (PlayerCapability.SELECT_TRACK !in current.capabilities.available) return
         restoringTracks = true
         scope.launch {
             val beforeTracks = engine.session.snapshot.value.tracks
@@ -867,7 +870,9 @@ internal class MpvSessionPlayer(
                     }
                     operationGate.withLock {
                         if (!pending.isCurrent()) return@withLock
-                        val tracks = engine.session.snapshot.value.tracks.available
+                        val latest = engine.session.snapshot.value
+                        if (PlayerCapability.SELECT_TRACK !in latest.capabilities.available) return@withLock
+                        val tracks = latest.tracks.available
                         if (!pending.audioRestored && pending.isCurrent()) {
                             pending.saved.audio?.matchTrack(tracks)?.let {
                                 dispatchOrThrow(PlayerCommand.SelectTrack(TrackKind.AUDIO, it))

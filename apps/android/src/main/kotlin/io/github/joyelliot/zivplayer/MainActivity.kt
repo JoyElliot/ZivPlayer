@@ -79,7 +79,8 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val playing = playbackController.playerState.value.playWhenReady
-            val canRender = playbackController.playerState.value.hasVideo
+            val hasVideo = playbackController.playerState.value.hasVideo
+            val canRenderVideo = playbackController.playerState.value.canRenderVideo
             val aspectRatio = playbackController.playerState.value.videoAspectRatio
             val preferences = settings.preferences.value
             LaunchedEffect(playing, preferences.keepScreenOn) {
@@ -92,7 +93,7 @@ class MainActivity : ComponentActivity() {
                 if (fullscreen && !inPictureInPicture) bars.hide(WindowInsetsCompat.Type.systemBars())
                 else bars.show(WindowInsetsCompat.Type.systemBars())
             }
-            LaunchedEffect(playing, canRender, aspectRatio, preferences.autoPictureInPicture, settings.loaded.value, playerVisible) { updatePipParameters() }
+            LaunchedEffect(playing, hasVideo, canRenderVideo, aspectRatio, preferences.autoPictureInPicture, settings.loaded.value, playerVisible) { updatePipParameters() }
             ZivPlayerApp(
                 library = library,
                 settings = settings,
