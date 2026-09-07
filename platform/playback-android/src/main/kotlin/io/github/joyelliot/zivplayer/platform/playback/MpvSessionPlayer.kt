@@ -70,10 +70,13 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.delay
 import java.util.concurrent.CancellationException
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
@@ -165,9 +168,17 @@ internal class MpvSessionPlayer(
     private val shutdownStarted = AtomicBoolean(false)
     private val shutdownCompletion = CompletableDeferred<Unit>()
     private val operationGate = Mutex()
+    // Media3 can issue another edit against its optimistic playlist before the
+    // previous future completes. Resolve indices only after that edit has settled.
+    private val queueOperationGate = Mutex()
+    private var pendingQueueOperations = 0
+    private var queueReplacementGeneration = 0L
+    private var playIntentGeneration = 0L
+    @Volatile private var pendingAutomaticCompletion: Pair<QueueItemId, Long>? = null
     private val audioFocusPolicy = PlaybackAudioFocusPolicy()
     private val audioFocus = AndroidPlaybackAudioFocus(context, applicationLooper, ::onAudioFocusChanged)
     private var playWhenReadyChangeReason = Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST
+    private var lastServiceOwnedSequence = PlaybackRequestSequencer.current()
 
     private var engine = engineFactory()
     private var engineEpoch = 0L
@@ -179,8 +190,9 @@ internal class MpvSessionPlayer(
     private var videoSurfaceRequestToken = 0L
     private var videoSurfaceSize: Pair<Int, Int>? = null
     private var surfaceLease: LibmpvSurfaceLease? = null
-    private var activeDescriptor: ParcelFileDescriptor? = null
-    private var activeMediaItem: Media3MediaItem? = null
+    private var retainedMediaItems: Map<QueueItemId, Media3MediaItem> = emptyMap()
+    private val activeMediaItem: Media3MediaItem? get() = retainedMediaItems[engine.session.snapshot.value.queue.currentItem?.id]
+    private var lastMarkedOccurrence: Pair<Long, QueueItemId>? = null
     private val subtitleDescriptors = mutableListOf<ParcelFileDescriptor>()
     private var subtitleRequestGeneration = 0L
     private var snapshotCollector: Job
@@ -195,6 +207,49 @@ internal class MpvSessionPlayer(
     private var restoringTracks = false
     private var pendingImportedChoice: PendingImportedChoice? = null
     private var trackIntentGeneration = 0L
+    private data class TemporaryRateLease(val owner: Any, val token: Long, val epoch: Long,
+        val item: QueueItemId, val original: PlaybackRatePermille)
+    private var temporaryRateLease: TemporaryRateLease? = null
+    private val retiredTemporaryTokens = java.util.WeakHashMap<Any, Long>()
+
+    internal fun setTemporaryPlaybackSpeed(owner: Any, token: Long, mediaId: String?, sequence: Long,
+        index: Int, rate: Float?): ListenableFuture<*> = launchFuture {
+        if (token <= 0) return@launchFuture
+        val lease = temporaryRateLease
+        if (rate == null) {
+            retireTemporaryToken(owner, token)
+            if (lease?.owner == owner && lease.token == token) restoreTemporaryRate()
+            return@launchFuture
+        }
+        require(rate.isFinite() && rate in 0.25f..4f) { "Invalid temporary speed." }
+        if (token <= (retiredTemporaryTokens[owner] ?: 0L)) return@launchFuture
+        val current = engine.session.snapshot.value
+        val item = current.queue.currentItem ?: return@launchFuture
+        if (!current.playWhenReady || current.status != PlayerStatus.PLAYING ||
+            item.media.id.value != mediaId || current.queue.currentIndex != index ||
+            activeMediaItem?.mediaMetadata?.extras?.getLong(PlaybackRequestMetadata.SEQUENCE_EXTRA) != sequence) return@launchFuture
+        if (lease != null && (lease.owner != owner || lease.token != token)) return@launchFuture
+        if (lease == null) temporaryRateLease = TemporaryRateLease(owner, token, engineEpoch, item.id, current.playbackRate)
+        dispatchOrThrow(PlayerCommand.SetPlaybackRate(PlaybackRatePermille((rate * PERMILLE_DIVISOR).roundToInt())))
+    }
+
+    internal fun endControllerTemporarySpeed(owner: Any): ListenableFuture<*> = launchFuture {
+        retireTemporaryToken(owner, Long.MAX_VALUE)
+        if (temporaryRateLease?.owner == owner) restoreTemporaryRate()
+    }
+
+    private fun retireTemporaryToken(owner: Any, token: Long) {
+        retiredTemporaryTokens[owner] = maxOf(retiredTemporaryTokens[owner] ?: 0L, token)
+    }
+
+    private suspend fun restoreTemporaryRate() {
+        val lease = temporaryRateLease ?: return
+        retireTemporaryToken(lease.owner, lease.token)
+        temporaryRateLease = null
+        val current = engine.session.snapshot.value
+        if (lease.epoch == engineEpoch && lease.item == current.queue.currentItem?.id && current.error == null &&
+            current.status != PlayerStatus.CLOSED) dispatchOrThrow(PlayerCommand.SetPlaybackRate(lease.original))
+    }
 
     init {
         progressRecorder.bind(engineEpoch, snapshot)
@@ -249,7 +304,7 @@ internal class MpvSessionPlayer(
 
         if (snapshot.queue.items.isNotEmpty()) {
             builder
-                .setPlaylist(snapshot.toMedia3Playlist(activeMediaItem))
+                .setPlaylist(snapshot.toMedia3Playlist(retainedMediaItems))
                 .setCurrentMediaItemIndex(checkNotNull(snapshot.queue.currentIndex))
                 .setContentPositionMs(snapshot.timeline.position.value)
                 .setContentBufferedPositionMs {
@@ -264,21 +319,41 @@ internal class MpvSessionPlayer(
     }
 
     override fun handleSetPlayWhenReady(playWhenReady: Boolean): ListenableFuture<*> {
+        val intent = ++playIntentGeneration
         // The request-owned Play sent after installation must not cancel a newer media
         // request that may already be resolving. Pause remains an explicit cancellation.
         if (!playWhenReady) {
             setMediaRequestFence.invalidate()
+            lastServiceOwnedSequence = PlaybackRequestSequencer.current()
             clearPendingTrackRestore()
             releaseAudioFocus()
         }
-        if (playWhenReady && setMediaRequestFence.hasPendingRequest()) {
-            return Futures.immediateVoidFuture()
-        }
-        val playSequence = PlaybackRequestSequencer.current()
-        val playItem = engine.session.snapshot.value.queue.currentItem?.id
-        val restoration = if (playWhenReady) pendingTrackRestore else null
-        return launchFuture(beforeOperation = { restoration?.let { awaitInitialTrackRestore(it) } }) {
-            if (playWhenReady && (playSequence != PlaybackRequestSequencer.current() ||
+        var playSequence = PlaybackRequestSequencer.current()
+        val replacement = queueReplacementGeneration
+        val followsInstallation = playWhenReady && (pendingQueueOperations > 0 || setMediaRequestFence.hasPendingRequest())
+        var playItem = engine.session.snapshot.value.queue.currentItem?.id
+        return launchFuture(beforeOperation = {
+            if (playWhenReady) {
+                queueOperationGate.withLock { /* Wait for preceding queue edits, outside operationGate. */ }
+                if (followsInstallation && intent == playIntentGeneration && replacement == queueReplacementGeneration &&
+                    PlaybackRequestSequencer.current() == lastServiceOwnedSequence) {
+                    playSequence = PlaybackRequestSequencer.current()
+                    playItem = engine.session.snapshot.value.queue.currentItem?.id
+                }
+                // Metadata can reach the controller while per-item installation is still in flight.
+                // Wait outside the mutex, retaining the original item/sequence cancellation fence.
+                withTimeout(20_000L) {
+                    while (playSequence == PlaybackRequestSequencer.current() && setMediaRequestFence.hasPendingRequest()) delay(20L)
+                }
+                if (followsInstallation && playSequence == PlaybackRequestSequencer.current() && playSequence == lastServiceOwnedSequence) {
+                    playItem = engine.session.snapshot.value.queue.currentItem?.id
+                }
+                playItem?.let { awaitMediaPreparation(it, playSequence) }
+                pendingTrackRestore?.takeIf { it.itemId == playItem }?.let { awaitInitialTrackRestore(it) }
+            }
+        }) {
+            if (playWhenReady && (intent != playIntentGeneration || playSequence != PlaybackRequestSequencer.current() ||
+                    playSequence != lastServiceOwnedSequence ||
                     playItem != engine.session.snapshot.value.queue.currentItem?.id)) return@launchFuture
             playWhenReadyChangeReason = Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST
             if (playWhenReady) {
@@ -297,6 +372,7 @@ internal class MpvSessionPlayer(
                     throw failure
                 }
             } else {
+                restoreTemporaryRate()
                 dispatchOrThrow(PlayerCommand.Pause)
             }
             if (!playWhenReady) {
@@ -308,13 +384,16 @@ internal class MpvSessionPlayer(
     override fun handlePrepare(): ListenableFuture<*> = Futures.immediateVoidFuture()
 
     override fun handleStop(): ListenableFuture<*> {
+        ++playIntentGeneration
         setMediaRequestFence.invalidate()
+        lastServiceOwnedSequence = PlaybackRequestSequencer.current()
         subtitleRequestGeneration++
         ++trackIntentGeneration
         clearPendingTrackRestore()
         pendingImportedChoice = null
         releaseAudioFocus()
         return launchFuture {
+            restoreTemporaryRate()
             val beforeStop = engine.session.snapshot.value
             dispatchOrThrow(PlayerCommand.Stop)
             if (beforeStop.queue.currentItem != null && beforeStop.status != PlayerStatus.IDLE) {
@@ -362,6 +441,8 @@ internal class MpvSessionPlayer(
         }
         return launchFuture {
             pendingDefaultRate = null
+            temporaryRateLease?.let { retireTemporaryToken(it.owner, it.token) }
+            temporaryRateLease = null
             dispatchOrThrow(PlayerCommand.SetPlaybackRate(PlaybackRatePermille(permille)))
         }
     }
@@ -427,41 +508,58 @@ internal class MpvSessionPlayer(
         startIndex: Int,
         startPositionMs: Long,
     ): ListenableFuture<*> {
-        if (mediaItems.size != 1) {
-            return failedFuture("This player accepts one media item at a time.")
+        if (mediaItems.isEmpty()) {
+            ++queueReplacementGeneration
+            ++playIntentGeneration
+            setMediaRequestFence.invalidate()
+            lastServiceOwnedSequence = PlaybackRequestSequencer.current()
+            return enqueueQueueOperation { clearMediaQueue(queueReplacementGeneration) }
+        }
+        if (mediaItems.size > MAX_QUEUE_ITEMS) {
+            return failedFuture("Choose between 1 and $MAX_QUEUE_ITEMS media items.")
         }
         val normalizedIndex = if (startIndex == C.INDEX_UNSET) 0 else startIndex
         val normalizedPosition = if (startPositionMs == C.TIME_UNSET) 0L else startPositionMs
-        if (normalizedIndex != 0 || normalizedPosition < 0L) {
+        if (normalizedIndex !in mediaItems.indices || normalizedPosition < 0L) {
             return failedFuture("The requested media start position is invalid.")
         }
-        val requestTicket = setMediaRequestFence.begin(
-            mediaItems.single().mediaMetadata.extras
+        var requestTicket = setMediaRequestFence.begin(
+            mediaItems[normalizedIndex].mediaMetadata.extras
                 ?.takeIf { it.containsKey(PlaybackRequestMetadata.SEQUENCE_EXTRA) }
                 ?.getLong(PlaybackRequestMetadata.SEQUENCE_EXTRA),
         )
+        if (!setMediaRequestFence.isCurrent(requestTicket)) return Futures.immediateVoidFuture()
+        val replacement = ++queueReplacementGeneration
+        ++playIntentGeneration
+        lastServiceOwnedSequence = requestTicket.sequence
         clearPendingTrackRestore()
+        val mediaSequence = requestTicket.sequence
 
-        return launchFuture {
+        fun retainInstallation(): Boolean {
+            if (replacement != queueReplacementGeneration) return false
+            if (setMediaRequestFence.isCurrent(requestTicket)) return true
+            val sequence = PlaybackRequestSequencer.current()
+            // Pause/Stop cancel playback, not an already accepted playlist replacement.
+            // A newer SAF reservation remains external (not service-owned) and wins.
+            if (sequence != lastServiceOwnedSequence) return false
+            requestTicket = setMediaRequestFence.begin(sequence)
+            return setMediaRequestFence.isCurrent(requestTicket)
+        }
+
+        return enqueueQueueOperation { launchFuture {
             try {
-                if (!setMediaRequestFence.isCurrent(requestTicket)) return@launchFuture
+                if (!retainInstallation()) return@launchFuture
+                restoreTemporaryRate()
                 rebuildEngineIfRequired()
-                if (!setMediaRequestFence.isCurrent(requestTicket)) return@launchFuture
-                val resolved = try {
-                    resolveMediaItem(mediaItems.single())
-                } catch (failure: Throwable) {
-                    if (!setMediaRequestFence.isCurrent(requestTicket)) return@launchFuture
-                    throw failure
-                }
-                if (!setMediaRequestFence.isCurrent(requestTicket)) {
-                    runCatching { resolved.descriptor?.close() }
-                    return@launchFuture
-                }
+                if (!retainInstallation()) return@launchFuture
+                val resolved = mediaItems.map { resolveMediaItem(it, mediaSequence) }
+                if (!retainInstallation()) return@launchFuture
+                retainedMediaItems = retainedMediaItems + resolved.associate { it.queueItem.id to it.mediaItem }
                 try {
                     releaseAudioFocus()
                     dispatchOrThrow(
                         PlayerCommand.SetQueue(
-                            items = listOf(resolved.queueItem),
+                            items = resolved.map { it.queueItem },
                             startIndex = normalizedIndex,
                             startPosition = Milliseconds(normalizedPosition),
                             // Installing a replacement never inherits playback intent. The client
@@ -471,32 +569,18 @@ internal class MpvSessionPlayer(
                         ),
                     )
                     clearSubtitleDescriptors()
-                    runCatching { activeDescriptor?.close() }
-                    activeDescriptor = resolved.descriptor
-                    activeMediaItem = resolved.mediaItem
-                    pendingDefaultRate = resolved.queueItem.id
-                    clearPendingTrackRestore()
-                    if (preferences.rememberTrackSelection) persistChoice {
-                        preferencesProvider?.mediaPlaybackPreferencesRepository?.find(resolved.queueItem.media.id)?.let {
-                            if (setMediaRequestFence.isCurrent(requestTicket) && (it.audio != null || it.subtitle != null ||
-                                    it.subtitlesDisabled || it.externalSubtitles.isNotEmpty())) {
-                                pendingTrackRestore = PendingTrackRestore(resolved.queueItem.id, it, requestTicket, trackIntentGeneration)
-                            }
-                        }
-                    }
+                    if (retainInstallation()) prepareCurrentItem(requestTicket)
                     scheduleTrackRestore()
                     scheduleImportedChoice()
                     invalidateState()
-                } catch (failure: Throwable) {
-                    runCatching { resolved.descriptor?.close() }
-                        .exceptionOrNull()
-                        ?.let(failure::addSuppressed)
-                    throw failure
+                } finally {
+                    val ids = engine.session.snapshot.value.queue.items.map { it.id }.toSet()
+                    retainedMediaItems = retainedMediaItems.filterKeys { it in ids }
                 }
             } finally {
                 setMediaRequestFence.finish(requestTicket)
             }
-        }
+        } }
     }
 
     override fun handleSeek(
@@ -504,32 +588,232 @@ internal class MpvSessionPlayer(
         positionMs: Long,
         seekCommand: Int,
     ): ListenableFuture<*> {
-        val snapshot = snapshot
-        val currentIndex = snapshot.queue.currentIndex ?: return failedFuture("The queue is empty.")
+        val intent = playIntentGeneration
+        return enqueueQueueOperation {
+        val snapshot = engine.session.snapshot.value
+        val currentIndex = snapshot.queue.currentIndex ?: return@enqueueQueueOperation failedFuture("The queue is empty.")
         val normalizedPosition = if (positionMs == C.TIME_UNSET) 0L else positionMs.coerceAtLeast(0L)
-        val targetsDefaultPosition = positionMs == C.TIME_UNSET || positionMs == 0L
-        return when {
+        when {
             mediaItemIndex == currentIndex -> dispatch(
                 PlayerCommand.SeekTo(Milliseconds(normalizedPosition)),
             )
 
-            mediaItemIndex == currentIndex + 1 && targetsDefaultPosition ->
-                dispatch(PlayerCommand.SkipNext)
-
-            mediaItemIndex == currentIndex - 1 && targetsDefaultPosition ->
-                dispatch(PlayerCommand.SkipPrevious)
-
-            mediaItemIndex in snapshot.queue.items.indices -> dispatch(
-                PlayerCommand.SetQueue(
-                    items = snapshot.queue.items,
-                    startIndex = mediaItemIndex,
-                    startPosition = Milliseconds(normalizedPosition),
-                    playWhenReady = snapshot.playWhenReady,
-                ),
-            )
+            mediaItemIndex in snapshot.queue.items.indices -> transitionTo(mediaItemIndex, normalizedPosition,
+                (snapshot.playWhenReady || seekCommand == Player.COMMAND_SEEK_TO_MEDIA_ITEM) && intent == playIntentGeneration)
 
             else -> failedFuture("The requested media item index is invalid.")
         }
+        }
+    }
+
+    override fun handleAddMediaItems(index: Int, mediaItems: List<Media3MediaItem>): ListenableFuture<*> =
+        editMediaQueue(index, index, mediaItems)
+
+    override fun handleReplaceMediaItems(fromIndex: Int, toIndex: Int, mediaItems: List<Media3MediaItem>): ListenableFuture<*> =
+        editMediaQueue(fromIndex, toIndex, mediaItems)
+
+    override fun handleRemoveMediaItems(fromIndex: Int, toIndex: Int): ListenableFuture<*> =
+        editMediaQueue(fromIndex, toIndex, emptyList())
+
+    override fun handleMoveMediaItems(fromIndex: Int, toIndex: Int, newIndex: Int): ListenableFuture<*> {
+        val replacement = queueReplacementGeneration
+        val intent = playIntentGeneration
+        return enqueueQueueOperation {
+            val items = engine.session.snapshot.value.queue.items.toMutableList()
+            val from = fromIndex.coerceIn(0, items.size)
+            val to = toIndex.coerceIn(from, items.size)
+            val moving = items.subList(from, to).toList()
+            items.subList(from, to).clear()
+            items.addAll(newIndex.coerceIn(0, items.size), moving)
+            applyEditedQueue(items, emptyMap(), from, replacement, intent)
+        }
+    }
+
+    private fun editMediaQueue(fromIndex: Int, toIndex: Int, mediaItems: List<Media3MediaItem>): ListenableFuture<*> {
+        val replacement = queueReplacementGeneration
+        val intent = playIntentGeneration
+        return enqueueQueueOperation {
+            val current = engine.session.snapshot.value.queue
+            val from = fromIndex.coerceIn(0, current.items.size)
+            val to = toIndex.coerceIn(from, current.items.size)
+            if (current.items.size - (to - from) + mediaItems.size > MAX_QUEUE_ITEMS) {
+                return@enqueueQueueOperation failedFuture("A queue can contain at most $MAX_QUEUE_ITEMS media items.")
+            }
+            val sequence = PlaybackRequestSequencer.current()
+            val added = mediaItems.map { resolveMediaItem(it, sequence) }
+            val items = current.items.toMutableList().apply {
+                subList(from, to).clear()
+                addAll(from, added.map { it.queueItem })
+            }
+            applyEditedQueue(items, added.associate { it.queueItem.id to it.mediaItem }, from, replacement, intent)
+        }
+    }
+
+    private fun applyEditedQueue(items: List<QueueItem>, added: Map<QueueItemId, Media3MediaItem>, successor: Int,
+        replacement: Long, intent: Long): ListenableFuture<*> {
+        val current = engine.session.snapshot.value
+        if (items == current.queue.items) return Futures.immediateVoidFuture()
+        if (items.isEmpty()) return clearMediaQueue(replacement)
+        val selected = current.queue.currentItem
+        if (selected == null || selected !in items || requiresEngineReset()) {
+            val automatic = pendingAutomaticCompletion?.let { (from, sequence) ->
+                from == selected?.id && sequence == PlaybackRequestSequencer.current() && sequence == lastServiceOwnedSequence
+            } == true
+            val index = items.indexOf(selected).takeIf { it >= 0 } ?: successor.coerceIn(items.indices)
+            return transitionTo(index, if (selected in items) current.timeline.position.value else 0L,
+                (current.playWhenReady || automatic) && intent == playIntentGeneration,
+                replacementQueue = items, additionalMedia = added, queueGeneration = replacement)
+        }
+        return launchFuture {
+            // Edits surrounding the current item must not cancel its track restoration or reload it.
+            if (replacement != queueReplacementGeneration) return@launchFuture
+            restoreTemporaryRate()
+            dispatchOrThrow(PlayerCommand.EditQueue(items))
+            retainedMediaItems = (retainedMediaItems + added).filterKeys { id -> items.any { it.id == id } }
+            invalidateState()
+        }
+    }
+
+    private fun clearMediaQueue(replacement: Long): ListenableFuture<*> {
+        setMediaRequestFence.invalidate()
+        lastServiceOwnedSequence = PlaybackRequestSequencer.current()
+        ++trackIntentGeneration
+        clearPendingTrackRestore()
+        pendingImportedChoice = null
+        releaseAudioFocus()
+        return launchFuture {
+            if (replacement != queueReplacementGeneration) return@launchFuture
+            restoreTemporaryRate()
+            val before = engine.session.snapshot.value
+            if (before.queue.currentItem != null) progressRecorder.flushStop(engineEpoch, before)
+            rebuildEngineIfRequired()
+            dispatchOrThrow(PlayerCommand.ClearQueue)
+            clearSubtitleDescriptors()
+            retainedMediaItems = emptyMap()
+            pendingDefaultRate = null
+            invalidateState()
+        }
+    }
+
+    /** Called by the core's completion hook; all work continues on the service's application looper. */
+    internal fun advanceAfterCompletion(from: QueueItemId) {
+        val sequence = PlaybackRequestSequencer.current()
+        val completion = from to sequence
+        pendingAutomaticCompletion = completion
+        applicationHandler.post {
+            val operation = enqueueQueueOperation {
+            val current = engine.session.snapshot.value
+            val currentIndex = current.queue.currentIndex
+            val currentTarget = when {
+                currentIndex == null -> null
+                current.repeatMode == RepeatMode.ONE -> currentIndex
+                currentIndex < current.queue.items.lastIndex -> currentIndex + 1
+                current.repeatMode == RepeatMode.ALL -> 0
+                else -> null
+            }
+            if (!shutdownStarted.get() && !setMediaRequestFence.hasPendingRequest() && sequence == lastServiceOwnedSequence && sequence == PlaybackRequestSequencer.current() &&
+                current.status == PlayerStatus.ENDED && current.queue.currentItem?.id == from && currentTarget != null) {
+                transitionTo(currentTarget, 0L, true, expectedSequence = sequence)
+            } else Futures.immediateVoidFuture()
+            }
+            operation.addListener({
+                if (pendingAutomaticCompletion == completion) pendingAutomaticCompletion = null
+                runCatching { operation.get() }.onFailure {
+                    Log.w("ZivMedia3Player", "The next media could not be opened.", it)
+                }
+            }, java.util.concurrent.Executor { applicationHandler.post(it) })
+        }
+    }
+
+    private fun transitionTo(index: Int, positionMs: Long, play: Boolean, expectedSequence: Long? = null,
+        replacementQueue: List<QueueItem>? = null, additionalMedia: Map<QueueItemId, Media3MediaItem> = emptyMap(),
+        queueGeneration: Long? = null): ListenableFuture<*> {
+        if (expectedSequence != null && PlaybackRequestSequencer.current() != expectedSequence) return Futures.immediateVoidFuture()
+        val items = replacementQueue ?: engine.session.snapshot.value.queue.items
+        val target = items.getOrNull(index) ?: return failedFuture("The requested media item no longer exists.")
+        val ticket = setMediaRequestFence.begin(expectedSequence)
+        if (!setMediaRequestFence.isCurrent(ticket)) return Futures.immediateVoidFuture()
+        lastServiceOwnedSequence = ticket.sequence
+        ++trackIntentGeneration
+        clearPendingTrackRestore()
+        val reply = SettableFuture.create<Void>()
+        val media = retainedMediaItems + additionalMedia
+        val job = scope.launch {
+            try {
+                configurationReady.await()
+                operationGate.withLock {
+                    // Pause cancels automatic playback, but an accepted incremental edit
+                    // still removes/replaces its item. A newer complete queue supersedes it.
+                    val installCurrent = queueGeneration?.let { it == queueReplacementGeneration }
+                        ?: setMediaRequestFence.isCurrent(ticket)
+                    if (!installCurrent || shutdownStarted.get()) return@withLock
+                    restoreTemporaryRate()
+                    releaseAudioFocus()
+                    rebuildEngineIfRequired()
+                    if (queueGeneration != null && queueGeneration != queueReplacementGeneration) return@withLock
+                    retainedMediaItems = media
+                    dispatchOrThrow(PlayerCommand.SetQueue(items, index, Milliseconds(positionMs), false))
+                    retainedMediaItems = retainedMediaItems.filterKeys { id -> items.any { it.id == id } }
+                    clearSubtitleDescriptors()
+                    prepareCurrentItem(ticket)
+                    invalidateState()
+                }
+                awaitMediaPreparation(target.id, ticket.sequence)
+                pendingTrackRestore?.takeIf { it.itemId == target.id }?.let { awaitInitialTrackRestore(it) }
+                operationGate.withLock {
+                    if (!setMediaRequestFence.isCurrent(ticket) || shutdownStarted.get() || engine.session.snapshot.value.queue.currentItem?.id != target.id) return@withLock
+                    if (pendingDefaultRate == target.id) {
+                        dispatchOrThrow(PlayerCommand.SetPlaybackRate(preferences.defaultPlaybackRate))
+                        pendingDefaultRate = null
+                    }
+                    if (play) {
+                        check(audioFocusPolicy.requestPlay { ensurePlaybackForeground(); audioFocus.request() }) { "Audio focus is unavailable. Playback remains paused." }
+                        dispatchOrThrow(PlayerCommand.Play)
+                    }
+                    invalidateState()
+                }
+                reply.set(null)
+            } catch (failure: Throwable) {
+                releaseAudioFocus()
+                Log.w("ZivMedia3Player", "Queue transition failed.", failure)
+                reply.setException(failure)
+            } finally {
+                val ids = engine.session.snapshot.value.queue.items.map { it.id }.toSet()
+                retainedMediaItems = retainedMediaItems.filterKeys { it in ids }
+                setMediaRequestFence.finish(ticket)
+            }
+        }
+        job.invokeOnCompletion { failure ->
+            if (!reply.isDone) {
+                setMediaRequestFence.finish(ticket)
+                reply.setException(failure ?: CancellationException("The queue transition was cancelled."))
+            }
+        }
+        return reply
+    }
+
+    private suspend fun awaitMediaPreparation(item: QueueItemId, sequence: Long) {
+        withTimeout(20_000L) {
+            while (sequence == PlaybackRequestSequencer.current() && !shutdownStarted.get()) {
+                val current = engine.session.snapshot.value
+                if (current.queue.currentItem?.id != item || current.status != PlayerStatus.LOADING) return@withTimeout
+                delay(20L)
+            }
+        }
+    }
+
+    private suspend fun prepareCurrentItem(ticket: SetMediaRequestFence.Ticket) {
+        val item = engine.session.snapshot.value.queue.currentItem ?: return
+        pendingDefaultRate = item.id
+        clearPendingTrackRestore()
+        if (preferences.rememberTrackSelection) persistChoice {
+            preferencesProvider?.mediaPlaybackPreferencesRepository?.find(item.media.id)?.let {
+                if (setMediaRequestFence.isCurrent(ticket) && (it.audio != null || it.subtitle != null || it.subtitlesDisabled || it.externalSubtitles.isNotEmpty())) {
+                    pendingTrackRestore = PendingTrackRestore(item.id, it, ticket, trackIntentGeneration)
+                }
+            }
+        }
+        scheduleTrackRestore()
     }
 
     internal fun shutdownAsync(): ListenableFuture<*> {
@@ -550,6 +834,8 @@ internal class MpvSessionPlayer(
             return
         }
         configurationJob?.cancel()
+        temporaryRateLease = null
+        retiredTemporaryTokens.clear()
 
         var shutdownFailure: Throwable? = null
         val leaseToDetach = surfaceLease
@@ -584,14 +870,8 @@ internal class MpvSessionPlayer(
         } finally {
             snapshotCollector.cancel()
             eventCollector.cancel()
-            runCatching { activeDescriptor?.close() }
-                .exceptionOrNull()
-                ?.let { failure ->
-                    shutdownFailure?.addSuppressed(failure) ?: run { shutdownFailure = failure }
-                }
-            activeDescriptor = null
             clearSubtitleDescriptors()
-            activeMediaItem = null
+            retainedMediaItems = emptyMap()
             videoOutput = null
             shutdownFailure?.let(shutdownCompletion::completeExceptionally)
                 ?: shutdownCompletion.complete(Unit)
@@ -604,11 +884,31 @@ internal class MpvSessionPlayer(
             observedEngine.session.snapshot.collect { next ->
                 if (engine === observedEngine && engineEpoch == observedEpoch) {
                     snapshot = next
+                    val interruptedLease = temporaryRateLease
+                    if (interruptedLease != null && (!next.playWhenReady || next.status == PlayerStatus.ENDED || next.error != null)) {
+                        launchFuture {
+                            val current = engine.session.snapshot.value
+                            if (temporaryRateLease === interruptedLease && (!current.playWhenReady || current.status == PlayerStatus.ENDED || current.error != null)) restoreTemporaryRate()
+                        }
+                    }
                     if (next.status in setOf(PlayerStatus.IDLE, PlayerStatus.ENDED, PlayerStatus.ERROR, PlayerStatus.CLOSED)) {
                         releaseAudioFocus()
                     } else {
                         audioFocus.setNoisyEnabled(next.playWhenReady)
-                        if (next.status == PlayerStatus.PLAYING) onPlaybackPublished()
+                        if (next.status == PlayerStatus.PLAYING) {
+                            onPlaybackPublished()
+                            next.queue.currentItem?.let { item ->
+                                val occurrence = observedEpoch to item.id
+                                if (lastMarkedOccurrence != occurrence) {
+                                    lastMarkedOccurrence = occurrence
+                                    val openedAt = io.github.joyelliot.zivplayer.core.media.EpochMilliseconds(System.currentTimeMillis())
+                                    scope.launch {
+                                        runCatching { preferencesProvider?.recentMediaRepository?.markOpened(item.media.id, openedAt) }
+                                            .onFailure { Log.w("ZivMedia3Player", "Recently played media could not be updated.", it) }
+                                    }
+                                }
+                            }
+                        }
                     }
                     progressRecorder.observeSnapshot(observedEpoch, next)
                     scheduleTrackRestore()
@@ -647,10 +947,8 @@ internal class MpvSessionPlayer(
         withContext(Dispatchers.IO) {
             previousEngine.session.close()
         }
-        runCatching { activeDescriptor?.close() }
-        activeDescriptor = null
         clearSubtitleDescriptors()
-        activeMediaItem = null
+        retainedMediaItems = emptyMap()
         surfaceLease = null
 
         val replacement = engineFactory()
@@ -951,25 +1249,20 @@ internal class MpvSessionPlayer(
         }, java.util.concurrent.Executor { applicationHandler.post(it) })
     }
 
-    private suspend fun resolveMediaItem(mediaItem: Media3MediaItem): ResolvedMediaItem {
+    private fun resolveMediaItem(mediaItem: Media3MediaItem, sequence: Long): ResolvedMediaItem {
         val configuration = checkNotNull(mediaItem.localConfiguration) {
             "The media item has no URI."
         }
         val uri = configuration.uri
-        val descriptor = if (uri.scheme == CONTENT_SCHEME) {
-            withContext(Dispatchers.IO) {
-                checkNotNull(context.contentResolver.openFileDescriptor(uri, READ_ONLY_MODE)) {
-                    "The selected media could not be opened."
-                }
-            }
-        } else {
-            null
-        }
-        try {
-            val locator = descriptor?.let { "$FILE_DESCRIPTOR_URI_PREFIX${it.fd}" } ?: uri.toString()
+        val locator = uri.toString()
             val queueItemId = queueItemIdGenerator.next()
             val mediaId = mediaItem.mediaId.ifBlank { "session:${queueItemId.value}" }
-            val normalizedItem = mediaItem.buildUpon().setMediaId(mediaId).build()
+            val extras = android.os.Bundle(mediaItem.mediaMetadata.extras ?: android.os.Bundle.EMPTY).apply {
+                putLong(PlaybackRequestMetadata.SEQUENCE_EXTRA, sequence)
+                if (!containsKey(PlaybackRequestMetadata.TOKEN_EXTRA)) putString(PlaybackRequestMetadata.TOKEN_EXTRA, "service:$sequence")
+            }
+            val normalizedItem = mediaItem.buildUpon().setMediaId(mediaId)
+                .setMediaMetadata(mediaItem.mediaMetadata.buildUpon().setExtras(extras).build()).build()
             return ResolvedMediaItem(
                 queueItem = QueueItem(
                     id = queueItemId,
@@ -985,14 +1278,7 @@ internal class MpvSessionPlayer(
                     ),
                 ),
                 mediaItem = normalizedItem,
-                descriptor = descriptor,
             )
-        } catch (failure: Throwable) {
-            runCatching { descriptor?.close() }
-                .exceptionOrNull()
-                ?.let(failure::addSuppressed)
-            throw failure
-        }
     }
 
     private fun dispatch(command: PlayerCommand): ListenableFuture<*> = dispatchAll(command)
@@ -1007,6 +1293,36 @@ internal class MpvSessionPlayer(
             is CommandResult.Rejected -> throw result.error.toPlaybackException()
             is CommandResult.Failed -> throw result.error.toPlaybackException()
         }
+    }
+
+    private fun enqueueQueueOperation(block: () -> ListenableFuture<*>): ListenableFuture<*> {
+        val replacement = queueReplacementGeneration
+        val result = SettableFuture.create<Void>()
+        pendingQueueOperations++
+        val job = scope.launch {
+            try {
+                configurationReady.await()
+                queueOperationGate.withLock {
+                    if (!shutdownStarted.get() && replacement == queueReplacementGeneration) {
+                        val operation = block()
+                        suspendCancellableCoroutine<Unit> { continuation ->
+                            operation.addListener({
+                                continuation.resumeWith(runCatching { operation.get(); Unit })
+                            }, com.google.common.util.concurrent.MoreExecutors.directExecutor())
+                        }
+                    }
+                }
+                result.set(null)
+            } catch (failure: Throwable) {
+                result.setException(failure)
+            } finally {
+                pendingQueueOperations--
+            }
+        }
+        job.invokeOnCompletion { failure ->
+            if (!result.isDone) result.setException(failure ?: CancellationException("The queue operation was cancelled."))
+        }
+        return result
     }
 
     private fun launchFuture(
@@ -1058,10 +1374,10 @@ internal class MpvSessionPlayer(
     private data class ResolvedMediaItem(
         val queueItem: QueueItem,
         val mediaItem: Media3MediaItem,
-        val descriptor: ParcelFileDescriptor?,
     )
 
     private companion object {
+        const val MAX_QUEUE_ITEMS = 500
         val PLAYBACK_AUDIO_ATTRIBUTES = AudioAttributes.Builder()
             .setUsage(C.USAGE_MEDIA)
             .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
@@ -1092,6 +1408,7 @@ internal fun PlaybackSnapshot.media3CommandPolicy(): Set<Int> {
 
         if (status != PlayerStatus.CLOSED) {
             add(Player.COMMAND_SET_MEDIA_ITEM)
+            add(Player.COMMAND_CHANGE_MEDIA_ITEMS)
             add(Player.COMMAND_SET_VIDEO_SURFACE)
             if (!resetRequired) {
                 add(Player.COMMAND_PREPARE)
@@ -1138,11 +1455,10 @@ internal fun PlaybackSnapshot.media3CommandPolicy(): Set<Int> {
 }
 
 private fun PlaybackSnapshot.toMedia3Playlist(
-    retainedMediaItem: Media3MediaItem?,
+    retainedMediaItems: Map<QueueItemId, Media3MediaItem>,
 ): List<SimpleBasePlayer.MediaItemData> = queue.items.mapIndexed { index, item ->
     val isCurrent = index == queue.currentIndex
-    val mediaItem = retainedMediaItem
-        ?.takeIf { it.mediaId == item.media.id.value }
+    val mediaItem = retainedMediaItems[item.id]
         ?: item.toMedia3MediaItem()
     SimpleBasePlayer.MediaItemData.Builder(item.id.value)
         .setMediaItem(mediaItem)

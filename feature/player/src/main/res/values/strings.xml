@@ -36,4 +36,27 @@
     <string name="player_selected_track">Selected: %1$s</string>
     <string name="player_subtitles_off">Turn subtitles off</string>
     <string name="player_open_subtitle">Open subtitle file</string>
+    <string name="player_quick_menu">Quick controls</string>
+    <string name="player_close_menu">Close menu</string>
+    <string name="player_back">Back</string>
+    <string name="player_speed_title">Playback speed</string>
+    <string name="player_video_fit">Picture fit</string>
+    <string name="player_repeat_title">Repeat</string>
+    <string name="player_gesture_help">Tap to show controls · Double tap to pause\nSwipe to seek · Hold for 2×, then slide to change speed</string>
+    <string name="player_hold_speed">%1$s · Release to restore</string>
+    <string name="player_seek_preview">%1$s / %2$s</string>
+    <string name="player_seek_backward">Rewind</string>
+    <string name="player_seek_forward">Forward</string>
+    <string name="player_previous">Previous</string>
+    <string name="player_next">Next</string>
+    <string name="player_queue">Playlist</string>
+    <string name="player_video_area">Video controls</string>
+    <string name="player_exit_fullscreen">Exit fullscreen</string>
+    <string name="player_repeat_all">Repeat playlist</string>
+    <string name="player_close_queue">Close playlist</string>
+    <string name="player_queue_count">Playlist · %1$d</string>
+    <string name="player_queue_empty">Open a folder and choose Play all to create a playlist.</string>
+    <string name="player_lock_controls">Lock controls</string>
+    <string name="player_unlock_controls">Unlock controls</string>
+    <string name="player_speed_temporary_hint">Hold the video for temporary 2× playback. Slide left or right to adjust it; release to restore this speed.</string>
 </resources>

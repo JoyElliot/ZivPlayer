@@ -14,7 +14,7 @@ import java.util.UUID
 class MediaRepositories(context: Context, databaseName: String = "zivplayer-media.db") : Closeable {
     val documentOperations = kotlinx.coroutines.sync.Mutex()
     internal val database = Room.databaseBuilder(context.applicationContext,
-        ZivMediaDatabase::class.java, databaseName).addMigrations(MIGRATION_1_2).build()
+        ZivMediaDatabase::class.java, databaseName).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build()
     val recent = RoomRecentMediaRepository(database) { MediaId(UUID.randomUUID().toString()) }
     val library = RoomMediaLibraryRepository(database)
     val playbackPreferences = RoomMediaPlaybackPreferencesRepository(database)
@@ -45,5 +45,11 @@ internal val MIGRATION_1_2: Migration = object : Migration(1, 2) {
         db.execSQL("""CREATE TABLE IF NOT EXISTS playback_resources (
             resource_id TEXT NOT NULL PRIMARY KEY, kind TEXT NOT NULL, title TEXT NOT NULL,
             extension TEXT NOT NULL, size_bytes INTEGER NOT NULL, font_family TEXT)""")
+    }
+}
+
+internal val MIGRATION_2_3: Migration = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE recent_media ADD COLUMN visible_in_history INTEGER NOT NULL DEFAULT 1")
     }
 }

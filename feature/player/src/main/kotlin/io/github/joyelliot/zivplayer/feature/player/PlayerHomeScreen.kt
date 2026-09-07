@@ -45,6 +45,7 @@ fun PlayerHomeScreen(
     onForgetRecent: (String) -> Unit = {},
     videoContent: @Composable () -> Unit = {},
     extraControls: @Composable () -> Unit = {},
+    showInlineOptions: Boolean = true,
 ) {
     ZivScreen(title = stringResource(R.string.player_title)) {
         ZivCard {
@@ -57,13 +58,14 @@ fun PlayerHomeScreen(
         PlayerStatus(state)
         statusMessage?.let { ZivStatusText(text = it) }
         PlayerTimeline(state = state, onSeekTo = onSeekTo)
-        extraControls()
         PlayerTransportControls(
             state = state,
             onOpenMedia = onOpenMedia,
             onPlayPause = onPlayPause,
             onStop = onStop,
         )
+        extraControls()
+        if (showInlineOptions) {
         PlayerSecondaryControls(
             state = state,
             onPlaybackSpeedChange = onPlaybackSpeedChange,
@@ -71,6 +73,7 @@ fun PlayerHomeScreen(
             onRepeatModeChange = onRepeatModeChange,
         )
         PlayerTrackControls(state, onSelectTrack, onOpenSubtitle)
+        }
         RecentMediaSection(
             recentMedia = recentMedia,
             currentMediaId = state.mediaId,
@@ -286,20 +289,12 @@ private fun PlayerSecondaryControls(
             enabled = state.canSetSpeed,
         )
         ZivPrimaryButton(
-            text = if (state.repeatMode == PlayerRepeatMode.ONE) {
-                stringResource(R.string.player_repeat_one)
-            } else {
-                stringResource(R.string.player_repeat_off)
-            },
-            onClick = {
-                onRepeatModeChange(
-                    if (state.repeatMode == PlayerRepeatMode.ONE) {
-                        PlayerRepeatMode.OFF
-                    } else {
-                        PlayerRepeatMode.ONE
-                    },
-                )
-            },
+            text = stringResource(when (state.repeatMode) {
+                PlayerRepeatMode.OFF -> R.string.player_repeat_off
+                PlayerRepeatMode.ONE -> R.string.player_repeat_one
+                PlayerRepeatMode.ALL -> R.string.player_repeat_all
+            }),
+            onClick = { onRepeatModeChange(PlayerRepeatMode.entries[(state.repeatMode.ordinal + 1) % PlayerRepeatMode.entries.size]) },
             modifier = Modifier.weight(1f),
             enabled = state.canSetRepeat,
         )

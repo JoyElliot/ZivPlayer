@@ -31,6 +31,72 @@ import org.junit.Test
 
 class LibmpvBackendTest {
     @Test
+    fun replacementClosesPreviousSourceOnlyAfterNativeEnd() = runBlocking {
+        val client = FakeMpvClient()
+        val events = mutableListOf<String>()
+        var serial = 0
+        val backend = LibmpvBackend(TestContext, MpvClientFactory { client }, { "/test/mpv" },
+            MpvMediaSourceOpener { val id = ++serial; events += "open$id"; OpenMpvMediaSource("fd://$id") { events += "close$id" } })
+        client.commandHandler = { args -> if (args[0] == "stop") {
+            events += "stop"
+            assertEquals(listOf("open1", "stop"), events)
+            client.emit(MpvClientEvent(MpvEventType.END_FILE.rawValue, rawEndReason = MpvEndFileReason.STOP.rawValue))
+        } }
+        backend.load(loadRequest())
+        client.emit(MpvClientEvent(MpvEventType.START_FILE.rawValue))
+        backend.load(loadRequest().copy(generation = LoadGeneration(2)))
+        assertEquals(listOf("open1", "stop", "close1", "open2"), events)
+        assertEquals(listOf("fd://1", "fd://2"), client.commands.filter { it.first() == "loadfile" }.map { it[1] })
+        backend.close()
+        assertEquals("close2", events.last())
+    }
+
+    @Test
+    fun pumpFailureDuringStopRetainsBorrowedSourceUntilDestroy() = runBlocking {
+        val client = FakeMpvClient(destroyFailuresRemaining = 1)
+        var closes = 0
+        val backend = LibmpvBackend(TestContext, MpvClientFactory { client }, { "/test/mpv" },
+            MpvMediaSourceOpener { OpenMpvMediaSource("fd://12") { closes++ } })
+        backend.load(loadRequest())
+        client.emit(MpvClientEvent(MpvEventType.START_FILE.rawValue))
+        client.commandHandler = { if (it[0] == "stop") client.fail(MpvClientFailure.EVENT_PUMP_STOPPED) }
+        assertNotNull(runCatching { backend.stop() }.exceptionOrNull())
+        assertEquals(0, closes)
+        assertNotNull(runCatching { backend.close() }.exceptionOrNull())
+        assertEquals(0, closes)
+        backend.close()
+        assertEquals(1, closes)
+    }
+
+    @Test
+    fun failedLoadCannotCloseBorrowedSourceThroughStop() = runBlocking {
+        val client = FakeMpvClient()
+        var closes = 0
+        val backend = LibmpvBackend(TestContext, MpvClientFactory { client }, { "/test/mpv" },
+            MpvMediaSourceOpener { OpenMpvMediaSource("fd://12") { closes++ } })
+        client.commandHandler = { if (it[0] == "loadfile") error("uncertain command completion") }
+        assertNotNull(runCatching { backend.load(loadRequest()) }.exceptionOrNull())
+        assertNotNull(runCatching { backend.stop() }.exceptionOrNull())
+        assertEquals(0, closes)
+        backend.close()
+        assertEquals(1, closes)
+    }
+
+    @Test
+    fun sourceCloseFailureCanRetryAfterSuccessfulNativeDestroy() = runBlocking {
+        val client = FakeMpvClient()
+        var attempts = 0
+        val backend = LibmpvBackend(TestContext, MpvClientFactory { client }, { "/test/mpv" },
+            MpvMediaSourceOpener { OpenMpvMediaSource("fd://12") { if (++attempts == 1) error("close failed") } })
+        backend.load(loadRequest())
+        assertNotNull(runCatching { backend.close() }.exceptionOrNull())
+        backend.close()
+        backend.close()
+        assertEquals(2, attempts)
+        assertEquals(1, client.destroyCalls)
+    }
+
+    @Test
     fun configurationRollsBackTheSetterThatMutatedThenFailed() = runBlocking {
         val client = FakeMpvClient()
         val backend = LibmpvBackend(TestContext, MpvClientFactory { client }, { "/test/mpv" })
@@ -206,6 +272,8 @@ class LibmpvBackendTest {
         val stringWrites = mutableListOf<String>()
         val flags = mutableMapOf<String, Boolean>()
         var stringFailure: (String, String) -> Boolean = { _, _ -> false }
+        var commandHandler: (Array<String>) -> Unit = {}
+        val commands = mutableListOf<List<String>>()
 
         override fun addObserver(observer: MpvClient.Observer) {
             check(this.observer == null)
@@ -223,7 +291,7 @@ class LibmpvBackendTest {
 
         override fun initialize() = Unit
 
-        override fun command(arguments: Array<String>) = Unit
+        override fun command(arguments: Array<String>) { commands += arguments.toList(); commandHandler(arguments) }
 
         override fun getPropertyDouble(name: String): Double? = null
 

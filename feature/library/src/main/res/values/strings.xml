@@ -30,4 +30,10 @@
     <string name="library_hide">Hide</string>
     <string name="library_unhide">Show again</string>
     <string name="library_empty">No matching media. Add a folder, scan it, or change the filter.</string>
+    <string name="library_open_file">Open file</string>
+    <string name="library_all_media">All files</string>
+    <string name="library_manage_folders">Manage folders</string>
+    <string name="library_back_folders">Folders</string>
+    <string name="library_play_all">Play all</string>
+    <string name="library_item_actions">More</string>
 </resources>

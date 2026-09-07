@@ -43,9 +43,14 @@ class LibmpvBackend internal constructor(
     context: Context,
     private val clientFactory: MpvClientFactory,
     private val prepareConfigDirectory: () -> String,
+    private val sourceOpener: MpvMediaSourceOpener,
 ) : PlayerBackend, LibmpvSurfacePort, LibmpvConfigurationPort {
+    internal constructor(context: Context, clientFactory: MpvClientFactory, prepareConfigDirectory: () -> String) :
+        this(context, clientFactory, prepareConfigDirectory, MpvMediaSourceOpener { OpenMpvMediaSource(it) })
+
     constructor(context: Context) : this(context, SourceMpvClient,
-        { MpvFontConfig.prepare(context.applicationContext).absolutePath })
+        { MpvFontConfig.prepare(context.applicationContext).absolutePath },
+        AndroidMpvMediaSourceOpener(context.applicationContext.contentResolver))
 
     private val applicationContext = context.applicationContext
     private val nativeEvents = Channel<BackendEvent>(capacity = MAX_NATIVE_EVENTS)
@@ -54,6 +59,8 @@ class LibmpvBackend internal constructor(
     override val events: Flow<BackendEvent> = nativeEvents.receiveAsFlow()
 
     private val lifecycleGate = Mutex()
+    /** Lifecycle-owned; released only after a confirmed stop/EOF or successful native destruction. */
+    private var activeMediaSource: OpenMpvMediaSource? = null
     private val nativeGate = ReentrantLock(true)
     private var configuration = MpvPlaybackConfiguration()
     private val diagnostics = MpvDiagnosticsObserver()
@@ -226,9 +233,12 @@ class LibmpvBackend internal constructor(
     }
 
     override suspend fun load(request: BackendLoadRequest) = lifecycleGate.withLock {
+        check(!closed && !nativeUnusable) { "The playback engine requires recreation." }
         stopActiveFile()
+        releaseMediaSource()
         resetPlaybackState(request.startPosition)
 
+        activeMediaSource = sourceOpener.open(request.item.media.source.locator)
         generationFence.beginLoad(request.generation)
         try {
             // Keep loading deterministic: the core decides whether Prepared
@@ -238,7 +248,7 @@ class LibmpvBackend internal constructor(
                 player.command(
                     arrayOf(
                         COMMAND_LOAD_FILE,
-                        request.item.media.source.locator,
+                        checkNotNull(activeMediaSource).locator,
                         LOAD_REPLACE,
                         NO_PLAYLIST_INDEX,
                         "$OPTION_START=${request.startPosition.toSecondsString()}",
@@ -249,6 +259,9 @@ class LibmpvBackend internal constructor(
             generationFence.cancelLoad(request.generation)
             resetSeekCorrelation()
             runCatching { withExistingPlayer { it.command(arrayOf(COMMAND_STOP)) } }
+            // A command failure cannot prove that native code has stopped borrowing the FD.
+            // Retain it until close() destroys the instance, and disallow another load.
+            nativeGate.withLock { nativeUnusable = true }
             throw failure
         }
     }
@@ -316,7 +329,9 @@ class LibmpvBackend internal constructor(
     }
 
     override suspend fun stop() = lifecycleGate.withLock {
+        check(!closed && !nativeUnusable) { "The playback engine requires recreation." }
         stopActiveFile()
+        releaseMediaSource()
         resetPlaybackState(Milliseconds.ZERO)
     }
 
@@ -392,7 +407,7 @@ class LibmpvBackend internal constructor(
         var firstClose = false
 
         nativeGate.withLock {
-            if (closed && pendingDestroy == null) {
+            if (closed && pendingDestroy == null && activeMediaSource == null) {
                 return@closeLock
             }
 
@@ -445,6 +460,10 @@ class LibmpvBackend internal constructor(
             } else {
                 teardownFailure = combineFailures(teardownFailure, destroyFailure)
             }
+        }
+
+        if (pendingDestroy == null) runCatching { releaseMediaSource() }.exceptionOrNull()?.let {
+            teardownFailure = combineFailures(teardownFailure, it)
         }
 
         if (firstClose) {
@@ -535,17 +554,27 @@ class LibmpvBackend internal constructor(
     }
 
     private suspend fun stopActiveFile() {
+        check(!closed && !nativeUnusable) { "The playback engine requires recreation." }
         val stopped = generationFence.beginStop() ?: return
         try {
             withPlayer { it.command(arrayOf(COMMAND_STOP)) }
             withTimeout(NATIVE_STOP_TIMEOUT_MILLIS) {
                 stopped.await()
             }
+            // Event-pump failure also unblocks the fence, but does not prove END_FILE.
+            check(!nativeUnusable) { "The native stop could not be confirmed." }
         } finally {
             if (!stopped.isCompleted) {
                 generationFence.cancelStop(stopped)
             }
         }
+    }
+
+    private fun releaseMediaSource() = nativeGate.withLock {
+        check((closed && pendingDestroy == null) || !nativeUnusable) { "Native ownership is unresolved." }
+        val source = activeMediaSource ?: return@withLock
+        source.close()
+        activeMediaSource = null
     }
 
     private fun completeSeek(generation: LoadGeneration) {

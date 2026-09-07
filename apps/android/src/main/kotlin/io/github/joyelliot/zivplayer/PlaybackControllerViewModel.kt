@@ -26,12 +26,14 @@ import io.github.joyelliot.zivplayer.feature.player.PlayerConnectionStatus
 import io.github.joyelliot.zivplayer.feature.player.PlayerPlaybackStatus
 import io.github.joyelliot.zivplayer.feature.player.PlayerRepeatMode
 import io.github.joyelliot.zivplayer.feature.player.PlayerUiState
+import io.github.joyelliot.zivplayer.feature.player.PlayerQueueUiItem
 import io.github.joyelliot.zivplayer.feature.player.PlayerTrackKind
 import io.github.joyelliot.zivplayer.feature.player.PlayerTrackUiItem
 import io.github.joyelliot.zivplayer.platform.playback.PlaybackRequestMetadata
 import io.github.joyelliot.zivplayer.platform.playback.SubtitleRequestContract
 import io.github.joyelliot.zivplayer.platform.playback.PlaybackService
 import io.github.joyelliot.zivplayer.platform.playback.PlaybackDiagnosticsContract
+import io.github.joyelliot.zivplayer.platform.playback.TemporarySpeedContract
 import io.github.joyelliot.zivplayer.core.model.PlaybackDiagnostics
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -66,6 +68,7 @@ class PlaybackControllerViewModel(
     private var reconnectAttempt = 0
     private var positionTickerJob: Job? = null
     private var cleared = false
+    private val temporarySpeed = TemporaryPlaybackSpeed()
     private var lastCompletedMediaId: String? = null
     private var subtitleTarget: Pair<String, Long>? = null
     private var subtitleMessage: String? = null
@@ -93,6 +96,7 @@ class PlaybackControllerViewModel(
     }
 
     fun togglePlayPause() = withControllerCommand(Player.COMMAND_PLAY_PAUSE) { active ->
+        cancelTemporarySpeed()
         if (active.playbackState == Player.STATE_ENDED &&
             active.isCommandAvailable(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
         ) {
@@ -105,8 +109,8 @@ class PlaybackControllerViewModel(
         }
     }
 
-    fun stop() = withControllerCommand(Player.COMMAND_STOP, MediaController::stop)
-    fun pause() = withControllerCommand(Player.COMMAND_PLAY_PAUSE, MediaController::pause)
+    fun stop() { cancelTemporarySpeed(); withControllerCommand(Player.COMMAND_STOP, MediaController::stop) }
+    fun pause() { cancelTemporarySpeed(); withControllerCommand(Player.COMMAND_PLAY_PAUSE, MediaController::pause) }
 
     fun setDiagnosticsVisible(visible: Boolean) {
         if (visible && diagnosticsJob?.isActive == true) return
@@ -155,9 +159,54 @@ class PlaybackControllerViewModel(
     fun setPlaybackSpeed(speed: Float) =
         withControllerCommand(Player.COMMAND_SET_SPEED_AND_PITCH) { active ->
             if (speed.isFinite()) {
+                temporarySpeed.invalidate()
                 active.setPlaybackSpeed(speed.coerceIn(MIN_PLAYBACK_SPEED, MAX_PLAYBACK_SPEED))
             }
         }
+
+    fun beginTemporarySpeed(): Long? {
+        val active = mutableController.value ?: return null
+        if (!active.isConnected || !active.isPlaying || !active.isCommandAvailable(Player.COMMAND_SET_SPEED_AND_PITCH)) return null
+        cancelTemporarySpeed()
+        return temporarySpeed.begin(speedIdentity(active) ?: return null, active.playbackParameters.speed)
+    }
+
+    fun updateTemporarySpeed(token: Long, speed: Float) {
+        val active = mutableController.value ?: return
+        if (speed.isFinite() && temporarySpeed.owns(token, speedIdentity(active)) && active.playWhenReady &&
+            active.isCommandAvailable(Player.COMMAND_SET_SPEED_AND_PITCH)) {
+            sendTemporarySpeed(active, token, speed.coerceIn(MIN_PLAYBACK_SPEED, MAX_PLAYBACK_SPEED))
+        }
+    }
+
+    fun endTemporarySpeed(token: Long) {
+        val active = mutableController.value
+        if (temporarySpeed.activeToken != token) return
+        temporarySpeed.finish(token, active?.let(::speedIdentity))
+        if (active != null) sendTemporarySpeed(active, token, null)
+    }
+
+    private fun sendTemporarySpeed(active: MediaController, token: Long, speed: Float?) {
+        val command = SessionCommand(TemporarySpeedContract.ACTION, Bundle.EMPTY)
+        if (!active.isConnected || !active.isSessionCommandAvailable(command)) return
+        val identity = speedIdentity(active)
+        active.sendCustomCommand(command, Bundle().apply {
+            putLong(TemporarySpeedContract.TOKEN, token)
+            if (speed != null) putFloat(TemporarySpeedContract.RATE, speed)
+            putString(TemporarySpeedContract.MEDIA_ID, identity?.mediaId)
+            putLong(TemporarySpeedContract.SEQUENCE, identity?.sequence ?: 0L)
+            putInt(TemporarySpeedContract.INDEX, identity?.index ?: -1)
+        })
+    }
+
+    fun cancelTemporarySpeed() { temporarySpeed.activeToken?.let(::endTemporarySpeed) }
+
+    private fun speedIdentity(player: Player): SpeedPlaybackIdentity? {
+        if (player !== mutableController.value || mutableController.value?.isConnected != true) return null
+        val item = player.currentMediaItem ?: return null
+        val sequence = item.mediaMetadata.extras?.getLong(PlaybackRequestMetadata.SEQUENCE_EXTRA) ?: 0L
+        return SpeedPlaybackIdentity(connectionGeneration, item.mediaId, sequence, player.currentMediaItemIndex)
+    }
 
     fun setVolume(volume: Float) = withControllerCommand(Player.COMMAND_SET_VOLUME) { active ->
         if (volume.isFinite()) {
@@ -170,8 +219,25 @@ class PlaybackControllerViewModel(
             active.repeatMode = when (mode) {
                 PlayerRepeatMode.OFF -> Player.REPEAT_MODE_OFF
                 PlayerRepeatMode.ONE -> Player.REPEAT_MODE_ONE
+                PlayerRepeatMode.ALL -> Player.REPEAT_MODE_ALL
             }
         }
+
+    fun selectQueueItem(index: Int) = withControllerCommand(Player.COMMAND_SEEK_TO_MEDIA_ITEM) { active ->
+        if (index in 0 until active.mediaItemCount) {
+            cancelTemporarySpeed()
+            active.seekTo(index, 0L)
+            active.play()
+        }
+    }
+
+    fun previous() = withControllerCommand(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM) { active ->
+        cancelTemporarySpeed(); active.seekToPreviousMediaItem()
+    }
+
+    fun next() = withControllerCommand(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM) { active ->
+        cancelTemporarySpeed(); active.seekToNextMediaItem()
+    }
 
     fun selectTrack(kind: PlayerTrackKind, groupId: String?) =
         withControllerCommand(Player.COMMAND_SET_TRACK_SELECTION_PARAMETERS) { active ->
@@ -336,12 +402,17 @@ class PlaybackControllerViewModel(
             return
         }
         detachConnectedController(disconnectedController)
+        temporarySpeed.invalidate()
         releaseControllerFuture()
         scheduleReconnect(generation)
     }
 
     private fun refreshState(player: Player) {
         if (cleared || mutableController.value !== player) return
+        temporarySpeed.activeToken?.let { token ->
+            if (!temporarySpeed.owns(token, speedIdentity(player))) temporarySpeed.invalidate()
+            else if (!player.playWhenReady || player.playbackState == Player.STATE_ENDED || player.playerError != null) endTemporarySpeed(token)
+        }
         val currentItem = player.currentMediaItem
         val duration = player.duration.knownTime()
         val position = player.currentPosition.coerceAtLeast(0L)
@@ -377,6 +448,15 @@ class PlaybackControllerViewModel(
             connectionStatus = PlayerConnectionStatus.CONNECTED,
             playbackStatus = playbackStatus,
             mediaId = currentMediaId,
+            playbackIdentity = speedIdentity(player)?.toString(),
+            queue = (0 until player.mediaItemCount).map { index ->
+                val item = player.getMediaItemAt(index)
+                PlayerQueueUiItem(index, item.mediaMetadata.title.cleanText() ?: item.mediaId,
+                    index == player.currentMediaItemIndex)
+            },
+            canPrevious = player.isCommandAvailable(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM),
+            canNext = player.isCommandAvailable(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM),
+            canSelectQueueItem = player.isCommandAvailable(Player.COMMAND_SEEK_TO_MEDIA_ITEM),
             title = metadata.title.cleanText(),
             supportingText = listOfNotNull(
                 metadata.artist.cleanText(),
@@ -389,10 +469,10 @@ class PlaybackControllerViewModel(
             playbackSpeed = player.playbackParameters.speed.finiteOrDefault(1f)
                 .coerceIn(MIN_PLAYBACK_SPEED, MAX_PLAYBACK_SPEED),
             volume = player.volume.finiteOrDefault(1f).coerceIn(0f, 1f),
-            repeatMode = if (player.repeatMode == Player.REPEAT_MODE_ONE) {
-                PlayerRepeatMode.ONE
-            } else {
-                PlayerRepeatMode.OFF
+            repeatMode = when (player.repeatMode) {
+                Player.REPEAT_MODE_ONE -> PlayerRepeatMode.ONE
+                Player.REPEAT_MODE_ALL -> PlayerRepeatMode.ALL
+                else -> PlayerRepeatMode.OFF
             },
             canPlayPause = currentItem != null &&
                 player.isCommandAvailable(Player.COMMAND_PLAY_PAUSE),
@@ -455,6 +535,9 @@ class PlaybackControllerViewModel(
             canRenderVideo = false,
             canSelectTracks = false,
             canAddSubtitle = false,
+            canPrevious = false,
+            canNext = false,
+            canSelectQueueItem = false,
         )
 
     private fun detachConnectedController(controller: MediaController) {
@@ -473,6 +556,7 @@ class PlaybackControllerViewModel(
     }
 
     override fun onCleared() {
+        cancelTemporarySpeed()
         cleared = true
         diagnosticsJob?.cancel()
         diagnosticsRequest?.cancel(false)

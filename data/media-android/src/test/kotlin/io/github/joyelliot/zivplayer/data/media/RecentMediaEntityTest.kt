@@ -15,6 +15,23 @@ import org.junit.Test
 
 class RecentMediaEntityTest {
     @Test
+    fun `queue registration stays hidden until it is actually opened`() {
+        val hidden = REGISTRATION.copy(visibleInHistory = false).toNewEntity(ID)
+        assertEquals(false, hidden.visibleInHistory)
+        val promoted = hidden.merge(REGISTRATION.copy(openedAt = EpochMilliseconds(5_000L)))
+        assertEquals(true, promoted.visibleInHistory)
+        assertEquals(5_000L, promoted.lastOpenedAtEpochMs)
+        assertEquals(hidden.addedAtEpochMs, promoted.addedAtEpochMs)
+    }
+
+    @Test
+    fun `queue registration cannot move or hide already watched history`() {
+        val existing = REGISTRATION.toNewEntity(ID).withCheckpoint(CHECKPOINT)
+        val queued = existing.merge(REGISTRATION.copy(visibleInHistory = false, openedAt = EpochMilliseconds(5_000L)))
+        assertEquals(existing, queued)
+    }
+
+    @Test
     fun `reopening a source preserves stable identity and checkpoint`() {
         val original = REGISTRATION.toNewEntity(ID).withCheckpoint(CHECKPOINT)
         val reopened = original.merge(

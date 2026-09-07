@@ -69,7 +69,9 @@ class PlaybackService : MediaSessionService() {
             ) {
                 val backend = LibmpvBackend(this)
                 PlaybackEngine(
-                    session = DefaultPlayerSession(backend),
+                    session = DefaultPlayerSession(backend, onAutomaticTransition = { from, _ ->
+                        createdPlayer?.advanceAfterCompletion(from)
+                    }),
                     surfacePort = backend,
                     configurationPort = backend,
                 )
@@ -162,6 +164,7 @@ class PlaybackService : MediaSessionService() {
                     .add(SessionCommand(SubtitleRequestContract.ACTION_ADD, Bundle.EMPTY))
                     .add(SessionCommand(VideoSurfaceRequestContract.ACTION_RESIZE, Bundle.EMPTY))
                     .add(SessionCommand(PlaybackDiagnosticsContract.ACTION_READ, Bundle.EMPTY))
+                    .add(SessionCommand(TemporarySpeedContract.ACTION, Bundle.EMPTY))
             }
             // Media3 1.11's deprecated default callback returns an empty command set.
             // This is the connection's static ceiling; the player's current capabilities
@@ -179,6 +182,10 @@ class PlaybackService : MediaSessionService() {
                 })
         }
 
+        override fun onDisconnected(session: MediaSession, controller: MediaSession.ControllerInfo) {
+            player?.endControllerTemporarySpeed(controller)
+        }
+
         override fun onCustomCommand(
             session: MediaSession,
             controller: MediaSession.ControllerInfo,
@@ -187,11 +194,19 @@ class PlaybackService : MediaSessionService() {
         ): ListenableFuture<SessionResult> {
             if (customCommand.customAction != SubtitleRequestContract.ACTION_ADD &&
                 customCommand.customAction != VideoSurfaceRequestContract.ACTION_RESIZE &&
+                customCommand.customAction != TemporarySpeedContract.ACTION &&
                 customCommand.customAction != PlaybackDiagnosticsContract.ACTION_READ) {
                 return super.onCustomCommand(session, controller, customCommand, args)
             }
             if (controller.uid != Process.myUid()) {
                 return Futures.immediateFuture(SessionResult(SessionError.ERROR_PERMISSION_DENIED))
+            }
+            if (customCommand.customAction == TemporarySpeedContract.ACTION) {
+                val owned = player ?: return Futures.immediateFuture(SessionResult(SessionError.ERROR_INVALID_STATE))
+                return commandReply(owned.setTemporaryPlaybackSpeed(controller, args.getLong(TemporarySpeedContract.TOKEN),
+                    args.getString(TemporarySpeedContract.MEDIA_ID), args.getLong(TemporarySpeedContract.SEQUENCE),
+                    args.getInt(TemporarySpeedContract.INDEX, -1),
+                    if (args.containsKey(TemporarySpeedContract.RATE)) args.getFloat(TemporarySpeedContract.RATE) else null))
             }
             if (customCommand.customAction == PlaybackDiagnosticsContract.ACTION_READ) {
                 val owned = player ?: return Futures.immediateFuture(SessionResult(SessionError.ERROR_INVALID_STATE))

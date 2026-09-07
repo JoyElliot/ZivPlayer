@@ -46,8 +46,14 @@ import io.github.joyelliot.zivplayer.feature.library.LibraryScreen
 import io.github.joyelliot.zivplayer.feature.settings.SettingsScreen
 import io.github.joyelliot.zivplayer.feature.settings.DiagnosticsScreen
 import io.github.joyelliot.zivplayer.core.media.PlaybackResourceKind
+import io.github.joyelliot.zivplayer.core.media.LibraryMedia
 import io.github.joyelliot.zivplayer.core.model.PlayerPreferences
 import io.github.joyelliot.zivplayer.core.model.PlaybackDiagnostics
+import io.github.joyelliot.zivplayer.core.model.VideoFit
+import io.github.joyelliot.zivplayer.feature.player.FullscreenPlayerScreen
+import io.github.joyelliot.zivplayer.feature.player.PlayerQuickMenu
+import io.github.joyelliot.zivplayer.feature.player.PlayerQueuePanel
+import io.github.joyelliot.zivplayer.feature.player.PlayerQuickOption
 import io.github.joyelliot.zivplayer.feature.player.PlayerHomeScreen
 import io.github.joyelliot.zivplayer.feature.player.PlayerRepeatMode
 import io.github.joyelliot.zivplayer.feature.player.PlayerUiState
@@ -71,6 +77,10 @@ fun ZivPlayerApp(
     selectionNotice: MediaSelectionNotice? = null,
     historyUnavailable: Boolean = false,
     onDocumentSelected: (OpenMediaDocumentResult) -> Unit = {},
+    onLibraryPlaylist: (List<LibraryMedia>, Int) -> Unit = { _, _ -> },
+    onSelectQueueItem: (Int) -> Unit = {},
+    onPrevious: () -> Unit = {},
+    onNext: () -> Unit = {},
     onPlaybackConsumed: (Long) -> Unit = {},
     onPlaybackFailed: (Long) -> Unit = {},
     isPlaybackPending: (Long) -> Boolean = { true },
@@ -78,6 +88,10 @@ fun ZivPlayerApp(
     onStop: () -> Unit = {},
     onSeekTo: (Long) -> Unit = {},
     onPlaybackSpeedChange: (Float) -> Unit = {},
+    onBeginTemporarySpeed: () -> Long? = { null },
+    onTemporarySpeedChange: (Long, Float) -> Unit = { _, _ -> },
+    onEndTemporarySpeed: (Long) -> Unit = {},
+    interactionEnabled: Boolean = true,
     onVolumeChange: (Float) -> Unit = {},
     onRepeatModeChange: (PlayerRepeatMode) -> Unit = {},
     onSelectTrack: (PlayerTrackKind, String?) -> Unit = { _, _ -> },
@@ -98,8 +112,10 @@ fun ZivPlayerApp(
     onDiagnosticsVisibilityChange: (Boolean) -> Unit = {},
     onExportDiagnostics: () -> Unit = {},
 ) {
-    var destination by rememberSaveable { mutableStateOf(AppDestination.PLAYER) }
+    var destination by rememberSaveable { mutableStateOf(AppDestination.LIBRARY) }
     var showDiagnostics by rememberSaveable { mutableStateOf(false) }
+    var showQuickMenu by remember { mutableStateOf(false) }
+    var showQueue by remember { mutableStateOf(false) }
     var importKind by rememberSaveable { mutableStateOf(PlaybackResourceKind.FONT) }
     val preferences = settings?.preferences?.value ?: PlayerPreferences()
     val expanded = fullscreen || pictureInPicture
@@ -116,11 +132,11 @@ fun ZivPlayerApp(
         onDiagnosticsVisibilityChange(destination == AppDestination.SETTINGS && showDiagnostics && !expanded)
     }
     DisposableEffect(Unit) { onDispose { onDiagnosticsVisibilityChange(false) } }
-    BackHandler(enabled = fullscreen || destination != AppDestination.PLAYER || showDiagnostics) {
+    BackHandler(enabled = fullscreen || destination != AppDestination.LIBRARY || showDiagnostics) {
         when {
             fullscreen -> onFullscreenChange(false)
             showDiagnostics -> showDiagnostics = false
-            else -> destination = AppDestination.PLAYER
+            else -> destination = AppDestination.LIBRARY
         }
     }
     val openFolder = rememberLauncherForActivityResult(OpenMediaFolder()) { selection ->
@@ -130,16 +146,32 @@ fun ZivPlayerApp(
         selection?.let { settings?.importResource(it.uri, importKind) }
     }
     val openMedia = rememberLauncherForActivityResult(OpenMediaDocument()) { selection ->
-        selection?.let(onDocumentSelected)
+        selection?.let { destination = AppDestination.PLAYER; onDocumentSelected(it) }
     }
     val openSubtitle = rememberLauncherForActivityResult(OpenMediaDocument()) { selection ->
         onSubtitleSelected(selection?.uri)
+    }
+    val launchSubtitle: () -> Unit = {
+        if (onBeginSubtitleSelection()) openSubtitle.launch(arrayOf("*/*"))
+    }
+    val videoOptions = if (settings != null) VideoFit.entries.map { fit ->
+        PlayerQuickOption(fit.name, stringResource(when (fit) {
+            VideoFit.FIT -> R.string.video_fit_inside
+            VideoFit.FILL -> R.string.video_fit_crop
+            VideoFit.STRETCH -> R.string.video_fit_stretch
+        }), preferences.options.videoFit == fit)
+    } else emptyList()
+    val selectVideoFit: (String) -> Unit = { id ->
+        VideoFit.entries.firstOrNull { it.name == id }?.let { fit ->
+            settings?.update { current -> current.copy(options = current.options.copy(videoFit = fit)) }
+        }
     }
     LaunchedEffect(controller, pendingPlayback?.requestId) {
         val activeController = controller ?: return@LaunchedEffect
         val request = pendingPlayback ?: return@LaunchedEffect
         if (!isPlaybackPending(request.requestId)) return@LaunchedEffect
         val document = request.document
+        val mediaItems = request.documents.map { queuedDocument ->
         val metadata = MediaMetadata.Builder().apply {
             setExtras(
                 Bundle().apply {
@@ -147,11 +179,14 @@ fun ZivPlayerApp(
                     putLong(PlaybackRequestMetadata.SEQUENCE_EXTRA, request.requestId)
                 },
             )
-            document.metadata.title?.let(::setTitle)
-            document.metadata.artist?.let(::setArtist)
-            document.metadata.album?.let(::setAlbumTitle)
-            document.metadata.artworkLocator?.let { setArtworkUri(it.toUri()) }
+            queuedDocument.metadata.title?.let(::setTitle)
+            queuedDocument.metadata.artist?.let(::setArtist)
+            queuedDocument.metadata.album?.let(::setAlbumTitle)
+            queuedDocument.metadata.artworkLocator?.let { setArtworkUri(it.toUri()) }
         }.build()
+        MediaItem.Builder().setMediaId(queuedDocument.mediaId.value).setUri(queuedDocument.sourceUri.toUri())
+            .apply { queuedDocument.mimeType?.let(::setMimeType) }.setMediaMetadata(metadata).build()
+        }
         try {
             if (!activeController.isConnected) {
                 throw PlaybackControllerDisconnectedException()
@@ -177,17 +212,9 @@ fun ZivPlayerApp(
 
                     else -> request.startPositionMs
                 }
-                activeController.awaitCommand(Player.COMMAND_SET_MEDIA_ITEM)
+                activeController.awaitCommand(Player.COMMAND_CHANGE_MEDIA_ITEMS)
                 if (!isPlaybackPending(request.requestId)) return@LaunchedEffect
-                activeController.setMediaItem(
-                    MediaItem.Builder()
-                        .setMediaId(document.mediaId.value)
-                        .setUri(document.sourceUri.toUri())
-                        .apply { document.mimeType?.let(::setMimeType) }
-                        .setMediaMetadata(metadata)
-                        .build(),
-                    startPositionMs,
-                )
+                activeController.setMediaItems(mediaItems, request.startIndex, startPositionMs)
             }
             activeController.awaitRequestInstalled(request.dispatchToken, previousError)
             if (!isPlaybackPending(request.requestId)) return@LaunchedEffect
@@ -210,22 +237,23 @@ fun ZivPlayerApp(
     }
 
     ZivTheme(appearance = ZivAppearance.valueOf(preferences.appearance.name)) {
-        if (expanded) {
+        if (pictureInPicture) {
             Box(Modifier.fillMaxSize().background(Color.Black)) {
                 videoContent()
-                if (!pictureInPicture) Row(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ZivPrimaryButton("−${preferences.seekStepSeconds}s", { onSeekTo((playerState.positionMs - preferences.seekStepSeconds * 1000).coerceAtLeast(0)) }, enabled = playerState.canSeek)
-                    ZivPrimaryButton(stringResource(R.string.app_play_pause), onPlayPause, enabled = playerState.canPlayPause)
-                    ZivPrimaryButton("+${preferences.seekStepSeconds}s", { onSeekTo(playerState.positionMs + preferences.seekStepSeconds * 1000) }, enabled = playerState.canSeek)
-                    ZivPrimaryButton(stringResource(R.string.app_exit_fullscreen), { onFullscreenChange(false) })
-                }
             }
+        } else if (fullscreen) {
+            FullscreenPlayerScreen(playerState, videoContent, { onFullscreenChange(false) }, onPlayPause, onSeekTo,
+                onPlaybackSpeedChange, onVolumeChange, onRepeatModeChange, onSelectTrack, launchSubtitle,
+                onBeginTemporarySpeed, onTemporarySpeedChange, onEndTemporarySpeed, videoOptions, selectVideoFit,
+                interactionEnabled = interactionEnabled,
+                canPrevious = playerState.canPrevious, canNext = playerState.canNext, onPrevious = onPrevious, onNext = onNext,
+                onQueue = { showQueue = true }, queueVisible = showQueue)
         } else Column(Modifier.fillMaxSize()) {
             Box(Modifier.weight(1f)) { when (destination) {
             AppDestination.PLAYER ->
         PlayerHomeScreen(
             state = playerState,
+            showInlineOptions = false,
             recentMedia = recentMedia,
             statusMessage = selectionNotice?.toUserMessage()
                 ?: if (historyUnavailable) {
@@ -255,6 +283,12 @@ fun ZivPlayerApp(
                     ZivPrimaryButton(stringResource(R.string.app_fullscreen), { onFullscreenChange(true) }, Modifier.weight(1f), enabled = playerState.canRenderVideo && playerState.hasVideo)
                     ZivPrimaryButton(stringResource(R.string.app_pip), onEnterPictureInPicture, Modifier.weight(1f), enabled = playerState.canRenderVideo && playerState.hasVideo)
                 }
+                ZivPrimaryButton(stringResource(R.string.app_quick_menu), { showQuickMenu = true }, Modifier.fillMaxWidth(), enabled = playerState.hasMedia)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ZivPrimaryButton(stringResource(io.github.joyelliot.zivplayer.feature.player.R.string.player_previous), onPrevious, Modifier.weight(1f), enabled = playerState.canPrevious)
+                    ZivPrimaryButton(stringResource(io.github.joyelliot.zivplayer.feature.player.R.string.player_queue), { showQueue = true }, Modifier.weight(1f))
+                    ZivPrimaryButton(stringResource(io.github.joyelliot.zivplayer.feature.player.R.string.player_next), onNext, Modifier.weight(1f), enabled = playerState.canNext)
+                }
             },
         )
             AppDestination.LIBRARY -> LibraryScreen(
@@ -264,6 +298,11 @@ fun ZivPlayerApp(
                 onScan = { library?.scan(it) }, onCancelScan = { library?.cancelScan() },
                 onRemoveFolder = { library?.removeFolder(it) }, onFavorite = { library?.setFavorite(it) }, onHidden = { library?.setHidden(it) },
                 onOpen = { item -> destination = AppDestination.PLAYER; onDocumentSelected(OpenMediaDocumentResult(Uri.parse(item.sourceUri.value), 0)) },
+                onOpenQueue = { items, index -> destination = AppDestination.PLAYER; onLibraryPlaylist(items, index) },
+                onOpenFile = { openMedia.launch(arrayOf("video/*", "audio/*")) },
+                nowPlaying = { if (playerState.hasMedia) ZivPrimaryButton(
+                    stringResource(R.string.app_now_playing, playerState.title.orEmpty()),
+                    { destination = AppDestination.PLAYER }, Modifier.fillMaxWidth()) },
             )
             AppDestination.SETTINGS -> if (showDiagnostics) DiagnosticsScreen(
                 snapshot = diagnostics, device = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL} · Android ${android.os.Build.VERSION.RELEASE}",
@@ -286,10 +325,14 @@ fun ZivPlayerApp(
                 }
             }
         }
+        if (showQuickMenu && !expanded) PlayerQuickMenu(playerState, { showQuickMenu = false }, onPlaybackSpeedChange,
+            onVolumeChange, onRepeatModeChange, onSelectTrack, launchSubtitle, videoOptions, selectVideoFit,
+            onQueue = { showQuickMenu = false; showQueue = true })
+        if (showQueue && !pictureInPicture) PlayerQueuePanel(playerState, { showQueue = false }, onSelectQueueItem)
     }
 }
 
-private enum class AppDestination { PLAYER, LIBRARY, SETTINGS }
+private enum class AppDestination { LIBRARY, PLAYER, SETTINGS }
 
 @Composable
 private fun MediaSelectionNotice.toUserMessage(): String = when (this) {
@@ -300,6 +343,7 @@ private fun MediaSelectionNotice.toUserMessage(): String = when (this) {
         stringResource(R.string.media_session_only_history)
 
     MediaSelectionNotice.OPEN_FAILED -> stringResource(R.string.media_open_failed)
+    MediaSelectionNotice.QUEUE_TOO_LARGE -> stringResource(R.string.media_queue_too_large)
     MediaSelectionNotice.RECENT_ACCESS_LOST ->
         stringResource(R.string.media_recent_access_lost)
 

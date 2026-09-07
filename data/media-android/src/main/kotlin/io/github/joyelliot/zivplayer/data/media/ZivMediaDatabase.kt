@@ -8,7 +8,7 @@ import androidx.room.RoomDatabase
 @Database(
     entities = [RecentMediaEntity::class, LibraryFolderEntity::class, LibraryMediaEntity::class,
         TrackChoiceEntity::class, ExternalSubtitleEntity::class, PlaybackResourceEntity::class],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 internal abstract class ZivMediaDatabase : RoomDatabase() {

@@ -58,6 +58,8 @@ class DefaultPlayerSession(
     eventBufferCapacity: Int = DEFAULT_EVENT_BUFFER_CAPACITY,
     backendOperationTimeoutMillis: Long = DEFAULT_BACKEND_OPERATION_TIMEOUT_MILLIS,
     loadReadinessTimeoutMillis: Long = DEFAULT_LOAD_READINESS_TIMEOUT_MILLIS,
+    /** A platform owner may prepare per-item resources before advancing the authoritative queue. */
+    private val onAutomaticTransition: ((QueueItemId, Int) -> Unit)? = null,
 ) : PlayerSession {
     private val validatedEventBufferCapacity = eventBufferCapacity.also {
         require(it > 0) { "Event buffer capacity must be positive." }
@@ -230,6 +232,7 @@ class DefaultPlayerSession(
         }
         return when (command) {
             is PlayerCommand.SetQueue -> handleSetQueue(command)
+            is PlayerCommand.EditQueue -> handleEditQueue(command)
             PlayerCommand.Play -> handlePlay()
             PlayerCommand.Pause -> handlePause()
             is PlayerCommand.SeekTo -> handleSeek(command)
@@ -269,6 +272,22 @@ class DefaultPlayerSession(
         )
         return error?.let { CommandResult.Failed(mutableSnapshot.value.revision, it) }
             ?: accepted(changed = true)
+    }
+
+    private suspend fun handleEditQueue(command: PlayerCommand.EditQueue): CommandResult {
+        val current = mutableSnapshot.value
+        val item = current.queue.currentItem ?: return reject("Queue editing requires a current item.")
+        val index = command.items.indexOf(item)
+        if (index < 0) return reject("Queue editing must retain the exact current item.")
+        val queue = try { PlaybackQueue.of(command.items, index) } catch (_: IllegalArgumentException) {
+            return reject("The queue has duplicate IDs or an invalid current item.")
+        }
+        if (queue == current.queue) return accepted(changed = false)
+        val retained = queue.items.map { it.id }.toSet()
+        externalSubtitles.keys.retainAll(retained)
+        trackChoices.keys.retainAll(retained)
+        publish(current.copy(queue = queue), StateChangeCause.COMMAND)
+        return accepted(changed = true)
     }
 
     private suspend fun handlePlay(): CommandResult {
@@ -864,7 +883,9 @@ class DefaultPlayerSession(
             RepeatMode.ALL -> (currentIndex + 1) % current.queue.items.size
         }
 
-        if (targetIndex == null || !current.playWhenReady) {
+        val delegatedTransition = onAutomaticTransition != null && targetIndex != null &&
+            targetIndex != currentIndex && current.playWhenReady
+        if (targetIndex == null || !current.playWhenReady || delegatedTransition) {
             val endPosition = current.timeline.duration ?: current.timeline.position
             activeGeneration = null
             statusBeforeBuffering = null
@@ -877,6 +898,7 @@ class DefaultPlayerSession(
                 ),
                 StateChangeCause.BACKEND_EVENT,
             )
+            if (delegatedTransition) onAutomaticTransition?.invoke(checkNotNull(current.queue.currentItem).id, checkNotNull(targetIndex))
             return
         }
 
