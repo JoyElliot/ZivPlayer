@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.github.joyelliot.zivplayer.designsystem.*
@@ -41,6 +42,12 @@ fun FullscreenPlayerScreen(
     onNext: () -> Unit = {},
     onQueue: () -> Unit = {},
     queueVisible: Boolean = false,
+    onRotate: (() -> Unit)? = null,
+    onPictureInPicture: (() -> Unit)? = null,
+    onOpenMedia: (() -> Unit)? = null,
+    onStop: (() -> Unit)? = null,
+    statusMessage: String? = null,
+    exitDescription: String? = null,
     modifier: Modifier = Modifier,
 ) {
     var controlsVisible by remember(state.playbackIdentity) { mutableStateOf(true) }
@@ -71,26 +78,48 @@ fun FullscreenPlayerScreen(
         if (locked && unlockVisible) { delay(3_000); unlockVisible = false }
     }
     ZivTheme(appearance = ZivAppearance.DARK) {
-        Box(modifier.fillMaxSize().background(Color.Black)) {
+        BoxWithConstraints(modifier.fillMaxSize().background(Color.Black)) {
+            val safeInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal).asPaddingValues()
+            val direction = LocalLayoutDirection.current
+            val controlsWidth = maxWidth - safeInsets.calculateLeftPadding(direction) - safeInsets.calculateRightPadding(direction) - 40.dp
+            val compact = controlsWidth < 480.dp
             videoContent()
+            val audioReady = state.hasMedia && !state.hasVideo && state.playbackStatus in
+                listOf(PlayerPlaybackStatus.PLAYING, PlayerPlaybackStatus.PAUSED, PlayerPlaybackStatus.ENDED)
+            if (audioReady) Column(Modifier.align(Alignment.TopCenter).statusBarsPadding()
+                .padding(top = if (compact) 120.dp else 72.dp, start = 32.dp, end = 32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                ZivPlaybackGlyph(ZivPlaybackIcon.AUDIO, Modifier.size(72.dp))
+                ZivPlaybackText(state.title.orEmpty(), title = true, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            }
             PlayerVideoGestures(state, interactionEnabled && !locked && menuPage == null && !queueVisible,
                 onToggleControls = { controlsVisible = !controlsVisible; interactionRevision++ }, onPlayPause = onPlayPause,
                 onSeekTo = onSeekTo, onBeginTemporarySpeed = onBeginTemporarySpeed,
                 onTemporarySpeedChange = onTemporarySpeedChange, onEndTemporarySpeed = onEndTemporarySpeed,
                 onSeekPreview = { seekPreview = it }, onSpeedPreview = { speedPreview = it },
-                onGestureActive = { gestureActive = it; if (!it) interactionRevision++ }, modifier = Modifier.matchParentSize())
+                onGestureActive = { gestureActive = it; if (!it) interactionRevision++ },
+                modifier = Modifier.matchParentSize())
             if (controlsVisible && !locked && !gestureActive && menuPage == null && !queueVisible) {
                 Row(Modifier.align(Alignment.TopCenter).fillMaxWidth()
                     .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.6f), Color.Transparent)))
                     .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
                     .padding(start = 6.dp, end = 10.dp, top = 4.dp, bottom = 14.dp),
                     verticalAlignment = Alignment.CenterVertically) {
-                    ZivPlaybackIconButton(ZivPlaybackIcon.BACK, stringResource(R.string.player_exit_fullscreen), onExit)
+                    ZivPlaybackIconButton(ZivPlaybackIcon.BACK, exitDescription ?: stringResource(R.string.player_exit_fullscreen), onExit)
                     ZivPlaybackText(state.title ?: stringResource(R.string.player_title),
                         Modifier.weight(1f).padding(start = 8.dp, end = 12.dp), title = true, compact = true, maxLines = 1)
-                    ZivPlaybackIconButton(ZivPlaybackIcon.AUDIO, stringResource(R.string.player_audio_tracks), { openMenu(PlayerQuickPage.AUDIO) })
-                    ZivPlaybackIconButton(ZivPlaybackIcon.SUBTITLES, stringResource(R.string.player_subtitles), { openMenu(PlayerQuickPage.SUBTITLE) })
+                    if (!compact) {
+                        ZivPlaybackIconButton(ZivPlaybackIcon.AUDIO, stringResource(R.string.player_audio_tracks), { openMenu(PlayerQuickPage.AUDIO) })
+                        ZivPlaybackIconButton(ZivPlaybackIcon.SUBTITLES, stringResource(R.string.player_subtitles), { openMenu(PlayerQuickPage.SUBTITLE) })
+                    }
                     ZivPlaybackIconButton(ZivPlaybackIcon.MORE, stringResource(R.string.player_quick_menu), { openMenu(PlayerQuickPage.MAIN) })
+                }
+                if (compact) Row(Modifier.align(Alignment.Center), horizontalArrangement = Arrangement.spacedBy(36.dp), verticalAlignment = Alignment.CenterVertically) {
+                    ZivPlaybackIconButton(ZivPlaybackIcon.PREVIOUS, stringResource(R.string.player_previous), { reveal(); onPrevious() }, enabled = canPrevious)
+                    ZivPlaybackIconButton(if (state.playWhenReady) ZivPlaybackIcon.PAUSE else ZivPlaybackIcon.PLAY,
+                        stringResource(if (state.playWhenReady) R.string.player_pause else R.string.player_play),
+                        { reveal(); onPlayPause() }, enabled = state.canPlayPause, prominent = true)
+                    ZivPlaybackIconButton(ZivPlaybackIcon.NEXT, stringResource(R.string.player_next), { reveal(); onNext() }, enabled = canNext)
                 }
                 Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()
                     .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f))))
@@ -117,25 +146,25 @@ fun FullscreenPlayerScreen(
                         ZivPlaybackText(total, Modifier.widthIn(min = 42.dp), compact = true, maxLines = 1,
                             textAlign = androidx.compose.ui.text.style.TextAlign.End)
                     }
-                    BoxWithConstraints(Modifier.fillMaxWidth()) {
-                        val compact = maxWidth < 480.dp
-                        Box(Modifier.fillMaxWidth().height(if (compact) 104.dp else 56.dp)) {
-                            Row(Modifier.align(if (compact) Alignment.BottomStart else Alignment.CenterStart), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.fillMaxWidth()) {
+                        Box(Modifier.fillMaxWidth().height(56.dp)) {
+                            Row(Modifier.align(Alignment.CenterStart), verticalAlignment = Alignment.CenterVertically) {
                                 ZivPlaybackIconButton(ZivPlaybackIcon.UNLOCK, stringResource(R.string.player_lock_controls), {
                                     locked = true; unlockVisible = true; interactionRevision++
                                 })
                                 ZivPlaybackTextButton(formatPlaybackSpeed(state.playbackSpeed), { openMenu(PlayerQuickPage.SPEED) }, enabled = state.canSetSpeed)
                             }
-                            Row(Modifier.align(if (compact) Alignment.TopCenter else Alignment.Center), horizontalArrangement = Arrangement.spacedBy(24.dp), verticalAlignment = Alignment.CenterVertically) {
+                            if (!compact) Row(Modifier.align(Alignment.Center), horizontalArrangement = Arrangement.spacedBy(24.dp), verticalAlignment = Alignment.CenterVertically) {
                                 ZivPlaybackIconButton(ZivPlaybackIcon.PREVIOUS, stringResource(R.string.player_previous), { reveal(); onPrevious() }, enabled = canPrevious)
                                 ZivPlaybackIconButton(if (state.playWhenReady) ZivPlaybackIcon.PAUSE else ZivPlaybackIcon.PLAY,
                                     stringResource(if (state.playWhenReady) R.string.player_pause else R.string.player_play),
                                     { reveal(); onPlayPause() }, enabled = state.canPlayPause, prominent = true)
                                 ZivPlaybackIconButton(ZivPlaybackIcon.NEXT, stringResource(R.string.player_next), { reveal(); onNext() }, enabled = canNext)
                             }
-                            Row(Modifier.align(if (compact) Alignment.BottomEnd else Alignment.CenterEnd)) {
+                            Row(Modifier.align(Alignment.CenterEnd)) {
                                 if (videoOptions.isNotEmpty()) ZivPlaybackIconButton(ZivPlaybackIcon.FIT, stringResource(R.string.player_video_fit), { openMenu(PlayerQuickPage.VIDEO) })
                                 ZivPlaybackIconButton(ZivPlaybackIcon.LIST, stringResource(R.string.player_queue), { reveal(); onQueue() })
+                                onRotate?.let { ZivPlaybackIconButton(ZivPlaybackIcon.FULLSCREEN, stringResource(R.string.player_rotate), it) }
                             }
                         }
                     }
@@ -161,10 +190,14 @@ fun FullscreenPlayerScreen(
                 Box(Modifier.align(Alignment.Center)) { ZivLoadingIndicator() }
             }
             state.errorMessage?.let { ZivPlaybackText(it, Modifier.align(Alignment.Center).padding(32.dp)) }
+            if (controlsVisible && !locked) statusMessage?.let {
+                ZivPlaybackText(it, Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 68.dp, start = 24.dp, end = 24.dp))
+            }
             menuPage?.let { page ->
                 PlayerQuickMenu(state, { menuPage = null; reveal() }, onPlaybackSpeedChange, onVolumeChange,
                     onRepeatModeChange, onSelectTrack, onOpenSubtitle, videoOptions, onVideoOptionSelected,
-                    initialPage = page, onQueue = { menuPage = null; onQueue() })
+                    initialPage = page, onQueue = { menuPage = null; onQueue() },
+                    onPictureInPicture = onPictureInPicture, onOpenMedia = onOpenMedia, onStop = onStop)
             }
         }
     }

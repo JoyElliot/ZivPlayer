@@ -10,6 +10,7 @@ import android.os.SystemClock
 import android.view.WindowManager
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -52,7 +53,6 @@ class NativePlaybackSmokeTest {
         }
         val controller = future.get(15, TimeUnit.SECONDS)
         activity.waitForIdle()
-        activity.onNodeWithText(context.getString(R.string.app_player)).performClick()
         val sequence = PlaybackRequestSequencer.next()
         val mediaId = "zivplayer-generated-device-fixture"
         try {
@@ -78,6 +78,8 @@ class NativePlaybackSmokeTest {
                 currentTracks.groups.count { it.type == C.TRACK_TYPE_AUDIO } == 2 &&
                     currentTracks.groups.count { it.type == C.TRACK_TYPE_TEXT } == 2
             }
+            activity.waitUntil(5_000) { activity.onAllNodesWithText("Generated native smoke fixture").fetchSemanticsNodes().isNotEmpty() }
+            activity.onNodeWithText("Generated native smoke fixture").performClick()
             onMain { controller.play() }
             await(controller, "advancing decoded playback") { isPlaying && currentPosition >= 600 }
             onMain { controller.pause() }

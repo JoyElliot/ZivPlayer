@@ -52,8 +52,6 @@ import io.github.joyelliot.zivplayer.core.model.PlayerPreferences
 import io.github.joyelliot.zivplayer.core.model.PlaybackDiagnostics
 import io.github.joyelliot.zivplayer.core.model.VideoFit
 import io.github.joyelliot.zivplayer.feature.player.FullscreenPlayerScreen
-import io.github.joyelliot.zivplayer.feature.player.PlayerHomeScreen
-import io.github.joyelliot.zivplayer.feature.player.PlayerQuickMenu
 import io.github.joyelliot.zivplayer.feature.player.PlayerQueuePanel
 import io.github.joyelliot.zivplayer.feature.player.PlayerQuickOption
 import io.github.joyelliot.zivplayer.feature.player.MiniPlayer
@@ -117,11 +115,10 @@ fun ZivPlayerApp(
 ) {
     var destination by rememberSaveable { mutableStateOf(AppDestination.LIBRARY) }
     var showDiagnostics by rememberSaveable { mutableStateOf(false) }
-    var showQuickMenu by remember { mutableStateOf(false) }
     var showQueue by remember { mutableStateOf(false) }
     var importKind by rememberSaveable { mutableStateOf(PlaybackResourceKind.FONT) }
     val preferences = settings?.preferences?.value ?: PlayerPreferences()
-    val expanded = fullscreen || pictureInPicture
+    val expanded = destination == AppDestination.PLAYER || fullscreen || pictureInPicture
     val libraryState = rememberSaveableStateHolder()
     var libraryBack by remember { mutableStateOf<(() -> Unit)?>(null) }
     fun leavePlayer() { onFullscreenChange(false); showQueue = false; destination = AppDestination.LIBRARY }
@@ -248,13 +245,18 @@ fun ZivPlayerApp(
             Box(Modifier.fillMaxSize().background(Color.Black)) {
                 videoContent()
             }
-        } else if (fullscreen) {
-            FullscreenPlayerScreen(playerState, videoContent, { onFullscreenChange(false) }, onPlayPause, onSeekTo,
+        } else if (destination == AppDestination.PLAYER || fullscreen) {
+            FullscreenPlayerScreen(playerState, videoContent, ::leavePlayer, onPlayPause, onSeekTo,
                 onPlaybackSpeedChange, onVolumeChange, onRepeatModeChange, onSelectTrack, launchSubtitle,
                 onBeginTemporarySpeed, onTemporarySpeedChange, onEndTemporarySpeed, videoOptions, selectVideoFit,
                 interactionEnabled = interactionEnabled,
                 canPrevious = playerState.canPrevious, canNext = playerState.canNext, onPrevious = onPrevious, onNext = onNext,
-                onQueue = { showQueue = true }, queueVisible = showQueue)
+                onQueue = { showQueue = true }, queueVisible = showQueue,
+                onRotate = { onFullscreenChange(!fullscreen) },
+                onPictureInPicture = onEnterPictureInPicture,
+                onOpenMedia = { openMedia.launch(arrayOf("video/*", "audio/*")) }, onStop = onStop,
+                statusMessage = selectionNotice?.toUserMessage(),
+                exitDescription = stringResource(io.github.joyelliot.zivplayer.feature.library.R.string.library_back_folders))
         } else when (destination) {
             AppDestination.LIBRARY -> libraryState.SaveableStateProvider("library") {
                 LibraryScreen(
@@ -295,51 +297,8 @@ fun ZivPlayerApp(
                     onDiagnostics = { showDiagnostics = true },
                 )
             }
-            AppDestination.PLAYER ->
-        PlayerHomeScreen(
-            state = playerState,
-            showInlineOptions = false,
-            recentMedia = recentMedia,
-            statusMessage = selectionNotice?.toUserMessage()
-                ?: if (historyUnavailable) {
-                    stringResource(R.string.media_history_unavailable)
-                } else {
-                    null
-                },
-            onOpenMedia = { openMedia.launch(arrayOf("video/*", "audio/*")) },
-            onPlayPause = onPlayPause,
-            onStop = onStop,
-            onSeekTo = onSeekTo,
-            onPlaybackSpeedChange = onPlaybackSpeedChange,
-            onVolumeChange = onVolumeChange,
-            onRepeatModeChange = onRepeatModeChange,
-            onSelectTrack = onSelectTrack,
-            onOpenSubtitle = {
-                if (onBeginSubtitleSelection()) {
-                    // SAF providers frequently classify ASS/SRT as generic binary documents.
-                    openSubtitle.launch(arrayOf("*/*"))
-                }
-            },
-            onOpenRecent = onOpenRecent,
-            onForgetRecent = onForgetRecent,
-            videoContent = videoContent,
-            extraControls = {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ZivPrimaryButton(stringResource(R.string.app_fullscreen), { onFullscreenChange(true) }, Modifier.weight(1f), enabled = playerState.canRenderVideo && playerState.hasVideo)
-                    ZivPrimaryButton(stringResource(R.string.app_pip), onEnterPictureInPicture, Modifier.weight(1f), enabled = playerState.canRenderVideo && playerState.hasVideo)
-                }
-                ZivPrimaryButton(stringResource(R.string.app_quick_menu), { showQuickMenu = true }, Modifier.fillMaxWidth(), enabled = playerState.hasMedia)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ZivPrimaryButton(stringResource(io.github.joyelliot.zivplayer.feature.player.R.string.player_previous), onPrevious, Modifier.weight(1f), enabled = playerState.canPrevious)
-                    ZivPrimaryButton(stringResource(io.github.joyelliot.zivplayer.feature.player.R.string.player_queue), { showQueue = true }, Modifier.weight(1f))
-                    ZivPrimaryButton(stringResource(io.github.joyelliot.zivplayer.feature.player.R.string.player_next), onNext, Modifier.weight(1f), enabled = playerState.canNext)
-                }
-            },
-        )
+            AppDestination.PLAYER -> Unit
         }
-        if (showQuickMenu && !expanded) PlayerQuickMenu(playerState, { showQuickMenu = false }, onPlaybackSpeedChange,
-            onVolumeChange, onRepeatModeChange, onSelectTrack, launchSubtitle, videoOptions, selectVideoFit,
-            onQueue = { showQuickMenu = false; showQueue = true })
         if (showQueue && !pictureInPicture) PlayerQueuePanel(playerState, { showQueue = false }, onSelectQueueItem)
     }
 }

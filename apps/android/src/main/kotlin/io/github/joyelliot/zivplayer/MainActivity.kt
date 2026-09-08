@@ -45,7 +45,7 @@ class MainActivity : ComponentActivity() {
     private val settings by viewModels<SettingsViewModel>()
     private var fullscreen by mutableStateOf(false)
     private var inPictureInPicture by mutableStateOf(false)
-    private var playerVisible by mutableStateOf(true)
+    private var playerVisible by mutableStateOf(false)
     private var pipEntryPending = false
     private var started by mutableStateOf(false)
     private var windowFocused by mutableStateOf(false)
@@ -88,10 +88,10 @@ class MainActivity : ComponentActivity() {
                 if (playing && preferences.keepScreenOn) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                 else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             }
-            LaunchedEffect(fullscreen, inPictureInPicture) {
+            LaunchedEffect(fullscreen, playerVisible, inPictureInPicture) {
                 val bars = WindowCompat.getInsetsController(window, window.decorView)
                 bars.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-                if (fullscreen && !inPictureInPicture) bars.hide(WindowInsetsCompat.Type.systemBars())
+                if ((fullscreen || playerVisible) && !inPictureInPicture) bars.hide(WindowInsetsCompat.Type.systemBars())
                 else bars.show(WindowInsetsCompat.Type.systemBars())
             }
             LaunchedEffect(playing, hasVideo, canRenderVideo, aspectRatio, preferences.autoPictureInPicture, settings.loaded.value, playerVisible) { updatePipParameters() }
