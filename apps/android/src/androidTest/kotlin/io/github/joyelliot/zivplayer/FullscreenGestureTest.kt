@@ -27,22 +27,84 @@ class FullscreenGestureTest {
     private val state = mutableStateOf(PlayerUiState(connectionStatus = PlayerConnectionStatus.CONNECTED,
         playbackStatus = PlayerPlaybackStatus.PLAYING, mediaId = "gesture-media", playbackIdentity = "occurrence-1",
         title = "Gesture video", positionMs = 100_000L, durationMs = 400_000L, playWhenReady = true,
-        canPlayPause = true, canSeek = true, canSetSpeed = true))
+        canPlayPause = true, canSeek = true, canSetSpeed = true, hasVideo = true,
+        canSetVolume = true, volume = 0.5f))
     private var playPause = 0
     private val seeks = mutableListOf<Long>()
     private val rates = mutableListOf<Float>()
     private val ended = mutableListOf<Long>()
     private var token = 0L
+    private val brightness = mutableListOf<Float>()
+    private val volumes = mutableListOf<Float>()
 
     @Test fun singleTapTogglesControlsAndDoubleTapOnlyTogglesPlayback() {
         showPlayer()
-        video().performTouchInput { click(center) }
+        video().performTouchInput { click(Offset(width * 0.5f, height * 0.35f)) }
         compose.mainClock.advanceTimeBy(400)
         compose.onNodeWithText("Gesture video").assertDoesNotExist()
-        video().performTouchInput { doubleClick(center) }
+        video().performTouchInput { doubleClick(Offset(width * 0.5f, height * 0.35f)) }
         compose.mainClock.advanceTimeBy(400)
         compose.onNodeWithText("Gesture video").assertDoesNotExist()
         compose.runOnIdle { assertEquals(1, playPause); assertTrue(seeks.isEmpty()); assertTrue(rates.isEmpty()) }
+    }
+
+    @Test fun sideDoubleTapsSeekFiveSecondsWithoutTogglingPlaybackOrControls() {
+        showPlayer()
+        video().performTouchInput { doubleClick(Offset(width * 0.15f, height * 0.35f)) }
+        compose.mainClock.advanceTimeByFrame()
+        compose.onNodeWithText(context.getString(PlayerR.string.player_rewind_five)).assertIsDisplayed()
+        compose.runOnIdle { assertEquals(listOf(95_000L), seeks); assertEquals(0, playPause) }
+        compose.mainClock.advanceTimeBy(900)
+        compose.onNodeWithText(context.getString(PlayerR.string.player_rewind_five)).assertDoesNotExist()
+        video().performTouchInput { doubleClick(Offset(width * 0.85f, height * 0.35f)) }
+        compose.mainClock.advanceTimeByFrame()
+        compose.onNodeWithText(context.getString(PlayerR.string.player_forward_five)).assertIsDisplayed()
+        compose.runOnIdle { assertEquals(listOf(95_000L, 105_000L), seeks); assertEquals(0, playPause) }
+        compose.onNodeWithText("Gesture video").assertIsDisplayed()
+    }
+
+    @Test fun verticalSwipesAdjustOnlyTheirOwnSideAndDoNotSeekOrHold() {
+        showPlayer()
+        video().performTouchInput { swipe(Offset(width * 0.15f, height * 0.7f), Offset(width * 0.15f, height * 0.3f), 300) }
+        compose.runOnIdle { assertEquals(1f, brightness.last(), 0.01f); assertTrue(volumes.isEmpty()) }
+        video().performTouchInput { swipe(Offset(width * 0.85f, height * 0.3f), Offset(width * 0.85f, height * 0.7f), 300) }
+        compose.runOnIdle {
+            assertEquals(0f, volumes.last(), 0.01f)
+            assertEquals(0, playPause); assertTrue(seeks.isEmpty()); assertTrue(rates.isEmpty())
+        }
+    }
+
+    @Test fun capabilityUpdateBetweenTapsKeepsTheDoubleTapAndMediaChangeClearsFeedback() {
+        state.value = state.value.copy(canSeek = false, canSetSpeed = false)
+        showPlayer()
+        video().performTouchInput { click(Offset(width * 0.15f, height * 0.35f)) }
+        compose.runOnIdle { state.value = state.value.copy(canSeek = true, canSetSpeed = true) }
+        compose.mainClock.advanceTimeBy(80)
+        video().performTouchInput { click(Offset(width * 0.15f, height * 0.35f)) }
+        compose.mainClock.advanceTimeByFrame()
+        compose.runOnIdle { assertEquals(listOf(95_000L), seeks); assertEquals(0, playPause) }
+        compose.onNodeWithText(context.getString(PlayerR.string.player_rewind_five)).assertIsDisplayed()
+        compose.runOnIdle { state.value = state.value.copy(playbackIdentity = "replacement") }
+        compose.mainClock.advanceTimeByFrame()
+        compose.onNodeWithText(context.getString(PlayerR.string.player_rewind_five)).assertDoesNotExist()
+        compose.mainClock.advanceTimeBy(400)
+        compose.onNodeWithText("Gesture video").assertIsDisplayed()
+    }
+
+    @Test fun canceledOrMultitouchSwipesNeverCommitASeek() {
+        showPlayer()
+        video().performTouchInput {
+            down(Offset(width * 0.2f, height * 0.35f))
+            moveTo(Offset(width * 0.7f, height * 0.35f))
+            cancel()
+        }
+        video().performTouchInput {
+            down(0, Offset(width * 0.2f, height * 0.35f))
+            moveTo(0, Offset(width * 0.7f, height * 0.35f))
+            down(1, Offset(width * 0.8f, height * 0.4f))
+            up(1); up(0)
+        }
+        compose.runOnIdle { assertTrue(seeks.isEmpty()); assertEquals(0, playPause) }
     }
 
     @Test fun horizontalSwipeCommitsOneBoundedSeek() {
@@ -65,7 +127,7 @@ class FullscreenGestureTest {
         compose.runOnIdle { assertEquals(0.25f, rates.last(), 0f) }
         video().performTouchInput { up() }
         compose.runOnIdle { assertEquals(listOf(1L), ended); assertTrue(seeks.isEmpty()) }
-        video().performTouchInput { down(center) }
+        video().performTouchInput { down(Offset(width * 0.5f, height * 0.35f)) }
         compose.mainClock.advanceTimeBy(650)
         compose.runOnIdle { state.value = state.value.copy(playbackIdentity = "occurrence-2") }
         compose.mainClock.advanceTimeByFrame()
@@ -104,11 +166,13 @@ class FullscreenGestureTest {
         compose.onNodeWithContentDescription(context.getString(PlayerR.string.player_lock_controls)).performClick()
         compose.mainClock.advanceTimeByFrame()
         video().performTouchInput { doubleClick(center) }
+        video().performTouchInput { doubleClick(Offset(width * 0.15f, height * 0.35f)) }
+        video().performTouchInput { swipe(Offset(width * 0.85f, height * 0.3f), Offset(width * 0.85f, height * 0.7f), 300) }
         compose.mainClock.advanceTimeBy(400)
-        compose.runOnIdle { assertEquals(0, playPause); assertTrue(seeks.isEmpty()); assertTrue(rates.isEmpty()) }
+        compose.runOnIdle { assertEquals(0, playPause); assertTrue(seeks.isEmpty()); assertTrue(rates.isEmpty()); assertTrue(volumes.isEmpty()); assertTrue(brightness.isEmpty()) }
         compose.onNodeWithContentDescription(context.getString(PlayerR.string.player_unlock_controls)).performClick()
         compose.mainClock.advanceTimeByFrame()
-        video().performTouchInput { doubleClick(center) }
+        video().performTouchInput { doubleClick(Offset(width * 0.5f, height * 0.35f)) }
         compose.mainClock.advanceTimeBy(400)
         compose.runOnIdle { assertEquals(1, playPause) }
     }
@@ -117,9 +181,10 @@ class FullscreenGestureTest {
         compose.mainClock.autoAdvance = false
         compose.setContent {
             FullscreenPlayerScreen(state.value, videoContent = { Box {} }, onExit = {}, onPlayPause = { playPause++ },
-                onSeekTo = { seeks += it }, onPlaybackSpeedChange = {}, onVolumeChange = {}, onRepeatModeChange = {},
+                onSeekTo = { seeks += it }, onPlaybackSpeedChange = {}, onVolumeChange = { volumes += it }, onRepeatModeChange = {},
                 onSelectTrack = { _, _ -> }, onOpenSubtitle = {}, onBeginTemporarySpeed = { ++token },
-                onTemporarySpeedChange = { _, rate -> rates += rate }, onEndTemporarySpeed = { ended += it })
+                onTemporarySpeedChange = { _, rate -> rates += rate }, onEndTemporarySpeed = { ended += it },
+                brightness = 0.5f, onBrightnessChange = { brightness += it })
         }
         compose.mainClock.advanceTimeByFrame()
     }

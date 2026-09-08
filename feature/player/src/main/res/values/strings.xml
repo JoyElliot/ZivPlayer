@@ -42,7 +42,12 @@
     <string name="player_speed_title">Playback speed</string>
     <string name="player_video_fit">Picture fit</string>
     <string name="player_repeat_title">Repeat</string>
-    <string name="player_gesture_help">Tap to show controls · Double tap to pause\nSwipe to seek · Hold for 2×, then slide to change speed</string>
+    <string name="player_gesture_help">Tap to show controls\nDouble tap left / right to seek −5 / +5 seconds; center to pause\nSwipe horizontally to seek; vertically on the left for brightness, right for volume\nHold for 2×, then slide to change speed</string>
+    <string name="player_rotate">Rotate screen</string>
+    <string name="player_pip">Picture-in-picture</string>
+    <string name="player_brightness_description">Brightness %1$d%%</string>
+    <string name="player_rewind_five">−5 seconds</string>
+    <string name="player_forward_five">+5 seconds</string>
     <string name="player_hold_speed">%1$s · Release to restore</string>
     <string name="player_seek_preview">%1$s / %2$s</string>
     <string name="player_seek_backward">Rewind</string>
@@ -59,6 +64,4 @@
     <string name="player_lock_controls">Lock controls</string>
     <string name="player_unlock_controls">Unlock controls</string>
     <string name="player_speed_temporary_hint">Hold the video for temporary 2× playback. Slide left or right to adjust it; release to restore this speed.</string>
-    <string name="player_rotate">Rotate screen</string>
-    <string name="player_pip">Picture-in-picture</string>
 </resources>

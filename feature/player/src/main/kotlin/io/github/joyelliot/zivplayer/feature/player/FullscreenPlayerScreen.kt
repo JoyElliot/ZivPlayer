@@ -42,6 +42,8 @@ fun FullscreenPlayerScreen(
     onNext: () -> Unit = {},
     onQueue: () -> Unit = {},
     queueVisible: Boolean = false,
+    brightness: Float? = null,
+    onBrightnessChange: (Float) -> Unit = {},
     onRotate: (() -> Unit)? = null,
     onPictureInPicture: (() -> Unit)? = null,
     onOpenMedia: (() -> Unit)? = null,
@@ -59,6 +61,9 @@ fun FullscreenPlayerScreen(
     var speedPreview by remember(state.playbackIdentity) { mutableStateOf<Float?>(null) }
     var sliderPosition by remember(state.playbackIdentity) { mutableStateOf<Float?>(null) }
     var interactionRevision by remember { mutableIntStateOf(0) }
+    var levelPreview by remember(state.playbackIdentity) { mutableStateOf<Pair<Boolean, Float>?>(null) }
+    var doubleTapDelta by remember(state.playbackIdentity) { mutableStateOf<Long?>(null) }
+    var doubleTapRevision by remember(state.playbackIdentity) { mutableIntStateOf(0) }
     fun reveal() { controlsVisible = true; interactionRevision++ }
     fun openMenu(page: PlayerQuickPage) { reveal(); menuPage = page }
 
@@ -77,6 +82,7 @@ fun FullscreenPlayerScreen(
     LaunchedEffect(locked, unlockVisible, interactionRevision) {
         if (locked && unlockVisible) { delay(3_000); unlockVisible = false }
     }
+    LaunchedEffect(state.playbackIdentity, doubleTapRevision) { delay(800); doubleTapDelta = null }
     ZivTheme(appearance = ZivAppearance.DARK) {
         BoxWithConstraints(modifier.fillMaxSize().background(Color.Black)) {
             val safeInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal).asPaddingValues()
@@ -98,6 +104,9 @@ fun FullscreenPlayerScreen(
                 onTemporarySpeedChange = onTemporarySpeedChange, onEndTemporarySpeed = onEndTemporarySpeed,
                 onSeekPreview = { seekPreview = it }, onSpeedPreview = { speedPreview = it },
                 onGestureActive = { gestureActive = it; if (!it) interactionRevision++ },
+                brightness = brightness, onBrightnessChange = onBrightnessChange, onVolumeChange = onVolumeChange,
+                onLevelPreview = { left, value -> levelPreview = value?.let { left to it } },
+                onDoubleTapSeek = { doubleTapDelta = it; doubleTapRevision++; interactionRevision++ },
                 modifier = Modifier.matchParentSize())
             if (controlsVisible && !locked && !gestureActive && menuPage == null && !queueVisible) {
                 Row(Modifier.align(Alignment.TopCenter).fillMaxWidth()
@@ -179,6 +188,8 @@ fun FullscreenPlayerScreen(
                 }
             }
             val hint = when {
+                levelPreview != null -> stringResource(if (levelPreview!!.first) R.string.player_brightness_description else R.string.player_volume_description,
+                    (levelPreview!!.second * 100f).toInt())
                 speedPreview != null -> stringResource(R.string.player_hold_speed, formatPlaybackSpeed(checkNotNull(speedPreview)))
                 seekPreview != null -> stringResource(R.string.player_seek_preview, formatPlaybackTime(checkNotNull(seekPreview)), state.durationMs?.let(::formatPlaybackTime).orEmpty())
                 else -> null
@@ -186,6 +197,12 @@ fun FullscreenPlayerScreen(
             if (hint != null) Box(Modifier.align(if (speedPreview != null) Alignment.TopCenter else Alignment.Center)
                 .padding(top = 28.dp).background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(8.dp))
                 .padding(horizontal = 18.dp, vertical = 10.dp)) { ZivPlaybackText(hint) }
+            doubleTapDelta?.let { delta ->
+                Box(Modifier.align(if (delta < 0) Alignment.CenterStart else Alignment.CenterEnd).padding(24.dp)
+                    .background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(24.dp)).padding(18.dp)) {
+                    ZivPlaybackText(stringResource(if (delta < 0) R.string.player_rewind_five else R.string.player_forward_five))
+                }
+            }
             if (state.playbackStatus == PlayerPlaybackStatus.LOADING || state.playbackStatus == PlayerPlaybackStatus.BUFFERING) {
                 Box(Modifier.align(Alignment.Center)) { ZivLoadingIndicator() }
             }
