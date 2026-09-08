@@ -12,20 +12,14 @@
     <string name="subtitle_loading">正在打开字幕…</string>
     <string name="subtitle_added">字幕已添加，可用后会显示在轨道列表中。</string>
     <string name="subtitle_failed">无法打开此字幕。</string>
-    <string name="app_player">播放器</string>
     <string name="app_library">媒体库</string>
-    <string name="app_settings">设置</string>
-    <string name="app_fullscreen">全屏</string>
-    <string name="app_pip">画中画</string>
     <string name="app_play_pause">播放 / 暂停</string>
     <string name="app_pip_unavailable">当前无法进入画中画，请检查 Android 设置中的画中画权限。</string>
     <string name="diagnostics_read_failed">暂时无法读取播放诊断。</string>
     <string name="diagnostics_exported">诊断信息已导出。</string>
     <string name="diagnostics_export_failed">未能完成导出，目标位置可能保留了不完整的文件。</string>
-    <string name="app_quick_menu">快捷菜单</string>
     <string name="video_fit_inside">适应画面</string>
     <string name="video_fit_crop">裁切铺满</string>
     <string name="video_fit_stretch">拉伸铺满</string>
     <string name="media_queue_too_large">播放列表最多支持 500 个文件，请使用筛选或搜索缩小范围。</string>
-    <string name="app_now_playing">正在播放 · %1$s</string>
 </resources>

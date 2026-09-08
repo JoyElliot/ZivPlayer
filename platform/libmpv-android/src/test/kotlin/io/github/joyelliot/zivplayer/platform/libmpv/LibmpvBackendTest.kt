@@ -31,6 +31,38 @@ import org.junit.Test
 
 class LibmpvBackendTest {
     @Test
+    fun repeatedSurfaceRedrawPreservesPlaybackAndRejectsTheOldLease() = runBlocking {
+        val client = FakeMpvClient()
+        val backend = LibmpvBackend(TestContext, MpvClientFactory { client }, { "/test/mpv" })
+        backend.play()
+        backend.pause()
+        client.doubles["window-scale"] = 1.25
+        client.doubles["time-pos"] = 17.5
+        val unsafeClass = Class.forName("sun.misc.Unsafe")
+        val unsafeField = unsafeClass.getDeclaredField("theUnsafe").apply { isAccessible = true }
+        val unsafe = unsafeField.get(null)
+        fun surface() = unsafeClass.getMethod("allocateInstance", Class::class.java)
+            .invoke(unsafe, Surface::class.java) as Surface
+        val old = backend.attachSurface(surface())
+        val current = backend.attachSurface(surface())
+        client.commands.clear()
+        client.stringWrites.clear()
+        client.doubleWrites.clear()
+        repeat(2) { backend.resizeSurface(current, 2400, 1080) }
+        val stringWrites = client.stringWrites.toList()
+        val doubleWrites = client.doubleWrites.toList()
+        backend.resizeSurface(old, 1080, 2400)
+        assertEquals(stringWrites, client.stringWrites)
+        assertEquals(doubleWrites, client.doubleWrites)
+        assertEquals(listOf("window-scale" to 1.25, "window-scale" to 1.25), doubleWrites)
+        assertEquals("2400x1080", client.strings["android-surface-size"])
+        assertEquals(17.5, client.doubles["time-pos"])
+        assertEquals(true, client.flags["pause"])
+        assertTrue(client.commands.isEmpty())
+        backend.close()
+    }
+
+    @Test
     fun replacementClosesPreviousSourceOnlyAfterNativeEnd() = runBlocking {
         val client = FakeMpvClient()
         val events = mutableListOf<String>()
@@ -271,6 +303,8 @@ class LibmpvBackendTest {
         val strings = mutableMapOf<String, String>()
         val stringWrites = mutableListOf<String>()
         val flags = mutableMapOf<String, Boolean>()
+        val doubles = mutableMapOf<String, Double>()
+        val doubleWrites = mutableListOf<Pair<String, Double>>()
         var stringFailure: (String, String) -> Boolean = { _, _ -> false }
         var commandHandler: (Array<String>) -> Unit = {}
         val commands = mutableListOf<List<String>>()
@@ -293,11 +327,14 @@ class LibmpvBackendTest {
 
         override fun command(arguments: Array<String>) { commands += arguments.toList(); commandHandler(arguments) }
 
-        override fun getPropertyDouble(name: String): Double? = null
+        override fun getPropertyDouble(name: String): Double? = doubles[name]
 
         override fun getPropertyBoolean(name: String): Boolean? = null
 
-        override fun setPropertyDouble(name: String, value: Double) = Unit
+        override fun setPropertyDouble(name: String, value: Double) {
+            doubles[name] = value
+            doubleWrites += name to value
+        }
 
         override fun setPropertyBoolean(name: String, value: Boolean) { flags[name] = value }
 

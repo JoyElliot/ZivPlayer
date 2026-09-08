@@ -6,10 +6,6 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.net.Uri
-import android.util.Log
-import android.view.Surface
-import android.view.SurfaceHolder
-import android.view.SurfaceView
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -38,8 +34,6 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
-import androidx.media3.session.SessionCommand
-import androidx.media3.session.SessionResult
 import io.github.joyelliot.zivplayer.designsystem.ZivTheme
 import io.github.joyelliot.zivplayer.designsystem.ZivAppearance
 import io.github.joyelliot.zivplayer.designsystem.*
@@ -61,8 +55,6 @@ import io.github.joyelliot.zivplayer.feature.player.PlayerUiState
 import io.github.joyelliot.zivplayer.feature.player.PlayerTrackKind
 import io.github.joyelliot.zivplayer.feature.player.RecentMediaUiItem
 import io.github.joyelliot.zivplayer.platform.playback.PlaybackRequestMetadata
-import io.github.joyelliot.zivplayer.platform.playback.VideoSurfaceRequestContract
-import io.github.joyelliot.zivplayer.platform.playback.VideoSurfaceRequests
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeout
@@ -125,11 +117,14 @@ fun ZivPlayerApp(
     var libraryBack by remember { mutableStateOf<(() -> Unit)?>(null) }
     fun leavePlayer() { onFullscreenChange(false); showQueue = false; destination = AppDestination.LIBRARY }
     val renderState = rememberUpdatedState(Triple(controller, playerState.canRenderVideo, expanded))
+    val renderAspectRatio = rememberUpdatedState(playerState.videoAspectRatio)
+    val renderFit = rememberUpdatedState(preferences.options.videoFit)
     val videoContent = remember {
         movableContentOf {
             val (player, canRender, fill) = renderState.value
             PlayerVideoSurface(player, canRender, if (fill) Modifier.fillMaxSize()
-                else Modifier.fillMaxWidth().aspectRatio(16f / 9f))
+                else Modifier.fillMaxWidth().aspectRatio(16f / 9f),
+                videoAspectRatio = renderAspectRatio.value, videoFit = renderFit.value)
         }
     }
     LaunchedEffect(destination, expanded) { onPlayerVisibilityChange(destination == AppDestination.PLAYER || expanded) }
@@ -535,95 +530,6 @@ private fun MediaController.removeListenerOnApplicationLooper(listener: Player.L
         Handler(applicationLooper).post { removeListener(listener) }
     }
 }
-
-@Composable
-private fun PlayerVideoSurface(
-    player: MediaController?,
-    canRenderVideo: Boolean,
-    modifier: Modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f),
-) {
-    val context = LocalContext.current
-    val surfaceView = remember(context) { SurfaceView(context) }
-    AndroidView(
-        factory = { surfaceView },
-        modifier = modifier.background(Color.Black),
-    )
-
-    DisposableEffect(player, surfaceView, canRenderVideo) {
-        val holder = surfaceView.holder
-        if (player == null || !canRenderVideo || !player.canSetVideoSurface()) {
-            onDispose { }
-        } else {
-            var attachedSurface: Surface? = null
-            var surfaceToken = 0L
-            fun resizeSurface(width: Int, height: Int) {
-                if (width <= 0 || height <= 0 || !VideoSurfaceRequests.isCurrent(surfaceToken) || !player.isConnected) return
-                val command = SessionCommand(VideoSurfaceRequestContract.ACTION_RESIZE, Bundle.EMPTY)
-                if (!player.isSessionCommandAvailable(command)) return
-                val future = player.sendCustomCommand(command, Bundle().apply {
-                    putLong(VideoSurfaceRequestContract.TOKEN, surfaceToken)
-                    putInt(VideoSurfaceRequestContract.WIDTH, width)
-                    putInt(VideoSurfaceRequestContract.HEIGHT, height)
-                })
-                future.addListener({
-                    val result = runCatching { future.get() }
-                    if (result.getOrNull()?.resultCode != SessionResult.RESULT_SUCCESS) {
-                        Log.w("ZivVideoSurface", "Surface resize was not accepted.", result.exceptionOrNull())
-                    }
-                }, java.util.concurrent.Executor { it.run() })
-            }
-            fun attachSurface(surface: Surface) {
-                if (surface.isValid && player.canSetVideoSurface() && attachedSurface != surface) {
-                    attachedSurface = surface
-                    surfaceToken = VideoSurfaceRequests.claim()
-                    player.setVideoSurface(surface)
-                    resizeSurface(holder.surfaceFrame.width(), holder.surfaceFrame.height())
-                }
-            }
-            val callback = object : SurfaceHolder.Callback {
-                override fun surfaceCreated(surfaceHolder: SurfaceHolder) {
-                    attachSurface(surfaceHolder.surface)
-                }
-
-                override fun surfaceChanged(
-                    surfaceHolder: SurfaceHolder,
-                    format: Int,
-                    width: Int,
-                    height: Int,
-                ) {
-                    if (surfaceHolder.surface == attachedSurface) resizeSurface(width, height)
-                }
-
-                override fun surfaceDestroyed(surfaceHolder: SurfaceHolder) {
-                    if (VideoSurfaceRequests.release(surfaceToken)) {
-                        attachedSurface?.let { surface ->
-                            if (player.canSetVideoSurface()) {
-                                player.clearVideoSurface(surface)
-                            }
-                        }
-                    }
-                    attachedSurface = null
-                }
-            }
-            holder.addCallback(callback)
-            attachSurface(holder.surface)
-            onDispose {
-                holder.removeCallback(callback)
-                if (VideoSurfaceRequests.release(surfaceToken)) {
-                    attachedSurface?.let { surface ->
-                        if (player.canSetVideoSurface()) {
-                            player.clearVideoSurface(surface)
-                        }
-                    }
-                }
-                attachedSurface = null
-            }
-        }
-    }
-}
-
-private fun MediaController.canSetVideoSurface(): Boolean =
-    isConnected && isCommandAvailable(Player.COMMAND_SET_VIDEO_SURFACE)
 
 private class PlaybackControllerDisconnectedException : IllegalStateException(
     "Playback service disconnected while handling a media request.",

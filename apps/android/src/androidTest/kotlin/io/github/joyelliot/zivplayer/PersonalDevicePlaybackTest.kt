@@ -13,10 +13,7 @@ import android.provider.DocumentsContract
 import android.view.WindowManager
 import android.view.View
 import android.view.ViewGroup
-import android.view.SurfaceView
-import android.view.PixelCopy
-import android.os.Handler
-import android.os.Looper
+import android.view.TextureView
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.os.ParcelFileDescriptor
@@ -25,6 +22,9 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.click
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
@@ -69,7 +69,6 @@ import org.junit.Test
 import java.io.File
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.CountDownLatch
 
 /** Opt in with -e personalFixtureFolder NAME after granting the generated folder through SAF. */
 class PersonalDevicePlaybackTest {
@@ -185,10 +184,9 @@ class PersonalDevicePlaybackTest {
         try {
             updateConfiguration(controller) { it.copy(backgroundPlayback = true, autoPictureInPicture = false) }
             open(controller, "avc-1080p50mbps.mp4")
-            activity.onNodeWithText(app.getString(R.string.app_player)).performClick()
             onMain { controller.repeatMode = Player.REPEAT_MODE_ONE; controller.play() }
             await(controller, "video playing") { isPlaying && currentPosition > 400 }
-            activity.onNodeWithText(app.getString(R.string.app_fullscreen)).performScrollTo().performClick()
+            activity.onNodeWithContentDescription(app.getString(io.github.joyelliot.zivplayer.feature.player.R.string.player_rotate)).performClick()
             awaitCondition("landscape fullscreen") {
                 onMain { activity.activity.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE }
             }
@@ -198,11 +196,13 @@ class PersonalDevicePlaybackTest {
             activity.activityRule.scenario.recreate()
             await(controller, "fullscreen recreation preserves playback") { isPlaying }
             captureVideoFrame("fullscreen-recreated-video.png")
-            activity.onNodeWithContentDescription(app.getString(io.github.joyelliot.zivplayer.feature.player.R.string.player_exit_fullscreen)).performClick()
+            revealPlayerControls()
+            activity.onNodeWithContentDescription(app.getString(io.github.joyelliot.zivplayer.feature.player.R.string.player_rotate)).performClick()
             awaitCondition("portrait player") {
                 onMain { activity.activity.resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT }
             }
-            activity.onNodeWithText(app.getString(R.string.app_pip)).performScrollTo().performClick()
+            activity.onNodeWithContentDescription(app.getString(io.github.joyelliot.zivplayer.feature.player.R.string.player_quick_menu)).performClick()
+            activity.onNodeWithText(app.getString(io.github.joyelliot.zivplayer.feature.player.R.string.player_pip)).performScrollTo().performClick()
             awaitCondition("manual PiP entered") { onMain { activity.activity.isInPictureInPictureMode } }
             await(controller, "manual PiP keeps playback") { isPlaying }
             SystemClock.sleep(2_000) // The mode callback can precede the system's resize transition.
@@ -264,16 +264,19 @@ class PersonalDevicePlaybackTest {
             open(controller, "audio-flac.flac")
             onMain { controller.play() }
             await(controller, "pure audio playing") { isPlaying && currentPosition > 400 }
-            activity.onNodeWithText(app.getString(R.string.app_fullscreen)).performScrollTo().assertIsNotEnabled()
-            activity.onNodeWithText(app.getString(R.string.app_pip)).assertIsNotEnabled()
+            revealPlayerControls()
+            activity.onNodeWithContentDescription(app.getString(io.github.joyelliot.zivplayer.feature.player.R.string.player_quick_menu)).performClick()
+            activity.onNodeWithText(app.getString(io.github.joyelliot.zivplayer.feature.player.R.string.player_pip)).performScrollTo().assertIsNotEnabled()
+            activity.onNodeWithContentDescription(app.getString(io.github.joyelliot.zivplayer.feature.player.R.string.player_close_menu)).performClick()
             shell("input keyevent KEYCODE_HOME")
             await(controller, "pure audio respects background disabled") { !isPlaying && !playWhenReady }
             assertFalse(onMain { activity.activity.isInPictureInPictureMode })
         } finally {
             foregroundPlayer()
-            activity.onAllNodesWithContentDescription(app.getString(io.github.joyelliot.zivplayer.feature.player.R.string.player_exit_fullscreen)).fetchSemanticsNodes()
+            revealPlayerControls()
+            activity.onAllNodesWithContentDescription(app.getString(io.github.joyelliot.zivplayer.feature.library.R.string.library_back_folders)).fetchSemanticsNodes()
                 .takeIf { it.isNotEmpty() }?.let {
-                    activity.onNodeWithContentDescription(app.getString(io.github.joyelliot.zivplayer.feature.player.R.string.player_exit_fullscreen)).performClick()
+                    activity.onNodeWithContentDescription(app.getString(io.github.joyelliot.zivplayer.feature.library.R.string.library_back_folders)).performClick()
                 }
             onMain { activity.activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED }
             onMain { controller.repeatMode = repeat }
@@ -458,6 +461,12 @@ class PersonalDevicePlaybackTest {
             controller.prepare()
         }
         await(controller, "$name ready") { playbackState == Player.STATE_READY && currentMediaItem?.mediaId == opened.mediaId.value }
+        // The folder home exposes ongoing playback through its persistent mini player.
+        activity.waitForIdle()
+        if (activity.onAllNodesWithContentDescription(app.getString(io.github.joyelliot.zivplayer.feature.player.R.string.player_video_area)).fetchSemanticsNodes().isEmpty()) {
+            activity.waitUntil(5_000) { activity.onAllNodesWithText(name).fetchSemanticsNodes().isNotEmpty() }
+            activity.onNodeWithText(name).performClick()
+        }
         return opened.mediaId to sequence
     }
 
@@ -486,8 +495,16 @@ class PersonalDevicePlaybackTest {
                 }).buildAsync()
         }.get(15, TimeUnit.SECONDS)
         activity.waitForIdle()
-        activity.onNodeWithText(app.getString(R.string.app_player)).performClick()
         try { block(controller) } finally { onMain { controller.stop(); controller.release() } }
+    }
+
+    private fun revealPlayerControls() {
+        val menu = app.getString(io.github.joyelliot.zivplayer.feature.player.R.string.player_quick_menu)
+        if (activity.onAllNodesWithContentDescription(menu).fetchSemanticsNodes().isEmpty()) {
+            activity.onNodeWithContentDescription(app.getString(io.github.joyelliot.zivplayer.feature.player.R.string.player_video_area))
+                .performTouchInput { click(Offset(width * 0.5f, height * 0.35f)) }
+            activity.waitUntil(2_000) { activity.onAllNodesWithContentDescription(menu).fetchSemanticsNodes().isNotEmpty() }
+        }
     }
 
     private fun capture(name: String) {
@@ -498,25 +515,20 @@ class PersonalDevicePlaybackTest {
         finally { bitmap.recycle() }
     }
 
-    /** PixelCopy checks the native Surface itself, independent of Compose/Media3 playback state. */
+    /** Reads native video pixels directly from the texture, independent of player state. */
     private fun captureVideoFrame(name: String): List<Int> {
         val deadline = SystemClock.elapsedRealtime() + 15_000
         while (SystemClock.elapsedRealtime() < deadline) {
             val surface = onMain { findSurface(activity.activity.window.decorView) }
-            if (surface != null && onMain { surface.width > 0 && surface.height > 0 && surface.holder.surface.isValid }) {
-                val bitmap = onMain { Bitmap.createBitmap(surface.width, surface.height, Bitmap.Config.ARGB_8888) }
+            val bitmap = surface?.let { onMain { if (it.isAvailable) it.bitmap else null } }
+            if (bitmap != null) {
                 try {
-                    val done = CountDownLatch(1)
-                    var result = PixelCopy.ERROR_UNKNOWN
-                    onMain { PixelCopy.request(surface, bitmap, { result = it; done.countDown() }, Handler(Looper.getMainLooper())) }
-                    if (done.await(5, TimeUnit.SECONDS) && result == PixelCopy.SUCCESS) {
                         val samples = (1..9).flatMap { x -> (1..3).map { y -> bitmap.getPixel(bitmap.width * x / 10, bitmap.height * y / 4) } }
                         File(app.cacheDir, name).outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
                         if (samples.count { pixel ->
                             val rgb = listOf(Color.red(pixel), Color.green(pixel), Color.blue(pixel))
                             rgb.max() - rgb.min() > 60 && rgb.max() > 90
                         } >= 6) return samples
-                    }
                 } finally { bitmap.recycle() }
             }
             SystemClock.sleep(250)
@@ -524,8 +536,8 @@ class PersonalDevicePlaybackTest {
         error("No colorful native video frame for $name")
     }
 
-    private fun findSurface(view: View): SurfaceView? = when (view) {
-        is SurfaceView -> view
+    private fun findSurface(view: View): TextureView? = when (view) {
+        is TextureView -> view
         is ViewGroup -> (0 until view.childCount).firstNotNullOfOrNull { findSurface(view.getChildAt(it)) }
         else -> null
     }
