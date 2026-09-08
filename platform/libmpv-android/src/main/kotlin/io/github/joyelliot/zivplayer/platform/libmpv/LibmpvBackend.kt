@@ -397,7 +397,15 @@ class LibmpvBackend internal constructor(
     override fun resizeSurface(lease: LibmpvSurfaceLease, width: Int, height: Int) = nativeGate.withLock {
         require(width > 0 && height > 0) { "Surface dimensions must be positive." }
         if (surfaceController.owns(lease) && !nativeUnusable) {
-            instance?.setPropertyString("android-surface-size", "${width}x$height")
+            instance?.let { player ->
+                player.setPropertyString("android-surface-size", "${width}x$height")
+                // mpv suppresses identical surface-size writes. window-scale is a
+                // force-update VO option: reapplying its current value redraws the
+                // paused frame without changing geometry, seeking, or restarting VO.
+                player.getPropertyDouble("window-scale")?.let { scale ->
+                    player.setPropertyDouble("window-scale", scale)
+                }
+            }
         }
     }
 
