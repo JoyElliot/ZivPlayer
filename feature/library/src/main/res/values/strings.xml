@@ -1,4 +1,13 @@
 <resources>
+    <string name="library_folders_tab">Folders</string>
+    <string name="library_sort">Sort</string>
+    <string name="library_source_scope">These actions manage the source folder “%1$s” and its indexed subfolders. Original files are kept.</string>
+    <string name="library_history">Recently played</string>
+    <string name="library_settings">Settings</string>
+    <string name="library_folder_actions">Folder options: %1$s</string>
+    <string name="library_file_actions">File options: %1$s</string>
+    <plurals name="library_videos"><item quantity="one">%1$d video</item><item quantity="other">%1$d videos</item></plurals>
+    <plurals name="library_audios"><item quantity="one">%1$d audio file</item><item quantity="other">%1$d audio files</item></plurals>
     <string name="library_title">Library</string>
     <string name="library_add_folder">Add folder</string>
     <string name="library_folders">Folders (%1$d)</string>

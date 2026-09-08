@@ -31,7 +31,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-enum class ZivPlaybackIcon { PLAY, PAUSE, BACK, MORE, PREVIOUS, NEXT, LIST, FULLSCREEN, FOLDER, CLOSE, CHECK, AUDIO, SUBTITLES, LOCK, UNLOCK, FIT, SPEED, REPEAT, VOLUME }
+enum class ZivPlaybackIcon { PLAY, PAUSE, BACK, MORE, PREVIOUS, NEXT, LIST, FULLSCREEN, FOLDER, CLOSE, CHECK, AUDIO, SUBTITLES, LOCK, UNLOCK, FIT, SPEED, REPEAT, VOLUME, SEARCH, SORT, SETTINGS, HISTORY, ADD, PIP }
 
 /** Small source-owned icons keep playback controls independent of a second UI toolkit. */
 @Composable
@@ -42,6 +42,7 @@ fun ZivPlaybackIconButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     prominent: Boolean = false,
+    color: Color = Color.White,
 ) {
     Box(
         modifier.size(if (prominent) 56.dp else 48.dp).clip(CircleShape)
@@ -49,14 +50,14 @@ fun ZivPlaybackIconButton(
             .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {
-        ZivPlaybackGlyph(icon, Modifier.size(if (prominent) 32.dp else 24.dp), enabled)
+        ZivPlaybackGlyph(icon, Modifier.size(if (prominent) 32.dp else 24.dp), enabled, color)
     }
 }
 
 @Composable
-fun ZivPlaybackGlyph(icon: ZivPlaybackIcon, modifier: Modifier = Modifier.size(24.dp), enabled: Boolean = true) {
+fun ZivPlaybackGlyph(icon: ZivPlaybackIcon, modifier: Modifier = Modifier.size(24.dp), enabled: Boolean = true, color: Color = Color.White) {
     Canvas(modifier) {
-        val ink = Color.White.copy(alpha = if (enabled) 1f else 0.35f)
+        val ink = color.copy(alpha = if (enabled) color.alpha else color.alpha * 0.35f)
         val unit = size.minDimension / 24f
         fun line(x1: Float, y1: Float, x2: Float, y2: Float) = drawLine(
             ink, Offset(x1 * unit, y1 * unit), Offset(x2 * unit, y2 * unit), 1.8f * unit, StrokeCap.Round,
@@ -68,6 +69,26 @@ fun ZivPlaybackGlyph(icon: ZivPlaybackIcon, modifier: Modifier = Modifier.size(2
             }, ink)
         }
         when (icon) {
+            ZivPlaybackIcon.SEARCH -> {
+                drawCircle(ink, 7f * unit, Offset(10f * unit, 10f * unit), style = Stroke(1.8f * unit))
+                line(15f, 15f, 21f, 21f)
+            }
+            ZivPlaybackIcon.SORT -> { line(4f, 6f, 20f, 6f); line(4f, 12f, 15f, 12f); line(4f, 18f, 10f, 18f) }
+            ZivPlaybackIcon.ADD -> { line(12f, 4f, 12f, 20f); line(4f, 12f, 20f, 12f) }
+            ZivPlaybackIcon.SETTINGS -> {
+                listOf(6f, 12f, 18f).forEach { line(3f, it, 21f, it) }
+                listOf(Offset(8f, 6f), Offset(16f, 12f), Offset(10f, 18f)).forEach {
+                    drawCircle(ink, 2.5f * unit, it * unit)
+                }
+            }
+            ZivPlaybackIcon.HISTORY -> {
+                drawArc(ink, -90f, 300f, false, Offset(3f * unit, 3f * unit), Size(18f * unit, 18f * unit), style = Stroke(1.8f * unit))
+                line(12f, 7f, 12f, 12f); line(12f, 12f, 16f, 14f)
+            }
+            ZivPlaybackIcon.PIP -> {
+                drawRoundRect(ink, Offset(2f * unit, 4f * unit), Size(20f * unit, 16f * unit), style = Stroke(1.8f * unit))
+                drawRect(ink, Offset(12f * unit, 11f * unit), Size(7f * unit, 6f * unit))
+            }
             ZivPlaybackIcon.PLAY -> play(8f, 19f)
             ZivPlaybackIcon.PAUSE -> {
                 drawRoundRect(ink, Offset(6f * unit, 5f * unit), Size(4f * unit, 14f * unit))

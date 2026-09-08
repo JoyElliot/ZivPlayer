@@ -23,6 +23,7 @@ import kotlinx.coroutines.launch
 class LibraryViewModel(application: Application) : AndroidViewModel(application) {
     private val app = application as ZivPlayerApplication
     val folders = mutableStateOf<List<LibraryFolder>>(emptyList())
+    val foldersLoaded = mutableStateOf(false)
     val media = mutableStateOf<List<LibraryMedia>>(emptyList())
     val progress = mutableStateOf<LibraryScanProgress?>(null)
     val message = mutableStateOf<String?>(null)
@@ -38,7 +39,7 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
         }
         viewModelScope.launch {
             app.mediaRepositories.library.observeFolders().catch { message.value = "无法读取媒体文件夹" }
-                .collect { folders.value = it }
+                .collect { folders.value = it; foldersLoaded.value = true }
         }
         viewModelScope.launch {
             app.mediaRepositories.library.observeMedia().catch { message.value = "无法读取媒体库" }
