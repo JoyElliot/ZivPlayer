@@ -54,10 +54,13 @@ See [ADR 0012](docs/adr/0012-library-preferences-and-managed-playback-resources.
 and the [personal-device acceptance record](docs/validation/2026-09-07-personal-device-expansion.md).
 The broader device/API matrix and public release work remain deferred.
 
-The folder home now opens the filtered, ordered selection as a service-owned
-playlist of up to 500 items. A compact fullscreen player provides a thin timeline,
-centered transport controls, audio/subtitle shortcuts, a side menu and a queue
-drawer. Double tap toggles playback, horizontal swipes seek, and holding starts
+The folder home groups indexed media by its containing directory, with a compact
+toolbar, filters and a persistent mini player. It opens the filtered, ordered
+selection as a service-owned playlist of up to 500 items. Portrait and landscape
+share an immersive player with a thin timeline, transport controls, a side menu
+and a queue drawer. Double tap the left/right thirds to seek backward/forward five
+seconds, or the center to toggle playback. Horizontal swipes seek; vertical swipes
+adjust window brightness on the left and player volume on the right. Holding starts
 temporary 2x playback; sliding while held adjusts it from 0.25x to 4x. Touch lock
 disables video gestures. Temporary speed is restored by the service on release,
 pause, item changes or controller disconnection. Incremental queue edits preserve
@@ -66,6 +69,10 @@ Room v3 keeps pre-registered queue identities out of recent history until played
 and media descriptors are opened lazily for the current item. See
 [ADR 0013](docs/adr/0013-playback-interactions-and-folder-queues.md) and the
 [interaction acceptance record](docs/validation/2026-09-07-playback-interactions.md).
+The updated folder/portrait design is recorded in
+[ADR 0014](docs/adr/0014-folder-home-and-portrait-player.md) and the
+[September 8 validation record](docs/validation/2026-09-08-folder-home-and-portrait-player.md);
+the September 7 device acceptance predates these layout and gesture changes.
 
 The source adapter preserves event payloads and observer identities under a
 single-instance, serialized stop/load policy. Track discovery uses fresh
