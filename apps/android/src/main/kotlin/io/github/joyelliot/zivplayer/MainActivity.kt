@@ -33,6 +33,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -46,6 +47,9 @@ class MainActivity : ComponentActivity() {
     private var fullscreen by mutableStateOf(false)
     private var inPictureInPicture by mutableStateOf(false)
     private var playerVisible by mutableStateOf(false)
+    private var playbackBrightness by mutableStateOf<Float?>(null)
+    private var systemBrightness by mutableFloatStateOf(0.5f)
+    private var originalWindowBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
     private var pipEntryPending = false
     private var started by mutableStateOf(false)
     private var windowFocused by mutableStateOf(false)
@@ -72,6 +76,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        originalWindowBrightness = window.attributes.screenBrightness
+        systemBrightness = (android.provider.Settings.System.getInt(contentResolver,
+            android.provider.Settings.System.SCREEN_BRIGHTNESS, 128) / 255f).coerceIn(0f, 1f)
+        playbackBrightness = savedInstanceState?.takeIf { it.containsKey("playback-brightness") }?.getFloat("playback-brightness")
         fullscreen = savedInstanceState?.getBoolean("fullscreen") ?: false
         inPictureInPicture = isInPictureInPictureMode
         pendingDiagnosticJson = savedInstanceState?.getString("pending-diagnostics-export")
@@ -93,6 +101,12 @@ class MainActivity : ComponentActivity() {
                 bars.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
                 if ((fullscreen || playerVisible) && !inPictureInPicture) bars.hide(WindowInsetsCompat.Type.systemBars())
                 else bars.show(WindowInsetsCompat.Type.systemBars())
+            }
+            LaunchedEffect(playerVisible, inPictureInPicture, playbackBrightness) {
+                window.attributes = window.attributes.apply {
+                    screenBrightness = if (playerVisible && !inPictureInPicture) playbackBrightness?.coerceIn(0.01f, 1f)
+                        ?: originalWindowBrightness else originalWindowBrightness
+                }
             }
             LaunchedEffect(playing, hasVideo, canRenderVideo, aspectRatio, preferences.autoPictureInPicture, settings.loaded.value, playerVisible) { updatePipParameters() }
             ZivPlayerApp(
@@ -156,6 +170,8 @@ class MainActivity : ComponentActivity() {
                 onSeekTo = { position -> mediaSelection.cancelPendingPlayback(); playbackController.seekTo(position) },
                 onPlaybackSpeedChange = playbackController::setPlaybackSpeed,
                 onVolumeChange = playbackController::setVolume,
+                brightness = playbackBrightness ?: systemBrightness,
+                onBrightnessChange = { playbackBrightness = it.coerceIn(0f, 1f) },
                 onRepeatModeChange = playbackController::setRepeatMode,
                 onSelectTrack = playbackController::selectTrack,
                 onBeginSubtitleSelection = playbackController::beginSubtitleSelection,
@@ -241,11 +257,15 @@ class MainActivity : ComponentActivity() {
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         windowFocused = hasFocus
+        if (hasFocus && playbackBrightness == null) systemBrightness =
+            (android.provider.Settings.System.getInt(contentResolver,
+                android.provider.Settings.System.SCREEN_BRIGHTNESS, 128) / 255f).coerceIn(0f, 1f)
         if (!hasFocus) playbackController.cancelTemporarySpeed()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putBoolean("fullscreen", fullscreen)
+        playbackBrightness?.let { outState.putFloat("playback-brightness", it) }
         outState.putString("pending-diagnostics-export", pendingDiagnosticJson)
         super.onSaveInstanceState(outState)
     }

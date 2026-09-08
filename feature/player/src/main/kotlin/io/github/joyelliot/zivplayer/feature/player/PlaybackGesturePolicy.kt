@@ -5,6 +5,22 @@ package io.github.joyelliot.zivplayer.feature.player
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 
+/** The outer thirds seek; the middle third retains play/pause. Step is always five seconds. */
+internal fun doubleTapSeekDelta(horizontalFraction: Float): Long = when {
+    horizontalFraction < 1f / 3f -> -5_000L
+    horizontalFraction > 2f / 3f -> 5_000L
+    else -> 0L
+}
+
+internal fun doubleTapSeekPosition(positionMs: Long, durationMs: Long, deltaMs: Long): Long =
+    (positionMs.coerceIn(0L, durationMs.coerceAtLeast(0L)).toDouble() + deltaMs)
+        .coerceIn(0.0, durationMs.coerceAtLeast(0L).toDouble()).roundToLong()
+
+/** An upward drag over two thirds of the screen covers the full brightness/volume range. */
+internal fun gestureLevel(start: Float, verticalFraction: Float): Float =
+    if (!verticalFraction.isFinite()) start.coerceIn(0f, 1f)
+    else (start - verticalFraction * 1.5f).coerceIn(0f, 1f)
+
 /** A full-width swipe seeks at most two minutes, with a fixed origin for the whole gesture. */
 internal fun gestureSeekPosition(startMs: Long, durationMs: Long, distanceFraction: Float): Long {
     if (durationMs <= 0L || !distanceFraction.isFinite()) return startMs.coerceAtLeast(0L)

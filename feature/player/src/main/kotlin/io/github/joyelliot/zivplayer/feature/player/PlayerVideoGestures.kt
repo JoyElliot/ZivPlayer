@@ -20,7 +20,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
-private enum class GestureStart { TAP, SEEK, HOLD, CANCEL }
+private enum class GestureStart { TAP, SEEK, LEVEL, HOLD, CANCEL }
 
 /** The video owns one recognizer. Controls are siblings above this layer and win hit testing. */
 @Composable
@@ -36,6 +36,11 @@ internal fun PlayerVideoGestures(
     onSeekPreview: (Long?) -> Unit,
     onSpeedPreview: (Float?) -> Unit,
     onGestureActive: (Boolean) -> Unit,
+    brightness: Float? = null,
+    onBrightnessChange: (Float) -> Unit = {},
+    onVolumeChange: (Float) -> Unit = {},
+    onLevelPreview: (Boolean, Float?) -> Unit = { _, _ -> },
+    onDoubleTapSeek: (Long) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val current by rememberUpdatedState(state)
@@ -48,15 +53,20 @@ internal fun PlayerVideoGestures(
     val previewSeek by rememberUpdatedState(onSeekPreview)
     val previewSpeed by rememberUpdatedState(onSpeedPreview)
     val gestureActive by rememberUpdatedState(onGestureActive)
+    val currentBrightness by rememberUpdatedState(brightness)
+    val setBrightness by rememberUpdatedState(onBrightnessChange)
+    val setVolume by rememberUpdatedState(onVolumeChange)
+    val previewLevel by rememberUpdatedState(onLevelPreview)
+    val doubleTapFeedback by rememberUpdatedState(onDoubleTapSeek)
     val scope = rememberCoroutineScope()
     val configuration = LocalViewConfiguration.current
     val description = stringResource(R.string.player_video_area)
     var singleTapJob by remember { mutableStateOf<Job?>(null) }
-    DisposableEffect(enabled, state.playbackIdentity, state.mediaId) { onDispose { singleTapJob?.cancel() } }
+    DisposableEffect(enabled, state.playbackIdentity, state.mediaId, state.playWhenReady) { onDispose { singleTapJob?.cancel() } }
     Box(modifier.semantics {
         contentDescription = description
         if (enabled) onClick { toggle(); true }
-    }.pointerInput(enabled, state.playbackIdentity, state.mediaId, state.playWhenReady, state.canSeek, state.canSetSpeed) {
+    }.pointerInput(enabled, state.playbackIdentity, state.mediaId, state.playWhenReady) {
         if (!enabled) return@pointerInput
         var lastTapTime = Long.MIN_VALUE
         var lastTapPosition = Offset.Zero
@@ -67,6 +77,8 @@ internal fun PlayerVideoGestures(
                 val origin = down.position
                 val originalPosition = current.positionMs
                 val duration = current.durationMs?.takeIf { it > 0L }
+                val brightnessGesture = origin.x < size.width / 2f
+                val originalLevel = if (brightnessGesture) currentBrightness else current.volume
                 var latest: PointerInputChange = down
                 val start = withTimeoutOrNull(configuration.longPressTimeoutMillis) {
                     var result: GestureStart? = null
@@ -81,7 +93,7 @@ internal fun PlayerVideoGestures(
                             result = when {
                                 !change.pressed -> GestureStart.TAP
                                 abs(distance.x) > configuration.touchSlop && abs(distance.x) > abs(distance.y) -> GestureStart.SEEK
-                                abs(distance.y) > configuration.touchSlop -> GestureStart.CANCEL
+                                abs(distance.y) > configuration.touchSlop -> GestureStart.LEVEL
                                 else -> null
                             }
                         }
@@ -96,7 +108,13 @@ internal fun PlayerVideoGestures(
                             (latest.position - lastTapPosition).getDistance() < configuration.touchSlop * 6f) {
                             singleTapJob?.cancel()
                             lastTapTime = Long.MIN_VALUE
-                            if (current.canPlayPause) playPause()
+                            val delta = doubleTapSeekDelta(origin.x / size.width.coerceAtLeast(1))
+                            if (delta == 0L) {
+                                if (current.canPlayPause) playPause()
+                            } else if (current.canSeek && duration != null) {
+                                seek(doubleTapSeekPosition(current.positionMs, duration, delta))
+                                doubleTapFeedback(delta)
+                            }
                         } else {
                             lastTapTime = latest.uptimeMillis
                             lastTapPosition = latest.position
@@ -104,10 +122,11 @@ internal fun PlayerVideoGestures(
                             singleTapJob = scope.launch { delay(configuration.doubleTapTimeoutMillis); toggle() }
                         }
                     }
-                    GestureStart.SEEK, GestureStart.HOLD -> {
+                    GestureStart.SEEK, GestureStart.LEVEL, GestureStart.HOLD -> {
                         singleTapJob?.cancel()
                         lastTapTime = Long.MIN_VALUE
                         if (start == GestureStart.SEEK && (!current.canSeek || duration == null)) return@awaitEachGesture
+                        if (start == GestureStart.LEVEL && (originalLevel == null || (!brightnessGesture && !current.canSetVolume))) return@awaitEachGesture
                         if (start == GestureStart.HOLD) {
                             if (!current.playWhenReady || !current.canSetSpeed) return@awaitEachGesture
                             speedToken = beginSpeed() ?: return@awaitEachGesture
@@ -115,14 +134,25 @@ internal fun PlayerVideoGestures(
                         gestureActive(true)
                         var target = originalPosition
                         var previousRate: Float? = null
+                        var previousLevel: Float? = null
                         var change = latest
                         while (true) {
                             if (change.isConsumed) break
+                            if (start == GestureStart.SEEK && !current.canSeek ||
+                                start == GestureStart.HOLD && !current.canSetSpeed ||
+                                start == GestureStart.LEVEL && !brightnessGesture && !current.canSetVolume) break
                             change.consume()
                             val fraction = (change.position.x - origin.x) / size.width.coerceAtLeast(1)
                             if (start == GestureStart.SEEK) {
                                 target = gestureSeekPosition(originalPosition, checkNotNull(duration), fraction)
                                 previewSeek(target)
+                            } else if (start == GestureStart.LEVEL) {
+                                val level = gestureLevel(checkNotNull(originalLevel), (change.position.y - origin.y) / size.height.coerceAtLeast(1))
+                                if (level != previousLevel) {
+                                    if (brightnessGesture) setBrightness(level) else setVolume(level)
+                                    previewLevel(brightnessGesture, level)
+                                    previousLevel = level
+                                }
                             } else {
                                 val rate = gesturePlaybackSpeed(fraction)
                                 if (rate != previousRate) {
@@ -146,6 +176,7 @@ internal fun PlayerVideoGestures(
                 speedToken?.let(endSpeed)
                 previewSeek(null)
                 previewSpeed(null)
+                previewLevel(false, null)
                 gestureActive(false)
             }
         }

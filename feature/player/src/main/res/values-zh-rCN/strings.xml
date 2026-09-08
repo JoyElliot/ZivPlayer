@@ -42,7 +42,12 @@
     <string name="player_speed_title">播放速度</string>
     <string name="player_video_fit">画面适配</string>
     <string name="player_repeat_title">循环播放</string>
-    <string name="player_gesture_help">单击显隐控制 · 双击暂停或继续\n横滑调整进度 · 长按 2 倍速，再左右滑动调速</string>
+    <string name="player_gesture_help">单击显隐控制\n左侧双击后退 5 秒，右侧双击快进 5 秒，中间双击暂停或继续\n横滑调整进度；左侧竖滑调亮度，右侧竖滑调音量\n长按 2 倍速，再左右滑动调速</string>
+    <string name="player_rotate">旋转屏幕</string>
+    <string name="player_pip">画中画</string>
+    <string name="player_brightness_description">亮度 %1$d%%</string>
+    <string name="player_rewind_five">后退 5 秒</string>
+    <string name="player_forward_five">快进 5 秒</string>
     <string name="player_hold_speed">%1$s · 松手恢复</string>
     <string name="player_seek_preview">%1$s / %2$s</string>
     <string name="player_seek_backward">快退</string>
@@ -59,6 +64,4 @@
     <string name="player_lock_controls">锁定控制</string>
     <string name="player_unlock_controls">解锁控制</string>
     <string name="player_speed_temporary_hint">长按画面可临时 2 倍速播放，左右滑动调整倍率，松手后恢复此速度。</string>
-    <string name="player_rotate">旋转屏幕</string>
-    <string name="player_pip">画中画</string>
 </resources>
