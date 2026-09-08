@@ -59,4 +59,6 @@
     <string name="player_lock_controls">Lock controls</string>
     <string name="player_unlock_controls">Unlock controls</string>
     <string name="player_speed_temporary_hint">Hold the video for temporary 2× playback. Slide left or right to adjust it; release to restore this speed.</string>
+    <string name="player_rotate">Rotate screen</string>
+    <string name="player_pip">Picture-in-picture</string>
 </resources>
