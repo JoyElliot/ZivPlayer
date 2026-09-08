@@ -11,6 +11,26 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MpvTrackObserverTest {
+    @Test fun preservesPixelAspectAndNormalizesRotationMetadata() {
+        val fixture = Fixture()
+        fixture.observer.start(LoadGeneration(1))
+        fixture.count(1)
+        fixture.children().forEach { field ->
+            when (field.value.substringAfterLast('/')) {
+                "demux-par" -> fixture.emit(field.toPair(), MpvPropertyValue.DoubleValue(4.0 / 3.0))
+                "demux-rotation" -> fixture.emit(field.toPair(), MpvPropertyValue.Int64(-90))
+                else -> fixture.row(field, type = "video")
+            }
+        }
+        val track = fixture.published.single().second.available.single()
+        assertEquals(4f / 3f, track.pixelWidthHeightRatio, 0.0001f)
+        assertEquals(270, track.rotationDegrees)
+        val ratioField = fixture.children().single { it.value.endsWith("/demux-par") }
+        fixture.emit(ratioField.toPair(), MpvPropertyValue.DoubleValue(Double.NaN))
+        assertEquals(1f, fixture.published.last().second.available.single().pixelWidthHeightRatio, 0f)
+        assertEquals(2, fixture.published.size)
+    }
+
     @Test fun waitsForOptionalUnavailableFieldsAndQualifiesNativeIdsByKind() {
         val fixture = Fixture()
         fixture.observer.start(LoadGeneration(1))

@@ -128,6 +128,10 @@ internal class MpvTrackObserver(
                 bitrate = row.positiveOrZero("demux-bitrate"),
                 channels = row.positive("demux-channel-count"), sampleRateHz = row.positive("demux-samplerate"),
                 width = row.positive("demux-w"), height = row.positive("demux-h"),
+                pixelWidthHeightRatio = (row["demux-par"] as? MpvPropertyValue.DoubleValue)?.value?.toFloat()
+                    ?.takeIf { it.isFinite() && it > 0f } ?: 1f,
+                rotationDegrees = (row["demux-rotation"] as? MpvPropertyValue.Int64)?.value
+                    ?.let { ((it % 360 + 360) % 360).toInt() } ?: 0,
                 isExternal = row.flag("external"),
                 roles = buildSet {
                     ROLE_FIELDS.forEach { (name, role) -> if (row.flag(name)) add(role) }
@@ -161,8 +165,9 @@ internal class MpvTrackObserver(
             "visual-impaired" to TrackRole.VISUAL_IMPAIRED,
         )
         val FIELD_FORMATS = buildMap {
-            listOf("id", "main-selection", "demux-bitrate", "demux-channel-count", "demux-samplerate", "demux-w", "demux-h")
+            listOf("id", "main-selection", "demux-bitrate", "demux-channel-count", "demux-samplerate", "demux-w", "demux-h", "demux-rotation")
                 .forEach { put(it, MpvPropertyFormat.INT64) }
+            put("demux-par", MpvPropertyFormat.DOUBLE)
             listOf("type", "title", "lang", "codec").forEach { put(it, MpvPropertyFormat.STRING) }
             (listOf("selected", "external") + ROLE_FIELDS.keys).forEach { put(it, MpvPropertyFormat.FLAG) }
         }
