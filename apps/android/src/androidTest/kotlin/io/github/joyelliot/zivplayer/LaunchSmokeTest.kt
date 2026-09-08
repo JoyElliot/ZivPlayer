@@ -8,6 +8,8 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.performClick
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.joyelliot.zivplayer.feature.library.R as LibraryR
 import org.junit.Rule
@@ -23,7 +25,8 @@ class LaunchSmokeTest {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val action = context.getString(LibraryR.string.library_open_file)
 
-        // The folder home keeps direct document opening available.
+        // Document opening is available from the folder toolbar, without a separate player tab.
+        composeRule.onNodeWithContentDescription(context.getString(LibraryR.string.library_item_actions)).performClick()
         composeRule.onAllNodesWithText(action).onFirst().assertIsDisplayed().assertHasClickAction().assertIsEnabled()
     }
 }

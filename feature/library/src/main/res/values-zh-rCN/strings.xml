@@ -1,4 +1,13 @@
 <resources>
+    <string name="library_folders_tab">文件夹</string>
+    <string name="library_sort">排序</string>
+    <string name="library_source_scope">这些操作管理来源文件夹“%1$s”及其全部子目录索引，原文件保留。</string>
+    <string name="library_history">最近播放</string>
+    <string name="library_settings">设置</string>
+    <string name="library_folder_actions">文件夹选项：%1$s</string>
+    <string name="library_file_actions">文件选项：%1$s</string>
+    <plurals name="library_videos"><item quantity="other">%1$d 个视频</item></plurals>
+    <plurals name="library_audios"><item quantity="other">%1$d 首音频</item></plurals>
     <string name="library_title">媒体库</string>
     <string name="library_add_folder">添加文件夹</string>
     <string name="library_folders">文件夹 (%1$d)</string>

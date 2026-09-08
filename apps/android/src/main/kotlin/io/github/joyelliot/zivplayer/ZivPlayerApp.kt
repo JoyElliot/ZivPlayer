@@ -24,6 +24,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
@@ -41,7 +42,7 @@ import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
 import io.github.joyelliot.zivplayer.designsystem.ZivTheme
 import io.github.joyelliot.zivplayer.designsystem.ZivAppearance
-import io.github.joyelliot.zivplayer.designsystem.ZivPrimaryButton
+import io.github.joyelliot.zivplayer.designsystem.*
 import io.github.joyelliot.zivplayer.feature.library.LibraryScreen
 import io.github.joyelliot.zivplayer.feature.settings.SettingsScreen
 import io.github.joyelliot.zivplayer.feature.settings.DiagnosticsScreen
@@ -51,10 +52,12 @@ import io.github.joyelliot.zivplayer.core.model.PlayerPreferences
 import io.github.joyelliot.zivplayer.core.model.PlaybackDiagnostics
 import io.github.joyelliot.zivplayer.core.model.VideoFit
 import io.github.joyelliot.zivplayer.feature.player.FullscreenPlayerScreen
+import io.github.joyelliot.zivplayer.feature.player.PlayerHomeScreen
 import io.github.joyelliot.zivplayer.feature.player.PlayerQuickMenu
 import io.github.joyelliot.zivplayer.feature.player.PlayerQueuePanel
 import io.github.joyelliot.zivplayer.feature.player.PlayerQuickOption
-import io.github.joyelliot.zivplayer.feature.player.PlayerHomeScreen
+import io.github.joyelliot.zivplayer.feature.player.MiniPlayer
+import io.github.joyelliot.zivplayer.feature.player.RecentMediaScreen
 import io.github.joyelliot.zivplayer.feature.player.PlayerRepeatMode
 import io.github.joyelliot.zivplayer.feature.player.PlayerUiState
 import io.github.joyelliot.zivplayer.feature.player.PlayerTrackKind
@@ -119,6 +122,9 @@ fun ZivPlayerApp(
     var importKind by rememberSaveable { mutableStateOf(PlaybackResourceKind.FONT) }
     val preferences = settings?.preferences?.value ?: PlayerPreferences()
     val expanded = fullscreen || pictureInPicture
+    val libraryState = rememberSaveableStateHolder()
+    var libraryBack by remember { mutableStateOf<(() -> Unit)?>(null) }
+    fun leavePlayer() { onFullscreenChange(false); showQueue = false; destination = AppDestination.LIBRARY }
     val renderState = rememberUpdatedState(Triple(controller, playerState.canRenderVideo, expanded))
     val videoContent = remember {
         movableContentOf {
@@ -132,11 +138,12 @@ fun ZivPlayerApp(
         onDiagnosticsVisibilityChange(destination == AppDestination.SETTINGS && showDiagnostics && !expanded)
     }
     DisposableEffect(Unit) { onDispose { onDiagnosticsVisibilityChange(false) } }
-    BackHandler(enabled = fullscreen || destination != AppDestination.LIBRARY || showDiagnostics) {
+    BackHandler(enabled = fullscreen || destination != AppDestination.LIBRARY || showDiagnostics || libraryBack != null) {
         when {
-            fullscreen -> onFullscreenChange(false)
+            fullscreen || destination == AppDestination.PLAYER -> leavePlayer()
             showDiagnostics -> showDiagnostics = false
-            else -> destination = AppDestination.LIBRARY
+            destination != AppDestination.LIBRARY -> destination = AppDestination.LIBRARY
+            else -> libraryBack?.invoke()
         }
     }
     val openFolder = rememberLauncherForActivityResult(OpenMediaFolder()) { selection ->
@@ -248,8 +255,46 @@ fun ZivPlayerApp(
                 interactionEnabled = interactionEnabled,
                 canPrevious = playerState.canPrevious, canNext = playerState.canNext, onPrevious = onPrevious, onNext = onNext,
                 onQueue = { showQueue = true }, queueVisible = showQueue)
-        } else Column(Modifier.fillMaxSize()) {
-            Box(Modifier.weight(1f)) { when (destination) {
+        } else when (destination) {
+            AppDestination.LIBRARY -> libraryState.SaveableStateProvider("library") {
+                LibraryScreen(
+                    folders = library?.folders?.value.orEmpty(), media = library?.media?.value.orEmpty(),
+                    scanningFolderId = library?.progress?.value?.folderId, scannedCount = library?.progress?.value?.mediaFound ?: 0,
+                    message = library?.message?.value ?: selectionNotice?.toUserMessage(), onAddFolder = { openFolder.launch(Unit) },
+                    onScan = { library?.scan(it) }, onCancelScan = { library?.cancelScan() },
+                    onRemoveFolder = { library?.removeFolder(it) }, onFavorite = { library?.setFavorite(it) }, onHidden = { library?.setHidden(it) },
+                    onOpen = { item -> destination = AppDestination.PLAYER; onDocumentSelected(OpenMediaDocumentResult(Uri.parse(item.sourceUri.value), 0)) },
+                    onOpenQueue = { items, index -> destination = AppDestination.PLAYER; onLibraryPlaylist(items, index) },
+                    onOpenFile = { openMedia.launch(arrayOf("video/*", "audio/*")) },
+                    onHistory = { destination = AppDestination.RECENT },
+                    onSettings = { destination = AppDestination.SETTINGS },
+                    onBrowseBackChanged = { libraryBack = it },
+                    foldersLoaded = library?.foldersLoaded?.value ?: true,
+                    nowPlaying = { MiniPlayer(playerState, { destination = AppDestination.PLAYER }, onPlayPause, { showQueue = true }) },
+                )
+            }
+            AppDestination.RECENT -> RecentMediaScreen(recentMedia, { destination = AppDestination.LIBRARY },
+                { destination = AppDestination.PLAYER; onOpenRecent(it) }, onForgetRecent,
+                selectionNotice?.toUserMessage() ?: if (historyUnavailable) stringResource(R.string.media_history_unavailable) else null)
+            AppDestination.SETTINGS -> Column(Modifier.fillMaxSize().navigationBarsPadding()) {
+                Row(Modifier.statusBarsPadding().fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    ZivLibraryIconButton(ZivPlaybackIcon.BACK, stringResource(io.github.joyelliot.zivplayer.feature.player.R.string.player_back), {
+                        if (showDiagnostics) showDiagnostics = false else destination = AppDestination.LIBRARY
+                    })
+                    ZivLibraryText(stringResource(if (showDiagnostics)
+                        io.github.joyelliot.zivplayer.feature.settings.R.string.settings_diagnostics
+                    else io.github.joyelliot.zivplayer.feature.settings.R.string.settings_title))
+                }
+                if (showDiagnostics) DiagnosticsScreen(
+                    snapshot = diagnostics, device = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL} · Android ${android.os.Build.VERSION.RELEASE}",
+                    message = diagnosticsMessage, onBack = { showDiagnostics = false }, onExport = onExportDiagnostics,
+                ) else SettingsScreen(
+                    value = preferences, resources = settings?.resources?.value.orEmpty(), message = configurationMessage ?: settings?.message?.value,
+                    busy = settings?.busy?.value ?: false, onUpdate = { settings?.update(it) },
+                    onImport = { kind -> importKind = kind; importResource.launch(arrayOf("*/*")) }, onDelete = { settings?.deleteResource(it) },
+                    onDiagnostics = { showDiagnostics = true },
+                )
+            }
             AppDestination.PLAYER ->
         PlayerHomeScreen(
             state = playerState,
@@ -291,39 +336,6 @@ fun ZivPlayerApp(
                 }
             },
         )
-            AppDestination.LIBRARY -> LibraryScreen(
-                folders = library?.folders?.value.orEmpty(), media = library?.media?.value.orEmpty(),
-                scanningFolderId = library?.progress?.value?.folderId, scannedCount = library?.progress?.value?.mediaFound ?: 0,
-                message = library?.message?.value, onAddFolder = { openFolder.launch(Unit) },
-                onScan = { library?.scan(it) }, onCancelScan = { library?.cancelScan() },
-                onRemoveFolder = { library?.removeFolder(it) }, onFavorite = { library?.setFavorite(it) }, onHidden = { library?.setHidden(it) },
-                onOpen = { item -> destination = AppDestination.PLAYER; onDocumentSelected(OpenMediaDocumentResult(Uri.parse(item.sourceUri.value), 0)) },
-                onOpenQueue = { items, index -> destination = AppDestination.PLAYER; onLibraryPlaylist(items, index) },
-                onOpenFile = { openMedia.launch(arrayOf("video/*", "audio/*")) },
-                nowPlaying = { if (playerState.hasMedia) ZivPrimaryButton(
-                    stringResource(R.string.app_now_playing, playerState.title.orEmpty()),
-                    { destination = AppDestination.PLAYER }, Modifier.fillMaxWidth()) },
-            )
-            AppDestination.SETTINGS -> if (showDiagnostics) DiagnosticsScreen(
-                snapshot = diagnostics, device = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL} · Android ${android.os.Build.VERSION.RELEASE}",
-                message = diagnosticsMessage, onBack = { showDiagnostics = false }, onExport = onExportDiagnostics,
-            ) else SettingsScreen(
-                value = preferences, resources = settings?.resources?.value.orEmpty(), message = configurationMessage ?: settings?.message?.value,
-                busy = settings?.busy?.value ?: false, onUpdate = { settings?.update(it) },
-                onImport = { kind -> importKind = kind; importResource.launch(arrayOf("*/*")) }, onDelete = { settings?.deleteResource(it) },
-                onDiagnostics = { showDiagnostics = true },
-            )
-            } }
-            Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 12.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                AppDestination.entries.forEach { item ->
-                    ZivPrimaryButton(stringResource(when (item) {
-                        AppDestination.PLAYER -> R.string.app_player
-                        AppDestination.LIBRARY -> R.string.app_library
-                        AppDestination.SETTINGS -> R.string.app_settings
-                    }), { destination = item }, Modifier.weight(1f), enabled = destination != item)
-                }
-            }
         }
         if (showQuickMenu && !expanded) PlayerQuickMenu(playerState, { showQuickMenu = false }, onPlaybackSpeedChange,
             onVolumeChange, onRepeatModeChange, onSelectTrack, launchSubtitle, videoOptions, selectVideoFit,
@@ -332,7 +344,7 @@ fun ZivPlayerApp(
     }
 }
 
-private enum class AppDestination { LIBRARY, PLAYER, SETTINGS }
+private enum class AppDestination { LIBRARY, PLAYER, SETTINGS, RECENT }
 
 @Composable
 private fun MediaSelectionNotice.toUserMessage(): String = when (this) {
