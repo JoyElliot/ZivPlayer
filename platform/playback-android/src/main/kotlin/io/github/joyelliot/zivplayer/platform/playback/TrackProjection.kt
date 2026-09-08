@@ -12,14 +12,15 @@ import androidx.media3.common.Tracks
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.TrackSelectionParameters
 import io.github.joyelliot.zivplayer.core.model.TrackId
+import io.github.joyelliot.zivplayer.core.model.TrackDescriptor
 import io.github.joyelliot.zivplayer.core.model.TrackKind
 import io.github.joyelliot.zivplayer.core.model.TrackRole
 import io.github.joyelliot.zivplayer.core.player.PlayerCommand
 import io.github.joyelliot.zivplayer.core.player.TrackSnapshot
 
-/** Queue occurrence identity prevents an old controller override selecting a new file's same ID. */
-internal fun TrackSnapshot.toMedia3Tracks(queueItemId: String): Tracks = Tracks(available.map { track ->
-    val format = Format.Builder()
+internal fun TrackDescriptor.toMedia3Format(): Format {
+    val track = this
+    return Format.Builder()
         .setId(track.id.value)
         .setLabel(track.label)
         .setLanguage(track.languageTag)
@@ -34,11 +35,18 @@ internal fun TrackSnapshot.toMedia3Tracks(queueItemId: String): Tracks = Tracks(
         .setSampleRate(track.sampleRateHz ?: Format.NO_VALUE)
         .setWidth(track.width ?: Format.NO_VALUE)
         .setHeight(track.height ?: Format.NO_VALUE)
+        .setPixelWidthHeightRatio(track.pixelWidthHeightRatio)
+        .setRotationDegrees(track.rotationDegrees)
         .setSelectionFlags(
             (if (TrackRole.DEFAULT in track.roles) C.SELECTION_FLAG_DEFAULT else 0) or
                 (if (TrackRole.FORCED in track.roles) C.SELECTION_FLAG_FORCED else 0),
         )
         .build()
+}
+
+/** Queue occurrence identity prevents an old controller override selecting a new file's same ID. */
+internal fun TrackSnapshot.toMedia3Tracks(queueItemId: String): Tracks = Tracks(available.map { track ->
+    val format = track.toMedia3Format()
     Tracks.Group(
         TrackGroup("ziv:$queueItemId:${track.id.value}", format), false,
         intArrayOf(C.FORMAT_HANDLED), booleanArrayOf(selected[track.kind] == track.id),

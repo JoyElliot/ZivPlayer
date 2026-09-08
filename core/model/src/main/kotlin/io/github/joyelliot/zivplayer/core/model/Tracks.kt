@@ -37,6 +37,8 @@ class TrackDescriptor(
     val height: Int? = null,
     roles: Set<TrackRole> = emptySet(),
     val isExternal: Boolean = false,
+    val pixelWidthHeightRatio: Float = 1f,
+    val rotationDegrees: Int = 0,
 ) {
     val roles: Set<TrackRole> = buildSet {
         addAll(roles)
@@ -51,6 +53,8 @@ class TrackDescriptor(
         require(sampleRateHz == null || sampleRateHz > 0) { "Sample rate must be positive." }
         require(width == null || width > 0) { "Video width must be positive." }
         require(height == null || height > 0) { "Video height must be positive." }
+        require(pixelWidthHeightRatio.isFinite() && pixelWidthHeightRatio > 0f) { "Pixel aspect ratio must be positive and finite." }
+        require(rotationDegrees in 0..359) { "Video rotation must be normalized." }
     }
 
     override fun equals(other: Any?): Boolean =
@@ -66,7 +70,9 @@ class TrackDescriptor(
             width == other.width &&
             height == other.height &&
             roles == other.roles &&
-            isExternal == other.isExternal
+            isExternal == other.isExternal &&
+            pixelWidthHeightRatio == other.pixelWidthHeightRatio &&
+            rotationDegrees == other.rotationDegrees
 
     override fun hashCode(): Int {
         var result = id.hashCode()
@@ -81,6 +87,8 @@ class TrackDescriptor(
         result = 31 * result + (height ?: 0)
         result = 31 * result + roles.hashCode()
         result = 31 * result + isExternal.hashCode()
+        result = 31 * result + pixelWidthHeightRatio.hashCode()
+        result = 31 * result + rotationDegrees
         return result
     }
 }

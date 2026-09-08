@@ -486,10 +486,7 @@ class PlaybackControllerViewModel(
                 player.isCommandAvailable(Player.COMMAND_SET_REPEAT_MODE),
             canRenderVideo = player.isCommandAvailable(Player.COMMAND_SET_VIDEO_SURFACE),
             hasVideo = currentItem != null && player.currentTracks.groups.any { it.type == C.TRACK_TYPE_VIDEO && it.length > 0 },
-            videoAspectRatio = player.currentTracks.groups.firstOrNull { it.type == C.TRACK_TYPE_VIDEO && it.length > 0 }
-                ?.getTrackFormat(0)?.let { format -> if (format.width > 0 && format.height > 0)
-                    (format.width.toFloat() / format.height * format.pixelWidthHeightRatio).takeIf { it.isFinite() && it > 0 }
-                    else null } ?: (16f / 9f),
+            videoAspectRatio = player.currentTracks.videoDisplayAspectRatio(),
             tracks = player.currentTracks.groups.mapNotNull { group ->
                 val kind = when (group.type) {
                     C.TRACK_TYPE_AUDIO -> PlayerTrackKind.AUDIO
