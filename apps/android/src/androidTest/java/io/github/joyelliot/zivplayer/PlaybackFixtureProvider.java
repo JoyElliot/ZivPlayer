@@ -22,7 +22,7 @@ import java.util.Set;
 /** Test APK process has no target-app Kotlin runtime, so this provider uses Android/JDK only. */
 public final class PlaybackFixtureProvider extends ContentProvider {
     private static final Set<String> FILES = new HashSet<>(Arrays.asList(
-            "baseline-av.mp4", "tracks-subtitles.mkv", "external.ass", "external.srt"));
+            "baseline-av.mp4", "tracks-subtitles.mkv", "external.ass", "external.srt", "seek-preview.mp4"));
 
     @Override public boolean onCreate() { return true; }
 

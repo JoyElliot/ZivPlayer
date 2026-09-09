@@ -13,7 +13,7 @@ import android.provider.DocumentsContract
 import android.view.WindowManager
 import android.view.View
 import android.view.ViewGroup
-import android.view.TextureView
+import android.view.SurfaceView
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.os.ParcelFileDescriptor
@@ -515,12 +515,12 @@ class PersonalDevicePlaybackTest {
         finally { bitmap.recycle() }
     }
 
-    /** Reads native video pixels directly from the texture, independent of player state. */
+    /** Reads native video pixels from the producer Surface, independent of player state. */
     private fun captureVideoFrame(name: String): List<Int> {
         val deadline = SystemClock.elapsedRealtime() + 15_000
         while (SystemClock.elapsedRealtime() < deadline) {
             val surface = onMain { findSurface(activity.activity.window.decorView) }
-            val bitmap = surface?.let { onMain { if (it.isAvailable) it.bitmap else null } }
+            val bitmap = surface?.let(::copyNativeSurface)
             if (bitmap != null) {
                 try {
                         val samples = (1..9).flatMap { x -> (1..3).map { y -> bitmap.getPixel(bitmap.width * x / 10, bitmap.height * y / 4) } }
@@ -536,8 +536,8 @@ class PersonalDevicePlaybackTest {
         error("No colorful native video frame for $name")
     }
 
-    private fun findSurface(view: View): TextureView? = when (view) {
-        is TextureView -> view
+    private fun findSurface(view: View): SurfaceView? = when (view) {
+        is SurfaceView -> view
         is ViewGroup -> (0 until view.childCount).firstNotNullOfOrNull { findSurface(view.getChildAt(it)) }
         else -> null
     }

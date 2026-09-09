@@ -88,6 +88,7 @@ dependencies {
     testImplementation(libs.junit4)
 
     androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(project(":platform:libmpv-android"))
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)

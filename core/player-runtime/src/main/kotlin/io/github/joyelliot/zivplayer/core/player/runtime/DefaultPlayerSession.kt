@@ -22,6 +22,7 @@ import io.github.joyelliot.zivplayer.core.player.PlayerErrorKind
 import io.github.joyelliot.zivplayer.core.player.PlayerSession
 import io.github.joyelliot.zivplayer.core.player.PlayerStatus
 import io.github.joyelliot.zivplayer.core.player.RepeatMode
+import io.github.joyelliot.zivplayer.core.player.SeekPrecision
 import io.github.joyelliot.zivplayer.core.player.StateChangeCause
 import io.github.joyelliot.zivplayer.core.player.TrackSnapshot
 import kotlinx.coroutines.CompletableDeferred
@@ -102,7 +103,9 @@ class DefaultPlayerSession(
     private var nextEventSequence = 0L
     private var statusBeforeBuffering: PlayerStatus? = null
     private var inFlightSeek: BackendSeekRequest? = null
-    private var queuedSeekPosition: Milliseconds? = null
+    private var queuedSeek: PlayerCommand.SeekTo? = null
+    private var seekCompletionTimeoutJob: Job? = null
+    private var lastSeekPrecision = SeekPrecision.EXACT
     private var completedSeekGeneration: SeekGeneration? = null
     private var backendCapabilitiesKnown = false
     private var backendEventsFailed = false
@@ -183,6 +186,9 @@ class DefaultPlayerSession(
                     }
                     Message.BackendCollectorFailed -> handleBackendCollectorFailure()
                     is Message.LoadReadinessTimedOut -> handleLoadReadinessTimeout(message.generation)
+                    is Message.SeekTimedOut -> if (inFlightSeek == message.request) {
+                        enterError(backendOperationError("finish the seek before the deadline", ErrorRecovery.RESET))
+                    }
                     Message.Shutdown -> {
                         handleShutdown()
                         break
@@ -235,6 +241,7 @@ class DefaultPlayerSession(
             is PlayerCommand.EditQueue -> handleEditQueue(command)
             PlayerCommand.Play -> handlePlay()
             PlayerCommand.Pause -> handlePause()
+            is PlayerCommand.SetPlaybackSuppressed -> handlePlaybackSuppression(command.suppressed)
             is PlayerCommand.SeekTo -> handleSeek(command)
             PlayerCommand.Stop -> handleStop()
             PlayerCommand.SkipNext -> handleSkip(forward = true)
@@ -351,6 +358,7 @@ class DefaultPlayerSession(
                         current.copy(
                             status = PlayerStatus.PLAYING,
                             playWhenReady = true,
+                            playbackSuppressed = false,
                             error = null,
                         ),
                         StateChangeCause.COMMAND,
@@ -363,6 +371,11 @@ class DefaultPlayerSession(
 
     private suspend fun handlePause(): CommandResult {
         val current = mutableSnapshot.value
+        if (current.playbackSuppressed) {
+            // The backend is already paused. An explicit Pause supersedes the temporary hold.
+            publish(current.copy(playWhenReady = false, playbackSuppressed = false), StateChangeCause.COMMAND)
+            return accepted(changed = true)
+        }
         return when (current.status) {
             PlayerStatus.CLOSED -> closedResult()
             PlayerStatus.LOADING -> {
@@ -396,6 +409,38 @@ class DefaultPlayerSession(
         }
     }
 
+    private suspend fun handlePlaybackSuppression(suppressed: Boolean): CommandResult {
+        val current = mutableSnapshot.value
+        if (current.playbackSuppressed == suppressed) return accepted(changed = false)
+        if (current.status !in BUFFERING_STATES) return reject("Playback suppression requires prepared media.")
+        val shouldPlay = current.playWhenReady && !suppressed
+        val error = when {
+            shouldPlay -> {
+                capabilityRejection(PlayerCapability.PLAY)?.let { return it }
+                callBackend("resume after playback suppression") { play() }
+            }
+            current.status == PlayerStatus.PLAYING || current.playWhenReady && !current.playbackSuppressed -> {
+                capabilityRejection(PlayerCapability.PAUSE)?.let { return it }
+                callBackend("suppress playback") { pause() }
+            }
+            else -> null
+        }
+        if (error != null) {
+            enterError(error, StateChangeCause.COMMAND)
+            return CommandResult.Failed(mutableSnapshot.value.revision, error)
+        }
+        statusBeforeBuffering = null
+        publish(current.copy(
+            playbackSuppressed = suppressed,
+            status = when {
+                shouldPlay -> PlayerStatus.PLAYING
+                current.status == PlayerStatus.READY -> PlayerStatus.READY
+                else -> PlayerStatus.PAUSED
+            },
+        ), StateChangeCause.COMMAND)
+        return accepted(changed = true)
+    }
+
     private suspend fun handleSeek(command: PlayerCommand.SeekTo): CommandResult {
         val current = mutableSnapshot.value
         if (current.queue.currentItem == null) {
@@ -408,7 +453,9 @@ class DefaultPlayerSession(
         if (current.timeline.duration?.let { command.position > it } == true) {
             return reject("Seek position must not exceed the known duration.")
         }
-        if (command.position == current.timeline.position) {
+        if (inFlightSeek == null && command.position == current.timeline.position &&
+            (command.precision == SeekPrecision.KEYFRAME || lastSeekPrecision == SeekPrecision.EXACT)) {
+            emitSeekCompletion(command.completionId, current.timeline.position)
             return accepted(changed = false)
         }
 
@@ -425,7 +472,8 @@ class DefaultPlayerSession(
         }
 
         if (inFlightSeek != null) {
-            queuedSeekPosition = command.position
+            // Preserve precision as well as position: a release at the last preview target must commit.
+            queuedSeek = command
             publish(
                 current.copy(timeline = current.timeline.copy(position = command.position)),
                 StateChangeCause.COMMAND,
@@ -433,7 +481,7 @@ class DefaultPlayerSession(
             return accepted(changed = true)
         }
 
-        val error = startSeek(command.position)
+        val error = startSeek(command)
         if (error != null) {
             enterError(error, StateChangeCause.COMMAND)
             return CommandResult.Failed(mutableSnapshot.value.revision, error)
@@ -483,6 +531,7 @@ class DefaultPlayerSession(
             current.copy(
                 status = PlayerStatus.IDLE,
                 playWhenReady = false,
+                playbackSuppressed = false,
                 timeline = PlaybackTimeline(),
                 tracks = TrackSnapshot.EMPTY,
                 capabilities = stoppedCapabilities,
@@ -713,7 +762,7 @@ class DefaultPlayerSession(
             is BackendEvent.PlaybackStarted -> {
                 val current = mutableSnapshot.value
                 if (current.status != PlayerStatus.LOADING &&
-                    current.playWhenReady &&
+                    current.playWhenReady && !current.playbackSuppressed &&
                     current.status != PlayerStatus.PLAYING
                 ) {
                     statusBeforeBuffering = null
@@ -727,7 +776,7 @@ class DefaultPlayerSession(
             is BackendEvent.PlaybackPaused -> {
                 val current = mutableSnapshot.value
                 if (current.status in setOf(PlayerStatus.PLAYING, PlayerStatus.BUFFERING) &&
-                    !current.playWhenReady
+                    (!current.playWhenReady || current.playbackSuppressed)
                 ) {
                     statusBeforeBuffering = null
                     publish(
@@ -780,7 +829,7 @@ class DefaultPlayerSession(
             callBackend("restore the track selection") { selectTrack(kind, id) }?.let { error -> emitError(error) }
         }
 
-        if (current.playWhenReady) {
+        if (current.playWhenReady && !current.playbackSuppressed) {
             if (PlayerCapability.PLAY !in mutableSnapshot.value.capabilities.available) {
                 enterError(requiredCapabilityError(PlayerCapability.PLAY))
                 return
@@ -813,7 +862,7 @@ class DefaultPlayerSession(
 
         if (current.status == PlayerStatus.BUFFERING) {
             val restored = when {
-                current.playWhenReady -> PlayerStatus.PLAYING
+                current.playWhenReady && !current.playbackSuppressed -> PlayerStatus.PLAYING
                 statusBeforeBuffering == PlayerStatus.READY -> PlayerStatus.READY
                 else -> PlayerStatus.PAUSED
             }
@@ -828,11 +877,15 @@ class DefaultPlayerSession(
             return
         }
 
-        val queuedPosition = queuedSeekPosition
-        if (queuedPosition != null && queuedPosition != event.position) {
+        seekCompletionTimeoutJob?.cancel()
+        seekCompletionTimeoutJob = null
+        lastSeekPrecision = pending.precision
+        val queued = queuedSeek
+        if (queued != null && (queued.position != event.position ||
+                queued.precision == SeekPrecision.EXACT && pending.precision != SeekPrecision.EXACT)) {
             inFlightSeek = null
-            queuedSeekPosition = null
-            val error = startSeek(queuedPosition)
+            queuedSeek = null
+            val error = startSeek(queued)
             if (error != null) {
                 enterError(error)
             }
@@ -840,7 +893,7 @@ class DefaultPlayerSession(
         }
 
         inFlightSeek = null
-        queuedSeekPosition = null
+        queuedSeek = null
         completedSeekGeneration = event.seekGeneration
         val current = mutableSnapshot.value
         publish(
@@ -854,19 +907,34 @@ class DefaultPlayerSession(
             StateChangeCause.BACKEND_EVENT,
             emitStateEvent = false,
         )
+        emitSeekCompletion(queued?.completionId ?: pending.completionId, event.position)
     }
 
-    private suspend fun startSeek(position: Milliseconds): PlayerError? {
+    private fun emitSeekCompletion(completionId: Long?, position: Milliseconds) {
+        if (completionId == null) return
+        val snapshot = mutableSnapshot.value
+        val item = snapshot.queue.currentItem ?: return
+        mutableEvents.tryEmit(PlaybackEvent.SeekCompleted(nextSequence(), snapshot.revision, completionId, item.id, position))
+    }
+
+    private suspend fun startSeek(command: PlayerCommand.SeekTo): PlayerError? {
         val generation = activeGeneration ?: return backendOperationError("seek without active media")
         val request = BackendSeekRequest(
             generation = generation,
             seekGeneration = nextSeekGeneration(),
-            position = position,
+            position = command.position,
+            precision = command.precision,
+            completionId = command.completionId,
         )
         inFlightSeek = request
         val error = callBackend("seek") { seekTo(request) }
         if (error != null) {
             inFlightSeek = null
+        } else {
+            seekCompletionTimeoutJob = scope.launch {
+                delay(validatedBackendOperationTimeoutMillis)
+                mailbox.send(Message.SeekTimedOut(request))
+            }
         }
         return error
     }
@@ -884,8 +952,8 @@ class DefaultPlayerSession(
         }
 
         val delegatedTransition = onAutomaticTransition != null && targetIndex != null &&
-            targetIndex != currentIndex && current.playWhenReady
-        if (targetIndex == null || !current.playWhenReady || delegatedTransition) {
+            targetIndex != currentIndex && current.playWhenReady && !current.playbackSuppressed
+        if (targetIndex == null || !current.playWhenReady || current.playbackSuppressed || delegatedTransition) {
             val endPosition = current.timeline.duration ?: current.timeline.position
             activeGeneration = null
             statusBeforeBuffering = null
@@ -894,6 +962,7 @@ class DefaultPlayerSession(
                 current.copy(
                     status = PlayerStatus.ENDED,
                     playWhenReady = false,
+                    playbackSuppressed = false,
                     timeline = current.timeline.copy(position = endPosition),
                 ),
                 StateChangeCause.BACKEND_EVENT,
@@ -963,6 +1032,7 @@ class DefaultPlayerSession(
         val next = current.copy(
             status = PlayerStatus.LOADING,
             playWhenReady = playWhenReady,
+            playbackSuppressed = false,
             queue = queue,
             timeline = PlaybackTimeline(position = startPosition),
             tracks = TrackSnapshot.EMPTY,
@@ -1018,6 +1088,7 @@ class DefaultPlayerSession(
             current.copy(
                 status = PlayerStatus.ERROR,
                 playWhenReady = false,
+                playbackSuppressed = false,
                 capabilities = if (error.recovery == ErrorRecovery.RESET) {
                     PlayerCapabilities.NONE
                 } else {
@@ -1045,6 +1116,7 @@ class DefaultPlayerSession(
             current.copy(
                 status = PlayerStatus.CLOSED,
                 playWhenReady = false,
+                playbackSuppressed = false,
                 capabilities = PlayerCapabilities.NONE,
                 error = null,
             ),
@@ -1122,7 +1194,8 @@ class DefaultPlayerSession(
                 }
             }
             if (snapshot.status in setOf(PlayerStatus.PLAYING, PlayerStatus.BUFFERING) ||
-                (snapshot.status == PlayerStatus.LOADING && snapshot.playWhenReady)
+                (snapshot.status == PlayerStatus.LOADING && snapshot.playWhenReady) ||
+                (snapshot.playbackSuppressed && snapshot.playWhenReady)
             ) {
                 add(PlayerCapability.PAUSE)
             }
@@ -1351,9 +1424,12 @@ class DefaultPlayerSession(
     }
 
     private fun resetSeekState() {
+        seekCompletionTimeoutJob?.cancel()
+        seekCompletionTimeoutJob = null
         inFlightSeek = null
-        queuedSeekPosition = null
+        queuedSeek = null
         completedSeekGeneration = null
+        lastSeekPrecision = SeekPrecision.EXACT
     }
 
     private fun nextSequence(): Long {
@@ -1372,6 +1448,8 @@ class DefaultPlayerSession(
         data object BackendCollectorFailed : Message
 
         data class LoadReadinessTimedOut(val generation: LoadGeneration) : Message
+
+        data class SeekTimedOut(val request: BackendSeekRequest) : Message
 
         data object Shutdown : Message
     }

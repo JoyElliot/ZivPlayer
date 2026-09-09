@@ -8,7 +8,7 @@ import android.os.SystemClock
 import android.view.WindowManager
 import android.view.View
 import android.view.ViewGroup
-import android.view.TextureView
+import android.view.SurfaceView
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
@@ -52,7 +52,11 @@ class LibraryPlaybackUiTest {
             await("settings loaded") { settings.loaded.value }
             onMain { settings.update { it.copy(options = it.options.copy(videoFit = VideoFit.FIT)) } }
             val directoryName = expected.first().relativePath.substringBeforeLast('/', "").substringAfterLast('/').ifBlank { folderName }
-            activity.onNodeWithText(directoryName).performScrollTo().performClick()
+            val lazyList = SemanticsMatcher.keyIsDefined(androidx.compose.ui.semantics.SemanticsActions.ScrollToIndex)
+            activity.waitUntil(10_000) { activity.onAllNodes(lazyList).fetchSemanticsNodes().isNotEmpty() }
+            // The grouped directory may be outside LazyColumn's composed viewport.
+            activity.onNode(lazyList).performScrollToNode(hasText(directoryName))
+            activity.onNodeWithText(directoryName).performClick()
             activity.onNodeWithContentDescription(app.getString(LibraryR.string.library_search)).performClick()
             activity.onNode(hasSetTextAction()).performTextInput("tracks-")
             activity.waitUntil(5_000) { activity.onAllNodesWithText(expected.last().title).fetchSemanticsNodes().isNotEmpty() }
@@ -204,12 +208,13 @@ class LibraryPlaybackUiTest {
     }
 
     private fun nativeFramePixels(): List<Int> {
-        fun findTexture(view: View): TextureView? = when (view) {
-            is TextureView -> view
-            is ViewGroup -> (0 until view.childCount).firstNotNullOfOrNull { findTexture(view.getChildAt(it)) }
+        fun findSurface(view: View): SurfaceView? = when (view) {
+            is SurfaceView -> view
+            is ViewGroup -> (0 until view.childCount).firstNotNullOfOrNull { findSurface(view.getChildAt(it)) }
             else -> null
         }
-        val bitmap = onMain { checkNotNull(checkNotNull(findTexture(activity.activity.window.decorView)).bitmap) }
+        val surface = onMain { checkNotNull(findSurface(activity.activity.window.decorView)) }
+        val bitmap = checkNotNull(copyNativeSurface(surface))
         return try { framePixels(bitmap) } finally { bitmap.recycle() }
     }
 

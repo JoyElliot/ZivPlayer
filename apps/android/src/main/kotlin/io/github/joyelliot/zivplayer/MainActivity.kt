@@ -168,6 +168,15 @@ class MainActivity : ComponentActivity() {
                     playbackController.stop()
                 },
                 onSeekTo = { position -> mediaSelection.cancelPendingPlayback(); playbackController.seekTo(position) },
+                onSeekBy = { delta -> mediaSelection.cancelPendingPlayback(); playbackController.seekBy(delta) },
+                onPreviewSeekTo = { position ->
+                    mediaSelection.cancelPendingPlayback()
+                    playbackController.previewSeekTo(position,
+                        allowLocalDecoder = preferences.options.decoder == io.github.joyelliot.zivplayer.core.model.DecoderMode.AUTOMATIC)
+                },
+                onCancelSeekPreview = playbackController::cancelSeekPreview,
+                seekPreviewFrame = playbackController.seekPreviewFrame,
+                onSeekPreviewPresented = playbackController::onSeekPreviewPresented,
                 onPlaybackSpeedChange = playbackController::setPlaybackSpeed,
                 onVolumeChange = playbackController::setVolume,
                 brightness = playbackBrightness ?: systemBrightness,
@@ -238,12 +247,13 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         super.onStop()
         playbackController.cancelTemporarySpeed()
+        playbackController.abortSeekPreview()
         started = false
         playbackController.setDiagnosticsVisible(false)
         if (!isChangingConfigurations && !isInPictureInPictureMode && !pipEntryPending &&
             (!settings.loaded.value || !settings.preferences.value.backgroundPlayback)) {
             mediaSelection.cancelPendingPlayback()
-            playbackController.pause()
+            playbackController.pauseForLifecycle()
         }
     }
 
@@ -260,7 +270,10 @@ class MainActivity : ComponentActivity() {
         if (hasFocus && playbackBrightness == null) systemBrightness =
             (android.provider.Settings.System.getInt(contentResolver,
                 android.provider.Settings.System.SCREEN_BRIGHTNESS, 128) / 255f).coerceIn(0f, 1f)
-        if (!hasFocus) playbackController.cancelTemporarySpeed()
+        if (!hasFocus) {
+            playbackController.cancelTemporarySpeed()
+            playbackController.abortSeekPreview()
+        }
     }
 
     override fun onSaveInstanceState(outState: Bundle) {

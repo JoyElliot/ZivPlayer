@@ -1,56 +1,31 @@
-# ADR 0005: Pure player contract with a serialized runtime
+# ADR 0005：纯 Kotlin 播放契约与串行运行时
 
-- Status: Accepted
-- Date: 2026-08-30
+- 状态：已接受
+- 日期：2026-08-30
+- 更新：2026-09-09；跨平台复用策略由 [ADR 0015](0015-native-platforms-and-shared-contracts.md) 补充
 
-## Context
+## 背景
 
-The playback engine is asynchronous: commands, native callbacks, queue changes,
-and Android lifecycle events can race with one another. Exposing native or
-Android types in the player contract would also prevent reuse outside the
-initial Android application.
+播放引擎是异步的，命令、原生回调、队列变化和 Android 生命周期事件可能相互竞争。将原生或 Android 类型暴露到播放契约中，也会限制其在初始 Android 应用之外的复用。
 
-## Decision
+## 决定
 
-- Split the player foundation into `core:model`, `core:player-api`, and
-  `core:player-runtime`, with dependencies flowing in that order.
-- Keep all three modules free of Android, Compose, Media3, JNI, and libmpv
-  types and property names.
-- Expose one immutable `StateFlow` snapshot as the authoritative state and a
-  separate `Flow` of transient semantic events.
-- Serialize commands and backend events through one runtime-owned actor. Only
-  that actor may mutate playback state or call the backend.
-- Assign every load a monotonically increasing generation. Platform adapters
-  attach it only to callbacks they can correlate and drop uncorrelatable
-  callbacks; core ignores events from obsolete generations.
-- Serialize native seeks as one in-flight operation, coalesce newer targets,
-  carry a seek generation on completion and position events, and preserve
-  native callback order so a delayed position cannot restore a pre-seek value.
-- Require the backend event flow to remain alive until shutdown. Unexpected
-  completion or failure is a terminal transport error; the runtime never starts
-  another load on a dead event collector.
-- Require every accepted load to produce `Prepared` or `Failure` before a
-  bounded readiness deadline. A missed deadline is a terminal reset error, and
-  callbacks from that abandoned generation are ignored.
-- Treat `ErrorRecovery.RESET` as a hard ownership boundary: the current
-  session cannot load or control the backend again and its owner must close it
-  before creating a fresh backend/session pair.
-- Keep the published `available` capability set consistent with commands that
-  the runtime will accept, including play/pause intent changes while loading
-  and replay after an unprepared load was stopped.
-- Model backend failures with ZivPlayer-owned error kinds and sanitized text;
-  native exceptions and implementation-specific error names remain inside the
-  platform adapter.
-- Define `Stop` as unloading the active backend while retaining the logical
-  queue and rewinding its position; a later `Play` creates a fresh load.
-  `ClearQueue` additionally removes the logical queue.
-- Make session shutdown idempotent and ensure the backend is closed exactly
-  once after all commands admitted before shutdown have completed.
+- 将播放基础拆为 `core:model`、`core:player-api` 和 `core:player-runtime`；运行时依赖 API 与模型，API 依赖模型。
+- 三个模块都不引入 Android、Compose、Media3、JNI、libmpv 类型或属性名。
+- 以一个不可变的 `StateFlow` 快照作为权威状态，另用独立的 `Flow` 传递临时语义事件。
+- 命令与后端事件通过运行时持有的单一 actor 串行处理，只有它可以改变播放状态或调用后端。
+- 每次加载分配单调递增的 generation。平台适配器仅为能够关联的回调附加该标识，并丢弃无法关联的回调；核心忽略旧 generation 的事件。
+- 原生跳转同一时间只允许一个在途操作，合并后续目标；完成与位置事件携带 seek generation，并保留原生回调顺序，避免迟到的位置恢复跳转前的值。
+- 后端事件流必须持续到关闭为止。意外结束或失败属于终止性的传输错误，运行时不得在事件收集器失效后开始新的加载。
+- 每个已接受的加载必须在有界期限内产生 `Prepared` 或 `Failure`。超时属于终止性的重置错误，后续忽略该次已放弃加载的回调。
+- `ErrorRecovery.RESET` 是所有权的明确边界：当前会话不能再次加载或控制后端，所有者必须先关闭它，再创建新的后端与会话。
+- 发布的 `available` 能力集必须与实际接受的命令一致，包括加载期间的播放 / 暂停意图变化，以及停止未准备完成的加载后再次播放。
+- 后端失败使用 ZivPlayer 定义的错误类型与经过清理的文本表示；原生异常和实现专有的错误名留在平台适配器中。
+- `Stop` 卸载当前后端媒体，但保留逻辑队列并将位置归零；之后的 `Play` 发起新加载。`ClearQueue` 还会清空逻辑队列。
+- 会话关闭必须幂等。关闭前已接纳的命令完成处理后，后端恰好关闭一次。
 
-## Consequences
+## 影响
 
-The core state machine can be verified with deterministic JVM tests and later
-moved to Kotlin Multiplatform without carrying Android APIs with it. Platform
-adapters must translate their callbacks and failures into the typed backend
-port. The event flow is transient; consumers must reconstruct current state
-from the snapshot rather than relying on replayed events.
+核心状态机可以通过确定性的 JVM 测试验证。平台适配器将各自的回调和失败转换为类型化后端接口；事件流是临时通知，消费者应从快照恢复当前状态，不能依赖事件重放。
+
+当前实现仍是 Kotlin/JVM 库，`StateFlow`、`Flow` 与 `suspend` 是这一实现的语言接口。后续平台优先统一行为语义，再决定分别实现或共享代码；本 ADR 不再预设第二个平台必须迁移到 Kotlin Multiplatform。详见 ADR 0015。

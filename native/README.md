@@ -1,4 +1,23 @@
-# Native source supply chain
+# 原生依赖与构建说明
+
+[文档导航](../docs/README.md) · [Android 开发指南](../docs/development.md)
+
+`native` 管理 libmpv、JNI 包装层及其依赖的源码锁定、构建工具和产物校验。当前 Android 应用已经使用源码构建的原生栈，早期 Maven bootstrap AAR 已退出应用依赖；本地检查产物仍不等同于正式发布输入。
+
+普通 Android 开发先按[开发指南](../docs/development.md)准备并校验 `native/out/android`。首次克隆不会包含这个生成目录，Gradle 也不会自动重建整个原生栈。
+
+## 阅读入口
+
+- [源码缓存与工具测试](#source-cache-commands)
+- [离线源码准备](#offline-source-materialization)
+- [工具链与 APT 依赖](#locked-toolchain-and-apt-closure)
+- [包含 JNI 包装层的构建准备](#additive-wrapper-inclusive-preparation)
+- [离线检查构建与执行记录](#locked-offline-inspection-build-contract)
+- [正式发布仍需完成的工作](#remaining-native-gates)
+
+以下保留详细英文技术参考与历史构建记录。标记为 `HISTORICAL` 的命令、已消耗工作区、哈希和凭据用于追溯，不能直接作为新一轮构建步骤；新构建应使用与当前锁定输入一致的新工作区。
+
+## 技术参考
 
 The native tree owns the source-built libmpv supply-chain inputs used by
 ZivPlayer. The Maven bootstrap AAR has been retired; source-built inspection

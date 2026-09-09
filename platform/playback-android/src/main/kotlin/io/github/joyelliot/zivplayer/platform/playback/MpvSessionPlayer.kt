@@ -48,6 +48,7 @@ import io.github.joyelliot.zivplayer.core.media.savedSelection
 import io.github.joyelliot.zivplayer.core.player.CommandResult
 import io.github.joyelliot.zivplayer.core.player.ErrorRecovery
 import io.github.joyelliot.zivplayer.core.player.PlaybackSnapshot
+import io.github.joyelliot.zivplayer.core.player.PlaybackEvent
 import io.github.joyelliot.zivplayer.core.player.PlayerCapability
 import io.github.joyelliot.zivplayer.core.player.PlayerCommand
 import io.github.joyelliot.zivplayer.core.player.PlayerError
@@ -209,6 +210,15 @@ internal class MpvSessionPlayer(
     private var trackIntentGeneration = 0L
     private data class TemporaryRateLease(val owner: Any, val token: Long, val epoch: Long,
         val item: QueueItemId, val original: PlaybackRatePermille)
+    private data class SeekPreviewLease(val owner: Any, val token: Long, val epoch: Long, val intent: Long,
+        val item: QueueItemId, val original: Milliseconds)
+    private var seekPreviewLease: SeekPreviewLease? = null
+    private val retiredSeekTokens = java.util.WeakHashMap<Any, Long>()
+    private data class PendingSeekCompletion(val id: Long, val owner: Any, val epoch: Long,
+        val item: QueueItemId, val intent: Long, val replacement: Long,
+        val reply: SettableFuture<Void>, var deadline: Job? = null)
+    private var seekCompletionSerial = 0L
+    private var pendingSeekCompletion: PendingSeekCompletion? = null
     private var temporaryRateLease: TemporaryRateLease? = null
     private val retiredTemporaryTokens = java.util.WeakHashMap<Any, Long>()
 
@@ -236,6 +246,128 @@ internal class MpvSessionPlayer(
     internal fun endControllerTemporarySpeed(owner: Any): ListenableFuture<*> = launchFuture {
         retireTemporaryToken(owner, Long.MAX_VALUE)
         if (temporaryRateLease?.owner == owner) restoreTemporaryRate()
+    }
+
+    internal fun seekPreview(owner: Any, token: Long, phase: Int, positionMs: Long,
+        mediaId: String?, sequence: Long, index: Int): ListenableFuture<*> {
+        val intent = playIntentGeneration
+        var completion: ListenableFuture<*>? = null
+        val admission = enqueueQueueOperation { launchFuture {
+        require(token > 0 && phase in SeekPreviewContract.PREVIEW..SeekPreviewContract.ABORT && positionMs >= 0)
+        val current = engine.session.snapshot.value
+        val item = current.queue.currentItem
+        val existing = seekPreviewLease
+        if (existing != null && (existing.epoch != engineEpoch || existing.item != item?.id || existing.intent != playIntentGeneration)) retireSeekPreview()
+        if (token <= (retiredSeekTokens[owner] ?: 0L)) return@launchFuture
+        if (intent != playIntentGeneration || item == null || item.media.id.value != mediaId || current.queue.currentIndex != index ||
+            current.status !in SEEK_PREVIEW_STATES ||
+            activeMediaItem?.mediaMetadata?.extras?.getLong(PlaybackRequestMetadata.SEQUENCE_EXTRA) != sequence) {
+            retiredSeekTokens[owner] = maxOf(retiredSeekTokens[owner] ?: 0L, token)
+            if (seekPreviewLease?.let { it.owner == owner && it.token <= token } == true) retireSeekPreview()
+            return@launchFuture
+        }
+        val lease = seekPreviewLease
+        if (lease != null && (lease.owner != owner || lease.token != token)) return@launchFuture
+        val cancelling = phase == SeekPreviewContract.CANCEL || phase == SeekPreviewContract.ABORT
+        if (cancelling && lease == null) {
+            retiredSeekTokens[owner] = token
+            return@launchFuture
+        }
+        val target = if (cancelling) checkNotNull(lease).original else
+            Milliseconds(positionMs.coerceAtMost(current.timeline.duration?.value ?: Long.MAX_VALUE))
+        if (phase == SeekPreviewContract.PREVIEW || phase == SeekPreviewContract.BEGIN) {
+            invalidateSeekCompletion("A newer preview superseded the seek.")
+            if (lease == null) seekPreviewLease = SeekPreviewLease(owner, token, engineEpoch, intent, item.id, current.timeline.position)
+            try {
+                dispatchOrThrow(PlayerCommand.SetPlaybackSuppressed(true))
+                if (phase == SeekPreviewContract.PREVIEW)
+                    dispatchOrThrow(PlayerCommand.SeekTo(target, io.github.joyelliot.zivplayer.core.player.SeekPrecision.KEYFRAME))
+            } catch (failure: Throwable) {
+                retireSeekPreview()
+                throw failure
+            }
+        } else {
+            // A same-event keyboard/accessibility commit may have no preceding native preview.
+            retiredSeekTokens[owner] = token
+            retireSeekPreview()
+            if (phase == SeekPreviewContract.ABORT) {
+                releaseAudioFocus()
+                dispatchOrThrow(PlayerCommand.Pause)
+            }
+            val pending = PendingSeekCompletion(++seekCompletionSerial, owner, engineEpoch, item.id,
+                intent, queueReplacementGeneration, SettableFuture.create())
+            pendingSeekCompletion = pending
+            completion = pending.reply
+            try {
+                dispatchOrThrow(PlayerCommand.SeekTo(target, completionId = pending.id))
+                pending.deadline = scope.launch {
+                    delay(10_000)
+                    operationGate.withLock {
+                        if (pendingSeekCompletion === pending) {
+                            invalidateSeekCompletion("The seek did not complete.")
+                            releaseAudioFocus()
+                            // This deadline includes time queued behind a preview
+                            // seek. Late exact completion must never resume the hold.
+                            dispatchOrThrow(PlayerCommand.Pause)
+                        }
+                    }
+                }
+            } catch (failure: Throwable) {
+                invalidateSeekCompletion("The seek failed.")
+                throw failure
+            }
+        }
+        } }
+        // Queue/command locks cover admission only. Waiting for presentation must not block
+        // a newer seek, stop, media replacement, or a controller disconnect.
+        val reply = SettableFuture.create<Void>()
+        val executor = com.google.common.util.concurrent.MoreExecutors.directExecutor()
+        admission.addListener({
+            val failure = runCatching { admission.get(); Unit }.exceptionOrNull()
+            if (failure != null) reply.setException(failure) else {
+                val waitFor = completion
+                if (waitFor == null) reply.set(null) else waitFor.addListener({
+                    runCatching { waitFor.get(); Unit }.fold(onSuccess = { reply.set(null) }, onFailure = reply::setException)
+                }, executor)
+            }
+        }, executor)
+        return reply
+    }
+
+    internal fun endControllerSeekPreview(owner: Any): ListenableFuture<*> {
+        // Retire synchronously: queue replacement is allowed to discard queued operations.
+        retiredSeekTokens[owner] = Long.MAX_VALUE
+        val pending = pendingSeekCompletion?.takeIf { it.owner == owner }
+        if (pending != null) invalidateSeekCompletion("The preview controller disconnected.")
+        val lease = seekPreviewLease?.takeIf { it.owner == owner }
+        if (lease == null && pending == null) return Futures.immediateVoidFuture()
+        if (lease != null) retireSeekPreview()
+        val replacement = queueReplacementGeneration
+        val epoch = lease?.epoch ?: checkNotNull(pending).epoch
+        val intent = lease?.intent ?: checkNotNull(pending).intent
+        val item = lease?.item ?: checkNotNull(pending).item
+        return launchFuture {
+            val current = engine.session.snapshot.value
+            if (replacement == queueReplacementGeneration && intent == playIntentGeneration &&
+                epoch == engineEpoch && item == current.queue.currentItem?.id && current.status in SEEK_PREVIEW_STATES) {
+                dispatchOrThrow(PlayerCommand.Pause)
+                if (lease != null) dispatchOrThrow(PlayerCommand.SeekTo(lease.original))
+            }
+        }
+    }
+
+    private fun retireSeekPreview() {
+        invalidateSeekCompletion("The seek was superseded.")
+        val lease = seekPreviewLease ?: return
+        retiredSeekTokens[lease.owner] = maxOf(retiredSeekTokens[lease.owner] ?: 0L, lease.token)
+        seekPreviewLease = null
+    }
+
+    private fun invalidateSeekCompletion(message: String) {
+        val pending = pendingSeekCompletion ?: return
+        pendingSeekCompletion = null
+        pending.deadline?.cancel()
+        pending.reply.setException(CancellationException(message))
     }
 
     private fun retireTemporaryToken(owner: Any, token: Long) {
@@ -285,6 +417,8 @@ internal class MpvSessionPlayer(
                 snapshot.playWhenReady,
                 playWhenReadyChangeReason,
             )
+            .setPlaybackSuppressionReason(if (snapshot.playbackSuppressed)
+                Player.PLAYBACK_SUPPRESSION_REASON_SCRUBBING else Player.PLAYBACK_SUPPRESSION_REASON_NONE)
             .setPlaybackState(projection.playbackState)
             .setIsLoading(projection.isLoading)
             .setRepeatMode(snapshot.repeatMode.toMedia3RepeatMode())
@@ -319,6 +453,7 @@ internal class MpvSessionPlayer(
     }
 
     override fun handleSetPlayWhenReady(playWhenReady: Boolean): ListenableFuture<*> {
+        retireSeekPreview()
         val intent = ++playIntentGeneration
         // The request-owned Play sent after installation must not cancel a newer media
         // request that may already be resolving. Pause remains an explicit cancellation.
@@ -384,6 +519,7 @@ internal class MpvSessionPlayer(
     override fun handlePrepare(): ListenableFuture<*> = Futures.immediateVoidFuture()
 
     override fun handleStop(): ListenableFuture<*> {
+        retireSeekPreview()
         ++playIntentGeneration
         setMediaRequestFence.invalidate()
         lastServiceOwnedSequence = PlaybackRequestSequencer.current()
@@ -470,6 +606,7 @@ internal class MpvSessionPlayer(
         }
         val token = VideoSurfaceRequests.current()
         return launchFuture {
+            if (token != VideoSurfaceRequests.current()) return@launchFuture
             if (videoSurfaceRequestToken != token) videoSurfaceSize = null
             videoSurfaceRequestToken = token
             this.videoOutput = videoOutput
@@ -508,6 +645,7 @@ internal class MpvSessionPlayer(
         startIndex: Int,
         startPositionMs: Long,
     ): ListenableFuture<*> {
+        retireSeekPreview()
         if (mediaItems.isEmpty()) {
             ++queueReplacementGeneration
             ++playIntentGeneration
@@ -590,6 +728,7 @@ internal class MpvSessionPlayer(
     ): ListenableFuture<*> {
         val intent = playIntentGeneration
         return enqueueQueueOperation {
+        retireSeekPreview()
         val snapshot = engine.session.snapshot.value
         val currentIndex = snapshot.queue.currentIndex ?: return@enqueueQueueOperation failedFuture("The queue is empty.")
         val normalizedPosition = if (positionMs == C.TIME_UNSET) 0L else positionMs.coerceAtLeast(0L)
@@ -747,6 +886,7 @@ internal class MpvSessionPlayer(
                     val installCurrent = queueGeneration?.let { it == queueReplacementGeneration }
                         ?: setMediaRequestFence.isCurrent(ticket)
                     if (!installCurrent || shutdownStarted.get()) return@withLock
+                    retireSeekPreview()
                     restoreTemporaryRate()
                     releaseAudioFocus()
                     rebuildEngineIfRequired()
@@ -834,6 +974,8 @@ internal class MpvSessionPlayer(
             return
         }
         configurationJob?.cancel()
+        retireSeekPreview()
+        retiredSeekTokens.clear()
         temporaryRateLease = null
         retiredTemporaryTokens.clear()
 
@@ -884,6 +1026,14 @@ internal class MpvSessionPlayer(
             observedEngine.session.snapshot.collect { next ->
                 if (engine === observedEngine && engineEpoch == observedEpoch) {
                     snapshot = next
+                    pendingSeekCompletion?.let { pending ->
+                        if (pending.epoch != observedEpoch || pending.item != next.queue.currentItem?.id ||
+                            next.status !in SEEK_PREVIEW_STATES) invalidateSeekCompletion("The seek media is no longer active.")
+                    }
+                    seekPreviewLease?.let { lease ->
+                        if (lease.epoch != observedEpoch || lease.item != next.queue.currentItem?.id ||
+                            lease.intent != playIntentGeneration || next.status !in SEEK_PREVIEW_STATES) retireSeekPreview()
+                    }
                     val interruptedLease = temporaryRateLease
                     if (interruptedLease != null && (!next.playWhenReady || next.status == PlayerStatus.ENDED || next.error != null)) {
                         launchFuture {
@@ -928,6 +1078,30 @@ internal class MpvSessionPlayer(
                 // StateChanged + ItemTransition ordered ahead of command completion; the epoch
                 // fence makes late events from a detached engine harmless.
                 progressRecorder.observeEvent(observedEpoch, event)
+                if (event is PlaybackEvent.SeekCompleted) applicationHandler.post {
+                    val pending = pendingSeekCompletion
+                    if (engine === observedEngine && engineEpoch == observedEpoch && pending != null &&
+                        pending.id == event.completionId && pending.epoch == observedEpoch && pending.item == event.item) {
+                        launchFuture {
+                            if (pendingSeekCompletion === pending && pending.intent == playIntentGeneration &&
+                                pending.replacement == queueReplacementGeneration && engineEpoch == pending.epoch &&
+                                engine.session.snapshot.value.queue.currentItem?.id == pending.item) {
+                                pending.deadline?.cancel()
+                                // Keep the pending owner installed while releasing the hold. A newer
+                                // command may invalidate it while the serialized core command awaits.
+                                dispatchOrThrow(PlayerCommand.SetPlaybackSuppressed(false))
+                                if (pendingSeekCompletion === pending) {
+                                    pendingSeekCompletion = null
+                                    pending.reply.set(null)
+                                }
+                            }
+                        }.addListener({
+                            // A failed core resume enters ERROR, whose snapshot invalidates the reply.
+                            if (engine.session.snapshot.value.error != null)
+                                invalidateSeekCompletion("Playback could not resume after the seek.")
+                        }, java.util.concurrent.Executor { applicationHandler.post(it) })
+                    }
+                }
             }
         }
 
@@ -1225,9 +1399,18 @@ internal class MpvSessionPlayer(
             when (audioFocusPolicy.onChange(change)) {
                 PlaybackFocusAction.NONE -> Unit
                 PlaybackFocusAction.PAUSE, PlaybackFocusAction.PAUSE_AND_ABANDON -> {
-                    if (change == PlaybackFocusChange.LOSS || change == PlaybackFocusChange.NOISY) releaseAudioFocus()
+                    val preview = seekPreviewLease
+                    val interruptedScrub = preview != null || pendingSeekCompletion != null ||
+                        engine.session.snapshot.value.playbackSuppressed
+                    ++playIntentGeneration
+                    retireSeekPreview()
+                    if (interruptedScrub || change == PlaybackFocusChange.LOSS || change == PlaybackFocusChange.NOISY)
+                        releaseAudioFocus()
                     if (PlayerCapability.PAUSE in engine.session.snapshot.value.capabilities.available) {
                         dispatchOrThrow(PlayerCommand.Pause)
+                        if (preview != null && preview.epoch == engineEpoch &&
+                            preview.item == engine.session.snapshot.value.queue.currentItem?.id)
+                            dispatchOrThrow(PlayerCommand.SeekTo(preview.original))
                         progressRecorder.flushPause(engineEpoch, engine.session.snapshot.value)
                     }
                 }
@@ -1346,7 +1529,13 @@ internal class MpvSessionPlayer(
                             PlaybackException.ERROR_CODE_UNSPECIFIED,
                         )
                     }
-                    block()
+                    try {
+                        block()
+                        releaseUnusedSeekSuppression(allowResume = true)
+                    } catch (failure: Throwable) {
+                        runCatching { releaseUnusedSeekSuppression(allowResume = false) }
+                        throw failure
+                    }
                 }
                 future.set(null)
             } catch (failure: Throwable) {
@@ -1363,6 +1552,14 @@ internal class MpvSessionPlayer(
         return future
     }
 
+    /** Run inside operationGate, after the overriding command has applied its play/pause intent. */
+    private suspend fun releaseUnusedSeekSuppression(allowResume: Boolean) {
+        if (seekPreviewLease != null || pendingSeekCompletion != null ||
+            !engine.session.snapshot.value.playbackSuppressed) return
+        if (!allowResume) dispatchOrThrow(PlayerCommand.Pause)
+        else dispatchOrThrow(PlayerCommand.SetPlaybackSuppressed(false))
+    }
+
     private fun failedFuture(message: String): ListenableFuture<*> =
         Futures.immediateFailedFuture<Void>(
             PlaybackException(message, null, PlaybackException.ERROR_CODE_UNSPECIFIED),
@@ -1377,6 +1574,7 @@ internal class MpvSessionPlayer(
     )
 
     private companion object {
+        val SEEK_PREVIEW_STATES = setOf(PlayerStatus.READY, PlayerStatus.PLAYING, PlayerStatus.PAUSED, PlayerStatus.BUFFERING)
         const val MAX_QUEUE_ITEMS = 500
         val PLAYBACK_AUDIO_ATTRIBUTES = AudioAttributes.Builder()
             .setUsage(C.USAGE_MEDIA)

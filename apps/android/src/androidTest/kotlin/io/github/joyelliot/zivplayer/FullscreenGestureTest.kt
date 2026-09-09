@@ -31,6 +31,8 @@ class FullscreenGestureTest {
         canSetVolume = true, volume = 0.5f))
     private var playPause = 0
     private val seeks = mutableListOf<Long>()
+    private val previews = mutableListOf<Long>()
+    private var canceledPreviews = 0
     private val rates = mutableListOf<Float>()
     private val ended = mutableListOf<Long>()
     private var token = 0L
@@ -112,10 +114,21 @@ class FullscreenGestureTest {
         video().performTouchInput { swipe(Offset(width * 0.2f, height * 0.45f), Offset(width * 0.7f, height * 0.45f), 300) }
         compose.runOnIdle {
             assertEquals(1, seeks.size)
+            assertTrue(previews.size > 1)
             assertTrue(seeks.single() in 155_000L..165_000L)
             assertEquals(0, playPause)
             assertTrue(rates.isEmpty())
         }
+    }
+
+    @Test fun previewUpdatesBeforeReleaseAndIdentityChangeCancelsWithoutCommit() {
+        showPlayer()
+        video().performTouchInput { down(Offset(width * 0.2f, height * 0.35f)); moveTo(Offset(width * 0.6f, height * 0.35f)) }
+        compose.runOnIdle { assertTrue(previews.isNotEmpty()); assertTrue(seeks.isEmpty()) }
+        compose.runOnIdle { state.value = state.value.copy(playbackIdentity = "new-media") }
+        compose.mainClock.advanceTimeByFrame()
+        video().performTouchInput { up() }
+        compose.runOnIdle { assertTrue(canceledPreviews > 0); assertTrue(seeks.isEmpty()) }
     }
 
     @Test fun holdSlidesIntoSlowMotionAndReleaseOrIdentityChangeEndsLease() {
@@ -183,6 +196,7 @@ class FullscreenGestureTest {
             FullscreenPlayerScreen(state.value, videoContent = { Box {} }, onExit = {}, onPlayPause = { playPause++ },
                 onSeekTo = { seeks += it }, onPlaybackSpeedChange = {}, onVolumeChange = { volumes += it }, onRepeatModeChange = {},
                 onSelectTrack = { _, _ -> }, onOpenSubtitle = {}, onBeginTemporarySpeed = { ++token },
+                onPreviewSeekTo = { previews += it }, onCancelSeekPreview = { canceledPreviews++ },
                 onTemporarySpeedChange = { _, rate -> rates += rate }, onEndTemporarySpeed = { ended += it },
                 brightness = 0.5f, onBrightnessChange = { brightness += it })
         }

@@ -28,7 +28,7 @@ class SeekCorrelationTest {
     }
 
     @Test
-    fun delayedFalseSignalCannotCompleteTheNextSeekBeforeItIsArmed() {
+    fun delayedRestartCannotCompleteTheNextSeekBeforeItsSeekEvent() {
         val correlation = SeekCorrelation()
         val first = request(load = 1, seek = 1, position = 5_000)
         val second = request(load = 1, seek = 2, position = 12_000)

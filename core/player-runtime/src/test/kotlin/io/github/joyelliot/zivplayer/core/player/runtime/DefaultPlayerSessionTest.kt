@@ -17,6 +17,7 @@ import io.github.joyelliot.zivplayer.core.model.VolumePercent
 import io.github.joyelliot.zivplayer.core.player.CommandResult
 import io.github.joyelliot.zivplayer.core.player.ErrorRecovery
 import io.github.joyelliot.zivplayer.core.player.PlaybackTimeline
+import io.github.joyelliot.zivplayer.core.player.PlaybackEvent
 import io.github.joyelliot.zivplayer.core.player.PlayerCapabilities
 import io.github.joyelliot.zivplayer.core.player.PlayerCapability
 import io.github.joyelliot.zivplayer.core.player.PlayerCommand
@@ -25,6 +26,7 @@ import io.github.joyelliot.zivplayer.core.player.PlayerErrorKind
 import io.github.joyelliot.zivplayer.core.player.PlayerSession
 import io.github.joyelliot.zivplayer.core.player.PlayerStatus
 import io.github.joyelliot.zivplayer.core.player.RepeatMode
+import io.github.joyelliot.zivplayer.core.player.SeekPrecision
 import io.github.joyelliot.zivplayer.core.player.TrackSnapshot
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CancellationException
@@ -49,6 +51,242 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class DefaultPlayerSessionTest {
+    @Test
+    fun suppressionPausesTheBackendPreservesIntentAndSurvivesSeekAndLateCallbacks() = runTest {
+        val backend = FakeBackend()
+        val session = newSession(backend)
+        runCurrent()
+        dispatch(session, PlayerCommand.SetQueue(items(), playWhenReady = true))
+        val generation = backend.loads.single().generation
+        backend.emit(BackendEvent.Prepared(generation, Milliseconds(20_000), capabilities = allCapabilities()))
+        runCurrent()
+        dispatch(session, PlayerCommand.SetPlaybackSuppressed(true))
+        dispatch(session, PlayerCommand.SetPlaybackSuppressed(true))
+        assertEquals(1, backend.pauseCount)
+        assertTrue(session.snapshot.value.playWhenReady)
+        assertTrue(session.snapshot.value.playbackSuppressed)
+        assertEquals(PlayerStatus.PAUSED, session.snapshot.value.status)
+        backend.emit(BackendEvent.PlaybackStarted(generation))
+        backend.emit(BackendEvent.BufferingChanged(generation, true))
+        backend.emit(BackendEvent.BufferingChanged(generation, false))
+        runCurrent()
+        assertEquals(PlayerStatus.PAUSED, session.snapshot.value.status)
+        dispatch(session, PlayerCommand.SeekTo(Milliseconds(7_000), completionId = 1))
+        backend.emit(BackendEvent.SeekCompleted(generation, backend.seekRequests.single().seekGeneration, Milliseconds(7_000)))
+        runCurrent()
+        assertEquals(1, backend.playCount)
+        assertTrue(session.snapshot.value.playbackSuppressed)
+        dispatch(session, PlayerCommand.SetPlaybackSuppressed(false))
+        assertEquals(2, backend.playCount)
+        assertFalse(session.snapshot.value.playbackSuppressed)
+        assertEquals(PlayerStatus.PLAYING, session.snapshot.value.status)
+        assertEquals(Milliseconds(7_000), session.snapshot.value.timeline.position)
+        close(session)
+    }
+
+    @Test
+    fun releasingSuppressionDoesNotStartOriginallyPausedMedia() = runTest {
+        val backend = FakeBackend()
+        val session = newSession(backend)
+        runCurrent()
+        dispatch(session, PlayerCommand.SetQueue(items()))
+        backend.emit(BackendEvent.Prepared(backend.loads.single().generation, null, capabilities = allCapabilities()))
+        runCurrent()
+        dispatch(session, PlayerCommand.SetPlaybackSuppressed(true))
+        dispatch(session, PlayerCommand.SetPlaybackSuppressed(false))
+        assertEquals(0, backend.playCount)
+        assertFalse(session.snapshot.value.playWhenReady)
+        assertFalse(session.snapshot.value.playbackSuppressed)
+        close(session)
+    }
+
+    @Test
+    fun explicitPauseSupersedesSuppressionAndPreventsLateResume() = runTest {
+        val backend = FakeBackend()
+        val session = newSession(backend)
+        runCurrent()
+        dispatch(session, PlayerCommand.SetQueue(items(), playWhenReady = true))
+        val generation = backend.loads.single().generation
+        backend.emit(BackendEvent.Prepared(generation, null, capabilities = allCapabilities()))
+        runCurrent()
+        dispatch(session, PlayerCommand.SetPlaybackSuppressed(true))
+        assertTrue(PlayerCapability.PAUSE in session.snapshot.value.capabilities.available)
+        dispatch(session, PlayerCommand.Pause)
+        dispatch(session, PlayerCommand.SetPlaybackSuppressed(false))
+        backend.emit(BackendEvent.PlaybackStarted(generation))
+        runCurrent()
+        assertFalse(session.snapshot.value.playWhenReady)
+        assertFalse(session.snapshot.value.playbackSuppressed)
+        assertEquals(PlayerStatus.PAUSED, session.snapshot.value.status)
+        assertEquals(1, backend.playCount)
+        close(session)
+    }
+
+    @Test
+    fun explicitPlayReleasesSuppressionOnce() = runTest {
+        val backend = FakeBackend()
+        val session = newSession(backend)
+        runCurrent()
+        dispatch(session, PlayerCommand.SetQueue(items(), playWhenReady = true))
+        backend.emit(BackendEvent.Prepared(backend.loads.single().generation, null, capabilities = allCapabilities()))
+        runCurrent()
+        dispatch(session, PlayerCommand.SetPlaybackSuppressed(true))
+        dispatch(session, PlayerCommand.Play)
+        dispatch(session, PlayerCommand.SetPlaybackSuppressed(false))
+        assertFalse(session.snapshot.value.playbackSuppressed)
+        assertEquals(PlayerStatus.PLAYING, session.snapshot.value.status)
+        assertEquals(2, backend.playCount)
+        close(session)
+    }
+
+    @Test
+    fun stopAndReplacementClearThePreviousSuppression() = runTest {
+        val backend = FakeBackend()
+        val session = newSession(backend)
+        runCurrent()
+        dispatch(session, PlayerCommand.SetQueue(items(), playWhenReady = true))
+        backend.emit(BackendEvent.Prepared(backend.loads.last().generation, null, capabilities = allCapabilities()))
+        runCurrent()
+        dispatch(session, PlayerCommand.SetPlaybackSuppressed(true))
+        dispatch(session, PlayerCommand.Stop)
+        assertFalse(session.snapshot.value.playbackSuppressed)
+        dispatch(session, PlayerCommand.Play)
+        backend.emit(BackendEvent.Prepared(backend.loads.last().generation, null, capabilities = allCapabilities()))
+        runCurrent()
+        dispatch(session, PlayerCommand.SetPlaybackSuppressed(true))
+        dispatch(session, PlayerCommand.SetQueue(listOf(queueItem("replacement"))))
+        assertFalse(session.snapshot.value.playbackSuppressed)
+        backend.emit(BackendEvent.Prepared(backend.loads.last().generation, null, capabilities = allCapabilities()))
+        runCurrent()
+        assertFalse(session.snapshot.value.playWhenReady)
+        assertEquals(2, backend.playCount)
+        close(session)
+    }
+
+    @Test
+    fun reachingTheEndDuringSuppressionDoesNotAdvanceTheQueue() = runTest {
+        val backend = FakeBackend()
+        val session = newSession(backend)
+        runCurrent()
+        dispatch(session, PlayerCommand.SetQueue(items(), playWhenReady = true))
+        val generation = backend.loads.single().generation
+        backend.emit(BackendEvent.Prepared(generation, null, capabilities = allCapabilities()))
+        runCurrent()
+        dispatch(session, PlayerCommand.SetPlaybackSuppressed(true))
+        backend.emit(BackendEvent.Ended(generation))
+        runCurrent()
+        assertEquals(1, backend.loads.size)
+        assertEquals(PlayerStatus.ENDED, session.snapshot.value.status)
+        assertFalse(session.snapshot.value.playbackSuppressed)
+        assertFalse(session.snapshot.value.playWhenReady)
+        close(session)
+    }
+
+    @Test
+    fun correlatedCompletionWaitsForTheLatestNativeSeekAndIgnoresOldEvents() = runTest {
+        val backend = FakeBackend()
+        val session = newSession(backend)
+        val completed = mutableListOf<PlaybackEvent.SeekCompleted>()
+        val collector = backgroundScope.launch { session.events.collect { if (it is PlaybackEvent.SeekCompleted) completed += it } }
+        runCurrent()
+        dispatch(session, PlayerCommand.SetQueue(items()))
+        val generation = backend.loads.single().generation
+        backend.emit(BackendEvent.Prepared(generation, Milliseconds(20_000), capabilities = allCapabilities()))
+        runCurrent()
+        dispatch(session, PlayerCommand.SeekTo(Milliseconds(5_000), completionId = 1))
+        val first = backend.seekRequests.single()
+        dispatch(session, PlayerCommand.SeekTo(Milliseconds(8_000), completionId = 2))
+        assertTrue(completed.isEmpty())
+        backend.emit(BackendEvent.SeekCompleted(generation, first.seekGeneration, Milliseconds(5_000)))
+        runCurrent()
+        val latest = backend.seekRequests.last()
+        assertTrue(completed.isEmpty())
+        backend.emit(BackendEvent.SeekCompleted(generation, first.seekGeneration, Milliseconds(5_000)))
+        runCurrent()
+        assertTrue(completed.isEmpty())
+        backend.emit(BackendEvent.SeekCompleted(generation, latest.seekGeneration, Milliseconds(8_000)))
+        runCurrent()
+        assertEquals(listOf(2L), completed.map { it.completionId })
+        assertEquals(items().first().id, completed.single().item)
+        dispatch(session, PlayerCommand.SeekTo(Milliseconds(8_000), completionId = 3))
+        runCurrent()
+        assertEquals(listOf(2L, 3L), completed.map { it.completionId })
+        assertEquals(2, backend.seekRequests.size)
+        collector.cancel()
+        close(session)
+    }
+
+    @Test
+    fun releaseAtThePendingPreviewTargetStillPerformsAnExactSeek() = runTest {
+        val backend = FakeBackend()
+        val session = newSession(backend)
+        runCurrent()
+        dispatch(session, PlayerCommand.SetQueue(items()))
+        val generation = backend.loads.single().generation
+        backend.emit(BackendEvent.Prepared(generation, Milliseconds(20_000), capabilities = allCapabilities()))
+        runCurrent()
+        dispatch(session, PlayerCommand.SeekTo(Milliseconds(5_000), SeekPrecision.KEYFRAME))
+        val preview = backend.seekRequests.single()
+        repeat(40) { dispatch(session, PlayerCommand.SeekTo(Milliseconds(6_000L + it), SeekPrecision.KEYFRAME)) }
+        dispatch(session, PlayerCommand.SeekTo(Milliseconds(5_000)))
+        assertEquals(1, backend.seekRequests.size)
+        backend.emit(BackendEvent.SeekCompleted(generation, preview.seekGeneration, Milliseconds(5_000)))
+        runCurrent()
+        assertEquals(2, backend.seekRequests.size)
+        val committed = backend.seekRequests.last()
+        assertEquals(SeekPrecision.EXACT, committed.precision)
+        assertEquals(Milliseconds(5_000), committed.position)
+        backend.emit(BackendEvent.SeekCompleted(generation, preview.seekGeneration, Milliseconds(4_000)))
+        backend.emit(BackendEvent.SeekCompleted(generation, committed.seekGeneration, Milliseconds(4_999)))
+        runCurrent()
+        assertEquals(Milliseconds(4_999), session.snapshot.value.timeline.position)
+        assertFalse(session.snapshot.value.playWhenReady)
+        close(session)
+    }
+
+    @Test
+    fun releaseAtACompletedKeyframeRemainsExactAndPreservesPlayingIntent() = runTest {
+        val backend = FakeBackend()
+        val session = newSession(backend)
+        runCurrent()
+        dispatch(session, PlayerCommand.SetQueue(items(), playWhenReady = true))
+        val generation = backend.loads.single().generation
+        backend.emit(BackendEvent.Prepared(generation, Milliseconds(20_000), capabilities = allCapabilities()))
+        runCurrent()
+        dispatch(session, PlayerCommand.SeekTo(Milliseconds(5_000), SeekPrecision.KEYFRAME))
+        backend.emit(BackendEvent.SeekCompleted(generation, backend.seekRequests.single().seekGeneration, Milliseconds(5_000)))
+        runCurrent()
+        dispatch(session, PlayerCommand.SeekTo(Milliseconds(5_000)))
+        assertEquals(2, backend.seekRequests.size)
+        assertEquals(SeekPrecision.EXACT, backend.seekRequests.last().precision)
+        assertTrue(session.snapshot.value.playWhenReady)
+        close(session)
+    }
+
+    @Test
+    fun missingSeekCompletionFailsWithResetAndStopCancelsTheDeadline() = runTest {
+        val backend = FakeBackend()
+        val session = newSession(backend, backendOperationTimeoutMillis = 500)
+        runCurrent()
+        dispatch(session, PlayerCommand.SetQueue(items()))
+        var generation = backend.loads.last().generation
+        backend.emit(BackendEvent.Prepared(generation, Milliseconds(20_000), capabilities = allCapabilities()))
+        runCurrent()
+        dispatch(session, PlayerCommand.SeekTo(Milliseconds(5_000)))
+        dispatch(session, PlayerCommand.Stop)
+        advanceTimeBy(500); runCurrent()
+        assertEquals(PlayerStatus.IDLE, session.snapshot.value.status)
+        dispatch(session, PlayerCommand.Play)
+        generation = backend.loads.last().generation
+        backend.emit(BackendEvent.Prepared(generation, Milliseconds(20_000), capabilities = allCapabilities()))
+        runCurrent()
+        dispatch(session, PlayerCommand.SeekTo(Milliseconds(6_000)))
+        advanceTimeBy(500); runCurrent()
+        assertEquals(PlayerStatus.ERROR, session.snapshot.value.status)
+        assertEquals(ErrorRecovery.RESET, session.snapshot.value.error?.recovery)
+        close(session)
+    }
+
     @Test
     fun editingSurroundingQueueKeepsCurrentLoadTracksAndPlaybackIntent() = runTest {
         val backend = FakeBackend()

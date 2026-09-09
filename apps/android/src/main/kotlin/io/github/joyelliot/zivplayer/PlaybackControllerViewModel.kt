@@ -8,6 +8,7 @@ import android.app.Application
 import android.content.ComponentName
 import android.os.Looper
 import android.os.Bundle
+import android.os.SystemClock
 import android.net.Uri
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
@@ -34,6 +35,7 @@ import io.github.joyelliot.zivplayer.platform.playback.SubtitleRequestContract
 import io.github.joyelliot.zivplayer.platform.playback.PlaybackService
 import io.github.joyelliot.zivplayer.platform.playback.PlaybackDiagnosticsContract
 import io.github.joyelliot.zivplayer.platform.playback.TemporarySpeedContract
+import io.github.joyelliot.zivplayer.platform.playback.SeekPreviewContract
 import io.github.joyelliot.zivplayer.core.model.PlaybackDiagnostics
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -69,6 +71,19 @@ class PlaybackControllerViewModel(
     private var positionTickerJob: Job? = null
     private var cleared = false
     private val temporarySpeed = TemporaryPlaybackSpeed()
+    private data class SeekPreview(val token: Long, val identity: SpeedPlaybackIdentity, val playWhenReady: Boolean,
+        var positionMs: Long, var sentAtMs: Long = Long.MIN_VALUE,
+        var renderer: ScrubPreviewRenderer? = null, var nativePreview: Boolean = false,
+        var admitted: Boolean = false)
+    private var seekPreviewSerial = 0L
+    private var seekPreview: SeekPreview? = null
+    private var seekPreviewJob: Job? = null
+    private var committingSeekPreview: SeekPreview? = null
+    private var committingSeekRequest: ListenableFuture<SessionResult>? = null
+    private var lifecycleSeekPause: Any? = null
+    private var previewInteractionGeneration = 0L
+    private val mutableSeekPreviewFrame = mutableStateOf<SeekPreviewFrame?>(null)
+    val seekPreviewFrame: State<SeekPreviewFrame?> = mutableSeekPreviewFrame
     private var lastCompletedMediaId: String? = null
     private var subtitleTarget: Pair<String, Long>? = null
     private var subtitleMessage: String? = null
@@ -86,6 +101,14 @@ class PlaybackControllerViewModel(
     private var diagnosticsController: MediaController? = null
 
     private val playerListener = object : Player.Listener {
+        override fun onPositionDiscontinuity(oldPosition: Player.PositionInfo, newPosition: Player.PositionInfo, reason: Int) {
+            // Custom native previews update the snapshot with INTERNAL discontinuities.
+            // SEEK comes from a standard/controller seek and cancels either preview path.
+            if (reason == Player.DISCONTINUITY_REASON_SEEK && seekPreview != null) {
+                ++previewInteractionGeneration
+                cancelSeekPreview()
+            }
+        }
         override fun onEvents(player: Player, events: Player.Events) {
             refreshState(player)
         }
@@ -111,6 +134,12 @@ class PlaybackControllerViewModel(
 
     fun stop() { cancelTemporarySpeed(); withControllerCommand(Player.COMMAND_STOP, MediaController::stop) }
     fun pause() { cancelTemporarySpeed(); withControllerCommand(Player.COMMAND_PLAY_PAUSE, MediaController::pause) }
+
+    /** A lifecycle pause must not overtake an already sent seek commit/cancellation. */
+    fun pauseForLifecycle() {
+        abortSeekPreview()
+        if (lifecycleSeekPause == null) pause()
+    }
 
     fun setDiagnosticsVisible(visible: Boolean) {
         if (visible && diagnosticsJob?.isActive == true) return
@@ -151,10 +180,176 @@ class PlaybackControllerViewModel(
         }
     }
 
-    fun seekTo(positionMs: Long) =
-        withControllerCommand(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM) { active ->
+    fun seekTo(positionMs: Long) = withControllerCommand(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM) { active ->
+        val preview = seekPreview
+        clearSeekPreview(keepFrame = preview != null)
+        if (preview != null && preview.identity == speedIdentity(active)) {
+            preview.positionMs = positionMs.coerceAtLeast(0L)
+            committingSeekPreview = preview
+            val request = sendSeekPreview(active, preview, SeekPreviewContract.COMMIT)
+            committingSeekRequest = request
+            if (request == null) clearSeekPreview() else request.addListener({
+                if (committingSeekPreview !== preview || preview.identity != speedIdentity(active)) return@addListener
+                if (runCatching { request.get().resultCode }.getOrNull() == SessionResult.RESULT_SUCCESS) {
+                    val frame = mutableSeekPreviewFrame.value
+                    if (frame?.token == preview.token) mutableSeekPreviewFrame.value = frame.copy(commitReady = true)
+                    else committingSeekPreview = null
+                } else clearSeekPreview()
+            }, mainExecutor)
+        } else {
+            clearSeekPreview()
             active.seekTo(positionMs.coerceAtLeast(0L))
         }
+    }
+
+    /** Read Media3's current/optimistic position at the event, rather than a sampled Compose position. */
+    fun seekBy(deltaMs: Long) = withControllerCommand(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM) { active ->
+        val target = (active.currentPosition + deltaMs).coerceIn(0L, active.duration.knownTime() ?: Long.MAX_VALUE)
+        // One exact seek avoids restarting the decoder just after a preview frame appears.
+        // Media3 masks the position synchronously so successive double taps still accumulate.
+        clearSeekPreview()
+        active.seekTo(target)
+    }
+
+    fun previewSeekTo(positionMs: Long, allowLocalDecoder: Boolean = true) {
+        val active = mutableController.value ?: return
+        val identity = speedIdentity(active) ?: return
+        if (active.playbackState !in listOf(Player.STATE_READY, Player.STATE_BUFFERING) ||
+            !active.isCommandAvailable(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM) ||
+            !active.isSessionCommandAvailable(SessionCommand(SeekPreviewContract.ACTION, Bundle.EMPTY))) return
+        if (seekPreview?.identity != identity) clearSeekPreview()
+        val preview = seekPreview ?: SeekPreview(++seekPreviewSerial, identity, active.playWhenReady,
+            positionMs.coerceIn(0L, active.duration.knownTime() ?: Long.MAX_VALUE))
+            .also { created ->
+                lifecycleSeekPause = null
+                seekPreview = created
+                committingSeekPreview = null
+                mutableSeekPreviewFrame.value = null
+                cancelTemporarySpeed()
+                val uri = active.currentMediaItem?.localConfiguration?.uri
+                if (allowLocalDecoder && uri?.scheme in setOf("content", "file")) {
+                    created.renderer = ScrubPreviewRenderer(applicationContext, checkNotNull(uri),
+                        onFrame = { frame ->
+                            if (seekPreview === created && created.identity == speedIdentity(active))
+                                mutableSeekPreviewFrame.value = SeekPreviewFrame(created.token, frame.bitmap, frame.positionUs / 1_000)
+                        }, onFailure = {
+                            if (seekPreview === created && created.identity == speedIdentity(active)) {
+                                created.renderer?.close()
+                                created.renderer = null
+                                created.nativePreview = true
+                                mutableSeekPreviewFrame.value = null
+                                sendSeekPreview(active, created, SeekPreviewContract.PREVIEW)
+                            }
+                        })
+                } else created.nativePreview = true
+                // Do not start another decoder until the service has paused main presentation.
+                // The core preserves playWhenReady, so this hold does not cancel its own gesture.
+                val begin = sendSeekPreview(active, created, SeekPreviewContract.BEGIN)
+                if (begin == null) clearSeekPreview() else begin.addListener({
+                    if (seekPreview !== created || created.identity != speedIdentity(active)) return@addListener
+                    if (runCatching { begin.get().resultCode }.getOrNull() == SessionResult.RESULT_SUCCESS) {
+                        created.admitted = true
+                        requestSeekPreview(active, created)
+                    } else clearSeekPreview()
+                }, mainExecutor)
+            }
+        preview.positionMs = positionMs.coerceIn(0L, active.duration.knownTime() ?: Long.MAX_VALUE)
+        if (seekPreview === preview && preview.admitted) requestSeekPreview(active, preview)
+    }
+
+    private fun requestSeekPreview(active: MediaController, preview: SeekPreview) {
+        preview.renderer?.let { it.request(preview.positionMs); return }
+        val now = SystemClock.uptimeMillis()
+        if (preview.sentAtMs == Long.MIN_VALUE || now - preview.sentAtMs >= SEEK_PREVIEW_INTERVAL_MS) {
+            seekPreviewJob?.cancel()
+            seekPreviewJob = null
+            preview.sentAtMs = now
+            sendSeekPreview(active, preview, SeekPreviewContract.PREVIEW)
+        } else if (seekPreviewJob == null) {
+            seekPreviewJob = viewModelScope.launch {
+                delay(SEEK_PREVIEW_INTERVAL_MS - (now - preview.sentAtMs))
+                seekPreviewJob = null
+                if (seekPreview === preview && preview.identity == speedIdentity(active)) {
+                    preview.sentAtMs = SystemClock.uptimeMillis()
+                    sendSeekPreview(active, preview, SeekPreviewContract.PREVIEW)
+                }
+            }
+        }
+    }
+
+    fun cancelSeekPreview() = finishSeekPreview(resumePlayback = true)
+
+    fun abortSeekPreview() = finishSeekPreview(resumePlayback = false)
+
+    private fun finishSeekPreview(resumePlayback: Boolean) {
+        val preview = seekPreview
+        val committed = committingSeekPreview
+        val commitRequest = committingSeekRequest
+        clearSeekPreview()
+        if (preview == null) {
+            // A release has already selected its final position. Lifecycle loss may pause it,
+            // but must never roll that accepted seek back to the gesture's starting position.
+            if (!resumePlayback && committed != null)
+                mutableController.value?.takeIf { committed.identity == speedIdentity(it) }
+                    ?.let { pauseAfterSeek(it, committed.identity, commitRequest) }
+            return
+        }
+        mutableController.value?.takeIf { preview.identity == speedIdentity(it) }
+            ?.let {
+                val request = sendSeekPreview(it, preview, if (resumePlayback) SeekPreviewContract.CANCEL else SeekPreviewContract.ABORT)
+                // ABORT already pauses in the service. Keep its ordering marker
+                // without sending a second Pause that could override a newer Play.
+                if (!resumePlayback) pauseAfterSeek(it, preview.identity, request, pauseWhenComplete = false)
+            }
+    }
+
+    private fun pauseAfterSeek(active: MediaController, identity: SpeedPlaybackIdentity,
+                               request: ListenableFuture<SessionResult>?, pauseWhenComplete: Boolean = true) {
+        val gate = Any()
+        lifecycleSeekPause = gate
+        val finish = Runnable {
+            if (lifecycleSeekPause !== gate) return@Runnable
+            lifecycleSeekPause = null
+            if (!pauseWhenComplete || (request != null &&
+                runCatching { request.get().resultCode }.getOrNull() != SessionResult.RESULT_SUCCESS)) return@Runnable
+            if (active === mutableController.value && active.isConnected && speedIdentity(active) == identity &&
+                active.isCommandAvailable(Player.COMMAND_PLAY_PAUSE)) active.pause()
+        }
+        if (request == null) finish.run() else request.addListener(finish, mainExecutor)
+    }
+
+    fun onSeekPreviewPresented(token: Long) {
+        if (committingSeekPreview?.token == token && mutableSeekPreviewFrame.value?.commitReady == true) {
+            committingSeekPreview = null
+            committingSeekRequest = null
+            mutableSeekPreviewFrame.value = null
+        }
+    }
+
+    private fun clearSeekPreview(keepFrame: Boolean = false) {
+        seekPreviewJob?.cancel()
+        seekPreviewJob = null
+        seekPreview?.renderer?.close()
+        seekPreview?.renderer = null
+        seekPreview = null
+        if (!keepFrame) {
+            committingSeekPreview = null
+            committingSeekRequest = null
+            mutableSeekPreviewFrame.value = null
+        }
+    }
+
+    private fun sendSeekPreview(active: MediaController, preview: SeekPreview, phase: Int): ListenableFuture<SessionResult>? {
+        if (!active.isConnected) return null
+        return active.sendCustomCommand(SessionCommand(SeekPreviewContract.ACTION, Bundle.EMPTY), Bundle().apply {
+            putLong(SeekPreviewContract.TOKEN, preview.token)
+            putInt(SeekPreviewContract.PHASE, phase)
+            putLong(SeekPreviewContract.POSITION, preview.positionMs)
+            putString(SeekPreviewContract.MEDIA_ID, preview.identity.mediaId)
+            putLong(SeekPreviewContract.SEQUENCE, preview.identity.sequence)
+            putInt(SeekPreviewContract.INDEX, preview.identity.index)
+        })
+    }
 
     fun setPlaybackSpeed(speed: Float) =
         withControllerCommand(Player.COMMAND_SET_SPEED_AND_PITCH) { active ->
@@ -386,7 +581,11 @@ class PlaybackControllerViewModel(
                     handleDisconnected(connectedController, generation)
                     break
                 }
-                refreshState(connectedController)
+                // Queue and track lists are refreshed by Player.Listener, not rebuilt on every tick.
+                mutablePlayerState.value = mutablePlayerState.value.copy(
+                    positionMs = connectedController.currentPosition.coerceAtLeast(0L),
+                    bufferedPositionMs = connectedController.bufferedPosition.knownTime(),
+                )
                 delay(POSITION_REFRESH_INTERVAL_MS)
             }
         }
@@ -409,6 +608,15 @@ class PlaybackControllerViewModel(
 
     private fun refreshState(player: Player) {
         if (cleared || mutableController.value !== player) return
+        seekPreview?.let { preview ->
+            if (preview.identity != speedIdentity(player)) clearSeekPreview()
+            else if (player.playWhenReady != preview.playWhenReady || player.playerError != null ||
+                player.playbackState == Player.STATE_ENDED || player.playbackState == Player.STATE_IDLE) cancelSeekPreview()
+        }
+        committingSeekPreview?.let { preview ->
+            if (preview.identity != speedIdentity(player) || player.playWhenReady != preview.playWhenReady ||
+                player.playerError != null || player.playbackState in listOf(Player.STATE_IDLE, Player.STATE_ENDED)) clearSeekPreview()
+        }
         temporarySpeed.activeToken?.let { token ->
             if (!temporarySpeed.owns(token, speedIdentity(player))) temporarySpeed.invalidate()
             else if (!player.playWhenReady || player.playbackState == Player.STATE_ENDED || player.playerError != null) endTemporarySpeed(token)
@@ -448,7 +656,7 @@ class PlaybackControllerViewModel(
             connectionStatus = PlayerConnectionStatus.CONNECTED,
             playbackStatus = playbackStatus,
             mediaId = currentMediaId,
-            playbackIdentity = speedIdentity(player)?.toString(),
+            playbackIdentity = speedIdentity(player)?.let { "$it:$previewInteractionGeneration" },
             queue = (0 until player.mediaItemCount).map { index ->
                 val item = player.getMediaItemAt(index)
                 PlayerQueueUiItem(index, item.mediaMetadata.title.cleanText() ?: item.mediaId,
@@ -516,6 +724,9 @@ class PlaybackControllerViewModel(
     ) {
         val active = mutableController.value ?: return
         if (!active.isConnected || !active.isCommandAvailable(command)) return
+        if (command == Player.COMMAND_PLAY_PAUSE || command == Player.COMMAND_STOP ||
+            command == Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM || command == Player.COMMAND_SEEK_TO_MEDIA_ITEM)
+            lifecycleSeekPause = null
         action(active)
         refreshState(active)
     }
@@ -538,6 +749,7 @@ class PlaybackControllerViewModel(
         )
 
     private fun detachConnectedController(controller: MediaController) {
+        clearSeekPreview()
         positionTickerJob?.cancel()
         positionTickerJob = null
         controller.removeListener(playerListener)
@@ -554,6 +766,7 @@ class PlaybackControllerViewModel(
 
     override fun onCleared() {
         cancelTemporarySpeed()
+        abortSeekPreview()
         cleared = true
         diagnosticsJob?.cancel()
         diagnosticsRequest?.cancel(false)
@@ -571,7 +784,8 @@ private fun CharSequence?.cleanText(): String? = this?.toString()?.takeUnless(St
 
 private fun Float.finiteOrDefault(default: Float): Float = if (isFinite()) this else default
 
-private const val POSITION_REFRESH_INTERVAL_MS = 500L
+private const val POSITION_REFRESH_INTERVAL_MS = 100L
+private const val SEEK_PREVIEW_INTERVAL_MS = 80L
 private const val RECONNECT_BASE_DELAY_MS = 1_000L
 private const val RECONNECT_MAX_DELAY_MS = 30_000L
 private const val MAX_RECONNECT_BACKOFF_SHIFT = 5

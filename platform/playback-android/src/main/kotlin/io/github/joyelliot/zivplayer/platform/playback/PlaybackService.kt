@@ -165,6 +165,7 @@ class PlaybackService : MediaSessionService() {
                     .add(SessionCommand(VideoSurfaceRequestContract.ACTION_RESIZE, Bundle.EMPTY))
                     .add(SessionCommand(PlaybackDiagnosticsContract.ACTION_READ, Bundle.EMPTY))
                     .add(SessionCommand(TemporarySpeedContract.ACTION, Bundle.EMPTY))
+                    .add(SessionCommand(SeekPreviewContract.ACTION, Bundle.EMPTY))
             }
             // Media3 1.11's deprecated default callback returns an empty command set.
             // This is the connection's static ceiling; the player's current capabilities
@@ -184,6 +185,7 @@ class PlaybackService : MediaSessionService() {
 
         override fun onDisconnected(session: MediaSession, controller: MediaSession.ControllerInfo) {
             player?.endControllerTemporarySpeed(controller)
+            player?.endControllerSeekPreview(controller)
         }
 
         override fun onCustomCommand(
@@ -195,11 +197,19 @@ class PlaybackService : MediaSessionService() {
             if (customCommand.customAction != SubtitleRequestContract.ACTION_ADD &&
                 customCommand.customAction != VideoSurfaceRequestContract.ACTION_RESIZE &&
                 customCommand.customAction != TemporarySpeedContract.ACTION &&
+                customCommand.customAction != SeekPreviewContract.ACTION &&
                 customCommand.customAction != PlaybackDiagnosticsContract.ACTION_READ) {
                 return super.onCustomCommand(session, controller, customCommand, args)
             }
             if (controller.uid != Process.myUid()) {
                 return Futures.immediateFuture(SessionResult(SessionError.ERROR_PERMISSION_DENIED))
+            }
+            if (customCommand.customAction == SeekPreviewContract.ACTION) {
+                val owned = player ?: return Futures.immediateFuture(SessionResult(SessionError.ERROR_INVALID_STATE))
+                return commandReply(owned.seekPreview(controller, args.getLong(SeekPreviewContract.TOKEN),
+                    args.getInt(SeekPreviewContract.PHASE, -1), args.getLong(SeekPreviewContract.POSITION, -1),
+                    args.getString(SeekPreviewContract.MEDIA_ID), args.getLong(SeekPreviewContract.SEQUENCE),
+                    args.getInt(SeekPreviewContract.INDEX, -1)))
             }
             if (customCommand.customAction == TemporarySpeedContract.ACTION) {
                 val owned = player ?: return Futures.immediateFuture(SessionResult(SessionError.ERROR_INVALID_STATE))

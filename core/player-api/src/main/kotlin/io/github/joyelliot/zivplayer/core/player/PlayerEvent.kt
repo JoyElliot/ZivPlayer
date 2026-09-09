@@ -3,6 +3,7 @@
 package io.github.joyelliot.zivplayer.core.player
 
 import io.github.joyelliot.zivplayer.core.model.QueueItemId
+import io.github.joyelliot.zivplayer.core.model.Milliseconds
 
 enum class StateChangeCause {
     COMMAND,
@@ -41,6 +42,15 @@ sealed interface PlaybackEvent {
         override val sequence: Long,
         override val revision: Long,
         val error: PlayerError,
+    ) : PlaybackEvent
+
+    /** A correlated seek has finished in the backend, rather than only updating optimistic time. */
+    data class SeekCompleted(
+        override val sequence: Long,
+        override val revision: Long,
+        val completionId: Long,
+        val item: QueueItemId,
+        val position: Milliseconds,
     ) : PlaybackEvent
 
     data class SessionClosed(

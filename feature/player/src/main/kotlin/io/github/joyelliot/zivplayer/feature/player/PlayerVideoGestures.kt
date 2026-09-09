@@ -41,6 +41,9 @@ internal fun PlayerVideoGestures(
     onVolumeChange: (Float) -> Unit = {},
     onLevelPreview: (Boolean, Float?) -> Unit = { _, _ -> },
     onDoubleTapSeek: (Long) -> Unit = {},
+    onSeekBy: ((Long) -> Unit)? = null,
+    onPreviewSeekTo: (Long) -> Unit = {},
+    onCancelSeekPreview: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val current by rememberUpdatedState(state)
@@ -58,6 +61,9 @@ internal fun PlayerVideoGestures(
     val setVolume by rememberUpdatedState(onVolumeChange)
     val previewLevel by rememberUpdatedState(onLevelPreview)
     val doubleTapFeedback by rememberUpdatedState(onDoubleTapSeek)
+    val seekBy by rememberUpdatedState(onSeekBy)
+    val updatePreview by rememberUpdatedState(onPreviewSeekTo)
+    val cancelPreview by rememberUpdatedState(onCancelSeekPreview)
     val scope = rememberCoroutineScope()
     val configuration = LocalViewConfiguration.current
     val description = stringResource(R.string.player_video_area)
@@ -72,6 +78,8 @@ internal fun PlayerVideoGestures(
         var lastTapPosition = Offset.Zero
         awaitEachGesture {
             var speedToken: Long? = null
+            var seeking = false
+            var seekCommitted = false
             try {
                 val down = awaitFirstDown(requireUnconsumed = true)
                 val origin = down.position
@@ -112,7 +120,7 @@ internal fun PlayerVideoGestures(
                             if (delta == 0L) {
                                 if (current.canPlayPause) playPause()
                             } else if (current.canSeek && duration != null) {
-                                seek(doubleTapSeekPosition(current.positionMs, duration, delta))
+                                seekBy?.invoke(delta) ?: seek(doubleTapSeekPosition(current.positionMs, duration, delta))
                                 doubleTapFeedback(delta)
                             }
                         } else {
@@ -144,8 +152,10 @@ internal fun PlayerVideoGestures(
                             change.consume()
                             val fraction = (change.position.x - origin.x) / size.width.coerceAtLeast(1)
                             if (start == GestureStart.SEEK) {
+                                seeking = true
                                 target = gestureSeekPosition(originalPosition, checkNotNull(duration), fraction)
                                 previewSeek(target)
+                                if (change.pressed) updatePreview(target)
                             } else if (start == GestureStart.LEVEL) {
                                 val level = gestureLevel(checkNotNull(originalLevel), (change.position.y - origin.y) / size.height.coerceAtLeast(1))
                                 if (level != previousLevel) {
@@ -162,7 +172,7 @@ internal fun PlayerVideoGestures(
                                 }
                             }
                             if (!change.pressed) {
-                                if (start == GestureStart.SEEK && current.canSeek) seek(target)
+                                if (start == GestureStart.SEEK && current.canSeek) { seek(target); seekCommitted = true }
                                 break
                             }
                             val event = awaitPointerEvent()
@@ -174,6 +184,7 @@ internal fun PlayerVideoGestures(
                 }
             } finally {
                 speedToken?.let(endSpeed)
+                if (seeking && !seekCommitted) cancelPreview()
                 previewSeek(null)
                 previewSpeed(null)
                 previewLevel(false, null)

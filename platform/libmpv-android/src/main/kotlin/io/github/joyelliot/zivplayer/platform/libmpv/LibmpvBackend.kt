@@ -17,6 +17,7 @@ import io.github.joyelliot.zivplayer.core.player.PlayerCapabilities
 import io.github.joyelliot.zivplayer.core.player.PlayerCapability
 import io.github.joyelliot.zivplayer.core.player.PlayerError
 import io.github.joyelliot.zivplayer.core.player.PlayerErrorKind
+import io.github.joyelliot.zivplayer.core.player.SeekPrecision
 import io.github.joyelliot.zivplayer.core.player.runtime.BackendEvent
 import io.github.joyelliot.zivplayer.core.player.runtime.BackendLoadRequest
 import io.github.joyelliot.zivplayer.core.player.runtime.BackendSeekRequest
@@ -146,11 +147,6 @@ class LibmpvBackend internal constructor(
                 PROPERTY_BUFFERING -> emitActiveSemantic(
                     BackendEvent.BufferingChanged(generation, value),
                 )
-                PROPERTY_SEEKING -> if (value) {
-                    armSeekCompletion(generation)
-                } else {
-                    completeSeek(generation)
-                }
             }
         }
 
@@ -177,9 +173,15 @@ class LibmpvBackend internal constructor(
                     nativeGate.withLock { if (!closed && !nativeUnusable) trackObserver.start(generation) }
                 }
 
+                // Direct events are FIFO. Unlike the observed seeking property, they cannot
+                // collapse a fast true -> false transition or complete a later request.
+                MpvEventType.SEEK -> {
+                    generationFence.activeGeneration()?.let(::armSeekCompletion)
+                }
+
                 MpvEventType.PLAYBACK_RESTART -> {
                     val generation = generationFence.activeGeneration() ?: return
-                    armSeekCompletion(generation)
+                    completeSeek(generation)
                     if (readPropertyBoolean(PROPERTY_PAUSED) == false) {
                         emitActiveSemantic(BackendEvent.PlaybackStarted(generation))
                     }
@@ -244,6 +246,8 @@ class LibmpvBackend internal constructor(
             // Keep loading deterministic: the core decides whether Prepared
             // should transition into playback and issues play() explicitly.
             withPlayer { player ->
+                player.setPropertyString("ao", if (activeMediaSource?.lowLatencyStereo == true)
+                    "opensles,audiotrack" else "audiotrack,opensles")
                 player.setPropertyBoolean(PROPERTY_PAUSED, true)
                 player.command(
                     arrayOf(
@@ -318,9 +322,13 @@ class LibmpvBackend internal constructor(
         seekCorrelation.begin(request)
         try {
             withPlayer { player ->
-                player.command(
-                    arrayOf(COMMAND_SEEK, request.position.toSecondsString(), SEEK_ABSOLUTE_EXACT),
-                )
+                if (request.precision == SeekPrecision.KEYFRAME) {
+                    player.command(arrayOf(COMMAND_SEEK, request.position.toSecondsString(), "absolute+keyframes"))
+                } else {
+                    // mpv's time-pos setter avoids the seek command's MPSEEK_FLAG_DELAY.
+                    // hr-seek=absolute (set at initialization) preserves exact absolute positioning.
+                    player.setPropertyDouble(PROPERTY_POSITION, request.position.value / 1000.0)
+                }
             }
         } catch (failure: Throwable) {
             seekCorrelation.fail(request)
@@ -514,6 +522,7 @@ class LibmpvBackend internal constructor(
             player.setOptionString("gpu-context", "android")
             player.setOptionString("opengl-es", "yes")
             player.setOptionString("hwdec", "mediacodec,mediacodec-copy")
+            player.setOptionString("hr-seek", "absolute")
             player.setOptionString("ao", "audiotrack,opensles")
             configuration.properties().forEach { (name, value) -> player.setOptionString(name, value) }
             player.initialize()
@@ -542,11 +551,6 @@ class LibmpvBackend internal constructor(
                 PROPERTY_BUFFERING,
                 MpvPropertyFormat.FLAG,
                 OBSERVER_BUFFERING,
-            )
-            player.observeProperty(
-                PROPERTY_SEEKING,
-                MpvPropertyFormat.FLAG,
-                OBSERVER_SEEKING,
             )
         } catch (failure: Throwable) {
             // Cleanup cannot safely run while nativeGate is held: a client may
@@ -766,14 +770,12 @@ class LibmpvBackend internal constructor(
         const val OBSERVER_BUFFERED_POSITION = 3L
         const val OBSERVER_PAUSED = 4L
         const val OBSERVER_BUFFERING = 5L
-        const val OBSERVER_SEEKING = 6L
 
         const val COMMAND_LOAD_FILE = "loadfile"
         const val COMMAND_SEEK = "seek"
         const val COMMAND_STOP = "stop"
         const val LOAD_REPLACE = "replace"
         const val NO_PLAYLIST_INDEX = "-1"
-        const val SEEK_ABSOLUTE_EXACT = "absolute+exact"
         const val OPTION_START = "start"
         const val OPTION_CONFIG = "config"
         const val OPTION_FORCE_WINDOW = "force-window"
@@ -786,7 +788,6 @@ class LibmpvBackend internal constructor(
         const val PROPERTY_BUFFERED_POSITION = "demuxer-cache-time"
         const val PROPERTY_PAUSED = "pause"
         const val PROPERTY_BUFFERING = "paused-for-cache"
-        const val PROPERTY_SEEKING = "seeking"
         const val PROPERTY_VOLUME = "volume"
         const val PROPERTY_SPEED = "speed"
         const val PROPERTY_MUTE = "mute"

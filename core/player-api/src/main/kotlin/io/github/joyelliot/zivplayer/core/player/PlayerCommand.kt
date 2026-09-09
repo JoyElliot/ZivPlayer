@@ -29,7 +29,13 @@ sealed interface PlayerCommand {
 
     data object Pause : PlayerCommand
 
-    data class SeekTo(val position: Milliseconds) : PlayerCommand
+    /** Temporarily stops presentation without replacing the user's play/pause intent. */
+    data class SetPlaybackSuppressed(val suppressed: Boolean) : PlayerCommand
+
+    data class SeekTo(val position: Milliseconds, val precision: SeekPrecision = SeekPrecision.EXACT,
+                      val completionId: Long? = null) : PlayerCommand {
+        init { require(completionId == null || completionId > 0) }
+    }
 
     data object Stop : PlayerCommand
 
@@ -54,6 +60,9 @@ sealed interface PlayerCommand {
 
     data object ClearQueue : PlayerCommand
 }
+
+/** Interactive previews may show a nearby keyframe; committed seeks retain exact positioning. */
+enum class SeekPrecision { KEYFRAME, EXACT }
 
 sealed interface CommandResult {
     val revision: Long

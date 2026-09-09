@@ -6,7 +6,7 @@ import io.github.joyelliot.zivplayer.core.player.runtime.BackendSeekRequest
 import io.github.joyelliot.zivplayer.core.player.runtime.LoadGeneration
 import io.github.joyelliot.zivplayer.core.player.runtime.SeekGeneration
 
-/** Correlates the single native seek allowed by the bootstrap adapter. */
+/** Correlates one native seek with its FIFO SEEK / PLAYBACK_RESTART event pair. */
 internal class SeekCorrelation {
     private val monitor = Any()
     private var pending: PendingSeek? = null

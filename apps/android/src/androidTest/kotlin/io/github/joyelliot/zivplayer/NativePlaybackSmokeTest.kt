@@ -21,6 +21,7 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
 import androidx.media3.session.SessionToken
+import androidx.lifecycle.ViewModelProvider
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.joyelliot.zivplayer.platform.playback.PlaybackRequestMetadata
 import io.github.joyelliot.zivplayer.platform.playback.PlaybackRequestSequencer
@@ -189,6 +190,58 @@ class NativePlaybackSmokeTest {
             }
         } finally {
             onMain { controller.stop(); controller.release() }
+        }
+    }
+
+    @Test
+    fun realAudioFocusLossAbortsScrubWithoutResuming() {
+        val context = instrumentation.targetContext
+        val controller = onMain { MediaController.Builder(context, SessionToken(context,
+            ComponentName(context, PlaybackService::class.java))).buildAsync() }.get(15, TimeUnit.SECONDS)
+        val vm = onMain { ViewModelProvider(activity.activity)[PlaybackControllerViewModel::class.java] }
+        try {
+            onMain {
+                controller.setMediaItem(MediaItem.Builder().setMediaId("zivplayer-focus-scrub-fixture")
+                    .setUri(fixture("seek-preview.mp4"))
+                    .setMediaMetadata(MediaMetadata.Builder().setTitle("Scrub focus fixture").setExtras(Bundle().apply {
+                        putLong(PlaybackRequestMetadata.SEQUENCE_EXTRA, PlaybackRequestSequencer.next())
+                    }).build()).build())
+                controller.prepare()
+            }
+            await(controller, "scrub focus fixture ready") { playbackState == Player.STATE_READY }
+            for (local in listOf(true, false)) {
+                onMain { controller.seekTo(20_000); controller.play() }
+                await(controller, "playing before focus scrub") { isPlaying && currentPosition in 20_000..21_000 }
+                val origin = onMain { controller.currentPosition }
+                onMain { vm.previewSeekTo(40_000, allowLocalDecoder = local) }
+                await(controller, "scrubbing is holding presentation") {
+                    playWhenReady && !isPlaying && playbackSuppressionReason == Player.PLAYBACK_SUPPRESSION_REASON_SCRUBBING
+                }
+                if (!local) await(controller, "native keyframe preview moved") { currentPosition in 36_000..40_200 }
+                try {
+                    DeviceForegroundRule.startActivity("${context.packageName}.test/io.github.joyelliot.zivplayer.FocusInterruptionActivity")
+                    await(controller, "interrupted scrub is paused") { !playWhenReady && !isPlaying }
+                } finally { DeviceForegroundRule.startActivity("${context.packageName}/.MainActivity") }
+                await(controller, "interrupted scrub restored its starting position") {
+                    !isPlaying && !playWhenReady && kotlin.math.abs(currentPosition - origin) < 300 &&
+                        playbackSuppressionReason == Player.PLAYBACK_SUPPRESSION_REASON_NONE
+                }
+                SystemClock.sleep(400)
+                assertTrue("Returning focus must not resume an aborted scrub", onMain { !controller.isPlaying && !controller.playWhenReady })
+            }
+            onMain { vm.previewSeekTo(45_000) }
+            await(controller, "paused preview admitted") { playbackSuppressionReason == Player.PLAYBACK_SUPPRESSION_REASON_SCRUBBING }
+            onMain {
+                vm.seekTo(45_500)
+                activity.activity.onWindowFocusChanged(false)
+                vm.pauseForLifecycle()
+            }
+            await(controller, "commit was not overtaken by lifecycle pause") {
+                !isPlaying && !playWhenReady && kotlin.math.abs(currentPosition - 45_500) < 100 &&
+                    playbackSuppressionReason == Player.PLAYBACK_SUPPRESSION_REASON_NONE
+            }
+        } finally {
+            onMain { activity.activity.onWindowFocusChanged(true); vm.abortSeekPreview(); controller.stop(); controller.release() }
         }
     }
 

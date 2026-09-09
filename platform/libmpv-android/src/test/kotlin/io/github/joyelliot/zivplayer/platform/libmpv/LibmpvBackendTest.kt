@@ -16,10 +16,16 @@ import io.github.joyelliot.zivplayer.core.model.DecoderMode
 import io.github.joyelliot.zivplayer.core.model.RenderQuality
 import io.github.joyelliot.zivplayer.core.player.ErrorRecovery
 import io.github.joyelliot.zivplayer.core.player.PlayerErrorKind
+import io.github.joyelliot.zivplayer.core.player.SeekPrecision
+import io.github.joyelliot.zivplayer.core.player.runtime.BackendSeekRequest
+import io.github.joyelliot.zivplayer.core.player.runtime.SeekGeneration
 import io.github.joyelliot.zivplayer.core.player.runtime.BackendEvent
 import io.github.joyelliot.zivplayer.core.player.runtime.BackendLoadRequest
 import io.github.joyelliot.zivplayer.core.player.runtime.LoadGeneration
 import kotlinx.coroutines.flow.take
+import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.async
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -30,6 +36,39 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LibmpvBackendTest {
+    @Test
+    fun immediateExactAndKeyframePreviewShareGenerationCorrelatedCompletion() = runBlocking {
+        val client = FakeMpvClient()
+        val backend = LibmpvBackend(TestContext, MpvClientFactory { client }, { "/test/mpv" },
+            MpvMediaSourceOpener { OpenMpvMediaSource("fd://12") {} })
+        val completions = async(start = CoroutineStart.UNDISPATCHED) {
+            backend.events.filterIsInstance<BackendEvent.SeekCompleted>().take(2).toList()
+        }
+        backend.load(loadRequest())
+        client.emit(MpvClientEvent(MpvEventType.START_FILE.rawValue))
+        client.emit(MpvClientEvent(MpvEventType.FILE_LOADED.rawValue))
+        assertEquals("absolute", client.strings["hr-seek"])
+        val exact = BackendSeekRequest(LoadGeneration(1), SeekGeneration(1), Milliseconds(12_500))
+        backend.seekTo(exact)
+        assertEquals(12.5, client.doubles["time-pos"])
+        assertTrue(client.commands.none { it.first() == "seek" })
+        client.emit(MpvClientEvent(MpvEventType.PLAYBACK_RESTART.rawValue)) // stale load restart
+        client.emit(MpvClientEvent(MpvEventType.SEEK.rawValue))
+        client.emit(MpvClientEvent(MpvEventType.PLAYBACK_RESTART.rawValue)) // no seeking property event
+        val preview = exact.copy(seekGeneration = SeekGeneration(2), position = Milliseconds(7_500), precision = SeekPrecision.KEYFRAME)
+        backend.seekTo(preview)
+        assertEquals(listOf("seek", "7.5", "absolute+keyframes"), client.commands.last())
+        client.emit(MpvClientEvent(MpvEventType.PLAYBACK_RESTART.rawValue)) // old duplicate cannot complete preview
+        client.emit(MpvClientEvent(MpvEventType.SEEK.rawValue))
+        client.property(MpvPropertyChange("seeking", MpvPropertyFormat.FLAG.rawValue, MpvPropertyValue.Flag(false), 6)) // old property ignored
+        client.doubles["time-pos"] = 4.0
+        client.emit(MpvClientEvent(MpvEventType.PLAYBACK_RESTART.rawValue))
+        val events = withTimeout(2_000) { completions.await() }
+        assertEquals(listOf(SeekGeneration(1), SeekGeneration(2)), events.map { it.seekGeneration })
+        assertEquals(listOf(Milliseconds(12_500), Milliseconds(4_000)), events.map { it.position })
+        backend.close()
+    }
+
     @Test
     fun repeatedSurfaceRedrawPreservesPlaybackAndRejectsTheOldLease() = runBlocking {
         val client = FakeMpvClient()

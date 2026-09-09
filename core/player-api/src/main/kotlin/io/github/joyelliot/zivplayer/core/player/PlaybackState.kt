@@ -169,11 +169,12 @@ data class PlaybackSnapshot(
     val muted: Boolean = false,
     val error: PlayerError? = null,
     val revision: Long = 0L,
+    val playbackSuppressed: Boolean = false,
 ) {
     init {
         require(revision >= 0L) { "State revision must not be negative." }
-        require(status != PlayerStatus.PLAYING || playWhenReady) {
-            "PLAYING requires playWhenReady."
+        require(status != PlayerStatus.PLAYING || playWhenReady && !playbackSuppressed) {
+            "PLAYING requires playWhenReady without playback suppression."
         }
         require((status == PlayerStatus.ERROR) == (error != null)) {
             "Only ERROR state may contain an active error."

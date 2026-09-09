@@ -3,12 +3,19 @@
 package io.github.joyelliot.zivplayer
 
 import android.content.Context
-import android.graphics.SurfaceTexture
+import android.graphics.Bitmap
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
 import android.util.Log
+import android.view.PixelCopy
 import android.view.Surface
-import android.view.TextureView
+import android.view.SurfaceHolder
+import android.view.SurfaceView
 import android.widget.FrameLayout
+import android.widget.ImageView
+import android.view.View
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -36,12 +43,15 @@ internal fun PlayerVideoSurface(
     modifier: Modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f),
     videoAspectRatio: Float = 16f / 9f,
     videoFit: VideoFit = VideoFit.FIT,
+    previewFrame: SeekPreviewFrame? = null,
+    onPreviewPresented: (Long) -> Unit = {},
 ) {
     val context = LocalContext.current
     val viewport = remember(context) { VideoViewport(context) }
-    val videoView = viewport.textureView
+    val videoView = viewport.surfaceView
     AndroidView(factory = { viewport }, modifier = modifier.background(Color.Black), update = {
         it.configure(videoAspectRatio, videoFit)
+        it.showPreview(previewFrame, onPreviewPresented)
     })
 
     DisposableEffect(player, videoView, canRenderVideo) {
@@ -50,7 +60,9 @@ internal fun PlayerVideoSurface(
         } else {
             var attachedSurface: Surface? = null
             var surfaceToken = 0L
-            var resizeRedrawsRemaining = 0
+            var resizeGeneration = 0L
+            val redrawCompletions = mutableSetOf<Runnable>()
+            val redrawHandler = Handler(Looper.getMainLooper())
             fun resizeSurface() {
                 val width = viewport.renderWidth
                 val height = viewport.renderHeight
@@ -70,58 +82,96 @@ internal fun PlayerVideoSurface(
                 }, java.util.concurrent.Executor { it.run() })
             }
             fun detachSurface() {
+                viewport.onVideoSurfaceDetached()
                 if (VideoSurfaceRequests.release(surfaceToken) && player.canSetVideoSurface()) {
                     attachedSurface?.let(player::clearVideoSurface)
                 }
-                attachedSurface?.release()
+                // SurfaceHolder owns this Surface, including its final release.
                 attachedSurface = null
-                resizeRedrawsRemaining = 0
+                surfaceToken = 0L
+                ++resizeGeneration
+                redrawCompletions.toList().forEach(Runnable::run)
             }
-            fun attachSurface(texture: SurfaceTexture) {
-                if (attachedSurface != null || !player.canSetVideoSurface()) return
-                texture.setDefaultBufferSize(viewport.renderWidth, viewport.renderHeight)
-                val surface = Surface(texture)
+            fun redrawAfterResize(onRedrawRequested: () -> Unit = {}) {
+                val generation = ++resizeGeneration
+                resizeSurface()
+                // A paused producer also needs redraws after EGL adopts the new
+                // buffer geometry. These callbacks do not claim frame presentation.
+                videoView.postOnAnimation {
+                    if (generation == resizeGeneration && attachedSurface != null) {
+                        resizeSurface()
+                        videoView.postOnAnimation {
+                            if (generation == resizeGeneration && attachedSurface != null) resizeSurface()
+                            onRedrawRequested()
+                        }
+                    } else onRedrawRequested()
+                }
+            }
+            fun attachSurface(surface: Surface) {
+                if (attachedSurface != null || !surface.isValid || !player.canSetVideoSurface()) return
                 attachedSurface = surface
                 surfaceToken = VideoSurfaceRequests.claim()
-                resizeRedrawsRemaining = 2
+                viewport.onVideoSurfaceAttached()
                 player.setVideoSurface(surface)
-                resizeSurface()
+                redrawAfterResize()
             }
             viewport.onRenderSizeChanged = {
-                videoView.surfaceTexture?.setDefaultBufferSize(viewport.renderWidth, viewport.renderHeight)
-                resizeRedrawsRemaining = 2
-                resizeSurface()
+                videoView.holder.setFixedSize(viewport.renderWidth, viewport.renderHeight)
+                redrawAfterResize()
             }
-            videoView.surfaceTextureListener = object : TextureView.SurfaceTextureListener {
-                override fun onSurfaceTextureAvailable(texture: SurfaceTexture, width: Int, height: Int) {
-                    attachSurface(texture)
+            val callback = object : SurfaceHolder.Callback2 {
+                override fun surfaceCreated(holder: SurfaceHolder) {
+                    attachSurface(holder.surface)
                 }
-                override fun onSurfaceTextureSizeChanged(texture: SurfaceTexture, width: Int, height: Int) {
-                    // The producer resolution is independent of the displayed View
-                    // size. Rotation only scales a frame with the same aspect ratio.
-                    texture.setDefaultBufferSize(viewport.renderWidth, viewport.renderHeight)
-                    resizeSurface()
+                override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
+                    redrawAfterResize()
+                    viewport.onVideoSurfaceReady()
                 }
-                override fun onSurfaceTextureDestroyed(texture: SurfaceTexture): Boolean {
+                override fun surfaceDestroyed(holder: SurfaceHolder) {
                     detachSurface()
-                    return true
                 }
-                override fun onSurfaceTextureUpdated(texture: SurfaceTexture) {
-                    // EGL can adopt the new buffer geometry at swap time. Drain
-                    // the old-size buffers with redraws paced by actual presents,
-                    // including while playback is paused; never seek or resume.
-                    if (resizeRedrawsRemaining > 0) {
-                        resizeRedrawsRemaining--
-                        resizeSurface()
+                override fun surfaceRedrawNeeded(holder: SurfaceHolder) {
+                    redrawAfterResize()
+                }
+                override fun surfaceRedrawNeededAsync(holder: SurfaceHolder, drawingFinished: Runnable) {
+                    var finished = false
+                    lateinit var finish: Runnable
+                    finish = Runnable {
+                        if (!finished) {
+                            finished = true
+                            redrawHandler.removeCallbacks(finish)
+                            redrawCompletions.remove(finish)
+                            drawingFinished.run()
+                        }
                     }
+                    redrawCompletions.add(finish)
+                    // Detached views may never run another animation callback.
+                    redrawHandler.postDelayed(finish, 1_000)
+                    fun probeBuffer() {
+                        if (finished) return
+                        if (!holder.surface.isValid || attachedSurface == null) { finish.run(); return }
+                        val bitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
+                        try {
+                            PixelCopy.request(videoView, bitmap, { result ->
+                                bitmap.recycle()
+                                if (!finished) {
+                                    if (result == PixelCopy.SUCCESS) finish.run()
+                                    else redrawHandler.postDelayed({ probeBuffer() }, 16)
+                                }
+                            }, redrawHandler)
+                        } catch (_: IllegalArgumentException) { bitmap.recycle(); finish.run() }
+                    }
+                    // API 26+ must not complete its synchronous default callback
+                    // while all native redraw requests are still queued.
+                    redrawAfterResize { probeBuffer() }
                 }
             }
-            videoView.surfaceTexture?.takeIf { videoView.isAvailable }?.let {
-                attachSurface(it)
-            }
+            videoView.holder.setFixedSize(viewport.renderWidth, viewport.renderHeight)
+            videoView.holder.addCallback(callback)
+            attachSurface(videoView.holder.surface)
             onDispose {
                 viewport.onRenderSizeChanged = null
-                videoView.surfaceTextureListener = null
+                videoView.holder.removeCallback(callback)
                 detachSurface()
             }
         }
@@ -130,7 +180,17 @@ internal fun PlayerVideoSurface(
 
 /** Keeps the renderer's buffer geometry stable while the window rotates. */
 private class VideoViewport(context: Context) : FrameLayout(context) {
-    val textureView = TextureView(context)
+    val surfaceView = SurfaceView(context)
+    private val previewView = ImageView(context).apply {
+        tag = "seek-preview-frame"
+        scaleType = ImageView.ScaleType.FIT_XY
+        visibility = View.GONE
+    }
+    private var preview: SeekPreviewFrame? = null
+    private var settlingToken: Long? = null
+    private var surfaceGeneration = 0L
+    private var surfaceAttached = false
+    private var previewPresented: (Long) -> Unit = {}
     private var videoAspectRatio = 16f / 9f
     private var videoFit = VideoFit.FIT
     private val renderLongEdge = max(resources.displayMetrics.widthPixels, resources.displayMetrics.heightPixels)
@@ -144,7 +204,72 @@ private class VideoViewport(context: Context) : FrameLayout(context) {
     init {
         setBackgroundColor(android.graphics.Color.BLACK)
         clipChildren = true
-        addView(textureView)
+        // Default SurfaceView ordering leaves app chrome and this preview above
+        // the video. Setting z-order-on-top would hide controls and subtitles UI.
+        addView(surfaceView)
+        addView(previewView)
+    }
+
+    fun showPreview(frame: SeekPreviewFrame?, onPresented: (Long) -> Unit) {
+        preview = frame
+        previewPresented = onPresented
+        if (frame == null) {
+            previewView.setImageDrawable(null)
+            previewView.visibility = View.GONE
+            settlingToken = null
+            return
+        }
+        previewView.setImageBitmap(frame.bitmap)
+        previewView.visibility = View.VISIBLE
+        settlePreview()
+    }
+
+    fun onVideoSurfaceAttached() {
+        onVideoSurfaceDetached()
+        surfaceAttached = true
+        settlePreview()
+    }
+
+    fun onVideoSurfaceDetached() {
+        ++surfaceGeneration
+        surfaceAttached = false
+        settlingToken = null
+    }
+
+    fun onVideoSurfaceReady() = settlePreview()
+
+    private fun settlePreview() {
+        val frame = preview ?: return
+        if (frame.commitReady && surfaceAttached && surfaceView.holder.surface.isValid && settlingToken != frame.token) {
+            settlingToken = frame.token
+            val generation = surfaceGeneration
+            fun isCurrent() = generation == surfaceGeneration && surfaceAttached && surfaceView.holder.surface.isValid &&
+                preview?.token == frame.token && preview?.commitReady == true
+            val deadline = SystemClock.uptimeMillis() + 1_000
+            fun awaitSurfaceBuffer() {
+                if (!isCurrent()) return
+                val probe = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
+                fun finish(result: Int) {
+                    probe.recycle()
+                    if (!isCurrent()) return
+                    if (result == PixelCopy.SUCCESS || SystemClock.uptimeMillis() >= deadline) {
+                        // Native seek completion is the frame/position fence. A
+                        // successful copy only proves this Surface has a buffer;
+                        // it does not identify that buffer's presentation time.
+                        if (result != PixelCopy.SUCCESS) Log.w("ZivVideoSurface", "Surface buffer probe timed out: $result")
+                        previewPresented(frame.token)
+                    } else surfaceView.postOnAnimation { awaitSurfaceBuffer() }
+                }
+                try {
+                    PixelCopy.request(surfaceView, probe, { finish(it) }, Handler(Looper.getMainLooper()))
+                } catch (_: IllegalArgumentException) { finish(PixelCopy.ERROR_SOURCE_INVALID) }
+            }
+            // Cross the compositor boundary only after the correlated native
+            // completion; a recreated Surface must additionally have a buffer.
+            surfaceView.postOnAnimation {
+                if (isCurrent()) surfaceView.postOnAnimation { awaitSurfaceBuffer() }
+            }
+        }
     }
 
     fun configure(aspectRatio: Float, fit: VideoFit) {
@@ -176,14 +301,17 @@ private class VideoViewport(context: Context) : FrameLayout(context) {
         }
         val childWidth = if (videoFit == VideoFit.STRETCH || matchWidth) width else (height * videoAspectRatio).roundToInt()
         val childHeight = if (videoFit == VideoFit.STRETCH || !matchWidth) height else (width / videoAspectRatio).roundToInt()
-        textureView.measure(MeasureSpec.makeMeasureSpec(childWidth.coerceAtLeast(1), MeasureSpec.EXACTLY),
+        surfaceView.measure(MeasureSpec.makeMeasureSpec(childWidth.coerceAtLeast(1), MeasureSpec.EXACTLY),
+            MeasureSpec.makeMeasureSpec(childHeight.coerceAtLeast(1), MeasureSpec.EXACTLY))
+        previewView.measure(MeasureSpec.makeMeasureSpec(childWidth.coerceAtLeast(1), MeasureSpec.EXACTLY),
             MeasureSpec.makeMeasureSpec(childHeight.coerceAtLeast(1), MeasureSpec.EXACTLY))
     }
 
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
-        val childLeft = (width - textureView.measuredWidth) / 2
-        val childTop = (height - textureView.measuredHeight) / 2
-        textureView.layout(childLeft, childTop, childLeft + textureView.measuredWidth, childTop + textureView.measuredHeight)
+        val childLeft = (width - surfaceView.measuredWidth) / 2
+        val childTop = (height - surfaceView.measuredHeight) / 2
+        surfaceView.layout(childLeft, childTop, childLeft + surfaceView.measuredWidth, childTop + surfaceView.measuredHeight)
+        previewView.layout(childLeft, childTop, childLeft + surfaceView.measuredWidth, childTop + surfaceView.measuredHeight)
     }
 }
 

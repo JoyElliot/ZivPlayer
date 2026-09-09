@@ -80,6 +80,11 @@ fun ZivPlayerApp(
     onPlayPause: () -> Unit = {},
     onStop: () -> Unit = {},
     onSeekTo: (Long) -> Unit = {},
+    onSeekBy: ((Long) -> Unit)? = null,
+    onPreviewSeekTo: (Long) -> Unit = {},
+    onCancelSeekPreview: () -> Unit = {},
+    seekPreviewFrame: androidx.compose.runtime.State<SeekPreviewFrame?>? = null,
+    onSeekPreviewPresented: (Long) -> Unit = {},
     onPlaybackSpeedChange: (Float) -> Unit = {},
     onBeginTemporarySpeed: () -> Long? = { null },
     onTemporarySpeedChange: (Long, Float) -> Unit = { _, _ -> },
@@ -119,12 +124,15 @@ fun ZivPlayerApp(
     val renderState = rememberUpdatedState(Triple(controller, playerState.canRenderVideo, expanded))
     val renderAspectRatio = rememberUpdatedState(playerState.videoAspectRatio)
     val renderFit = rememberUpdatedState(preferences.options.videoFit)
+    val renderPreview = rememberUpdatedState(seekPreviewFrame)
+    val previewPresented = rememberUpdatedState(onSeekPreviewPresented)
     val videoContent = remember {
         movableContentOf {
             val (player, canRender, fill) = renderState.value
             PlayerVideoSurface(player, canRender, if (fill) Modifier.fillMaxSize()
                 else Modifier.fillMaxWidth().aspectRatio(16f / 9f),
-                videoAspectRatio = renderAspectRatio.value, videoFit = renderFit.value)
+                videoAspectRatio = renderAspectRatio.value, videoFit = renderFit.value,
+                previewFrame = renderPreview.value?.value, onPreviewPresented = previewPresented.value)
         }
     }
     LaunchedEffect(destination, expanded) { onPlayerVisibilityChange(destination == AppDestination.PLAYER || expanded) }
@@ -247,6 +255,7 @@ fun ZivPlayerApp(
                 onPlaybackSpeedChange, onVolumeChange, onRepeatModeChange, onSelectTrack, launchSubtitle,
                 onBeginTemporarySpeed, onTemporarySpeedChange, onEndTemporarySpeed, videoOptions, selectVideoFit,
                 interactionEnabled = interactionEnabled,
+                onSeekBy = onSeekBy, onPreviewSeekTo = onPreviewSeekTo, onCancelSeekPreview = onCancelSeekPreview,
                 canPrevious = playerState.canPrevious, canNext = playerState.canNext, onPrevious = onPrevious, onNext = onNext,
                 onQueue = { showQueue = true }, queueVisible = showQueue,
                 brightness = brightness, onBrightnessChange = onBrightnessChange,
