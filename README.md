@@ -15,7 +15,7 @@ ZivPlayer 是一款面向多平台的开源媒体播放器，关注格式兼容�
 - **音轨与字幕**：切换音轨和内嵌字幕，导入外部字幕与字体。
 - **播放设置**：倍速、循环播放、后台播放策略及 mpv 用户着色器配置。
 
-Android 版本使用 Kotlin、Jetpack Compose 和 MIUIX 构建界面，正式基线以 libmpv 作为播放引擎，Media3 负责系统媒体控制和播放服务集成。当前实验分支使用 ExoPlayer + libass 进行对比，范围与回退方式见 [ADR 0017](docs/adr/0017-exoplayer-libass-comparison.md)。
+Android 版本使用 Kotlin、Jetpack Compose 和 MIUIX 构建界面，正式基线以 libmpv 作为播放引擎，Media3 负责系统媒体控制和播放服务集成。当前实验分支默认使用 libVLC 4.0.0-eap29，范围与回退方式见 [ADR 0018](docs/adr/0018-libvlc4-comparison.md)。之前的 ExoPlayer + libass 对比保留在独立分支，见 [ADR 0017](docs/adr/0017-exoplayer-libass-comparison.md)。
 
 ## 平台与开发方向
 

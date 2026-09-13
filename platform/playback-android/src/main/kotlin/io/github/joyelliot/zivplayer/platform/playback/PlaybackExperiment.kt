@@ -9,8 +9,9 @@ import android.view.Surface
 import io.github.joyelliot.zivplayer.platform.exoplayer.createExoSubtitleView
 import io.github.joyelliot.zivplayer.platform.exoplayer.ExoSurfaceOutput
 import io.github.joyelliot.zivplayer.core.model.PlaybackOptions
+import io.github.joyelliot.zivplayer.platform.libvlc.VlcSurfaceOutput
 
-/** Engine switch only: both choices in this branch retain the experimental dependency graph. */
+/** Engine switch only: all three choices retain this branch's experimental dependency graph. */
 object PlaybackExperiment {
     private data class InstrumentationOverride(
         val exoPlayer: Boolean,
@@ -20,6 +21,8 @@ object PlaybackExperiment {
     @Volatile private var instrumentationOverride: InstrumentationOverride? = null
 
     val usesExoPlayer: Boolean get() = instrumentationOverride?.exoPlayer ?: BuildConfig.EXOPLAYER_EXPERIMENT
+    val usesLibVlc: Boolean get() = instrumentationOverride == null && BuildConfig.LIBVLC4_EXPERIMENT
+    val usesNativeScrubPreview: Boolean get() = usesExoPlayer || usesLibVlc
     val instrumentationSurfaceSize: Pair<Int, Int>? get() = instrumentationOverride?.surfaceSize
 
     /** Process-local benchmark input. Call before starting Activity/service in a fresh debug process. */
@@ -39,5 +42,8 @@ object PlaybackExperiment {
     internal fun playbackOptions(fallback: PlaybackOptions): PlaybackOptions = instrumentationOverride?.options ?: fallback
 
     fun subtitleView(context: Context): View = createExoSubtitleView(context)
-    fun beforeSurfaceDestroyed(surface: Surface) { if (usesExoPlayer) ExoSurfaceOutput.beforeDestroy(surface) }
+    fun beforeSurfaceDestroyed(surface: Surface) {
+        if (usesExoPlayer) ExoSurfaceOutput.beforeDestroy(surface)
+        if (usesLibVlc) VlcSurfaceOutput.beforeDestroy(surface)
+    }
 }

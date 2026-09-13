@@ -6,6 +6,9 @@ plugins {
     alias(libs.plugins.android.library)
 }
 
+val playbackEngine = providers.gradleProperty("playbackEngine").orElse("vlc").get()
+require(playbackEngine in setOf("vlc", "exo", "libmpv")) { "playbackEngine must be vlc, exo or libmpv" }
+
 android {
     namespace = "io.github.joyelliot.zivplayer.platform.playback"
     compileSdk {
@@ -16,7 +19,8 @@ android {
     defaultConfig {
         minSdk = 26
         buildConfigField("boolean", "EXOPLAYER_EXPERIMENT",
-            (providers.gradleProperty("playbackEngine").orElse("exo").get() == "exo").toString())
+            (playbackEngine == "exo").toString())
+        buildConfigField("boolean", "LIBVLC4_EXPERIMENT", (playbackEngine == "vlc").toString())
 
         ndk {
             abiFilters += listOf("arm64-v8a", "x86_64")

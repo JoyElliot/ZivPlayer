@@ -1,0 +1,277 @@
+{
+  "schemaVersion": 1,
+  "coordinate": "org.videolan.android:libvlc-all:4.0.0-eap29",
+  "aarSha256": "2033a8552d7c62c2c2deb52568c91ceb97378c532cdb69e9d457755654cbc727",
+  "classesJarSha256": "c9ee9c62177c97a7e4b85f2dfb94501bf707f052d423e29b4655a4117b51258a",
+  "libvlcJniCommit": "a8d53a9151d7e4a9a5dfd0a5eb1cd92669afdc21",
+  "vlcCoreCommit": "c84ef1eda4f14f8b57a5b266b51c843cf51ed28b",
+  "packagedAbis": [
+    "arm64-v8a",
+    "x86_64"
+  ],
+  "libraries": {
+    "arm64-v8a/libc++_shared.so": {
+      "sizeBytes": 9290184,
+      "sha256": "0c52cfab2df0d957d8b346a2bdc5ae8d71feca2591924d77e1cd724d5bf74352",
+      "soname": "libc++_shared.so",
+      "needed": [
+        "libc.so",
+        "libm.so",
+        "libdl.so"
+      ]
+    },
+    "arm64-v8a/libvlc.so": {
+      "sizeBytes": 52521416,
+      "sha256": "b7586ef7f9903c7f2da98385641c740c99aaf14b48541c3d12a6c53b1cd9c05c",
+      "soname": "libvlc.so",
+      "needed": [
+        "libEGL.so",
+        "libGLESv2.so",
+        "libm.so",
+        "liblog.so",
+        "libc.so",
+        "libdl.so",
+        "libandroid.so",
+        "libmediandk.so",
+        "libc++_shared.so"
+      ]
+    },
+    "arm64-v8a/libvlcjni.so": {
+      "sizeBytes": 92968,
+      "sha256": "bd032e15dc413276273f52668b4d013b83b5ade53ebee5e2529c3c6f85563338",
+      "soname": "libvlcjni.so",
+      "needed": [
+        "libvlc.so",
+        "liblog.so",
+        "libc.so",
+        "libm.so",
+        "libdl.so"
+      ]
+    },
+    "x86_64/libc++_shared.so": {
+      "sizeBytes": 9015544,
+      "sha256": "e28cb9e0f456caf8498d0e8562b3ac3f73bf78c07555a52b5602396f240abec3",
+      "soname": "libc++_shared.so",
+      "needed": [
+        "libc.so",
+        "libm.so",
+        "libdl.so"
+      ]
+    },
+    "x86_64/libvlc.so": {
+      "sizeBytes": 62381408,
+      "sha256": "87afd22a5390832773ed8e3542481cf81f1833a1eac8ae904d7fda6d78457a85",
+      "soname": "libvlc.so",
+      "needed": [
+        "libEGL.so",
+        "libGLESv2.so",
+        "libm.so",
+        "liblog.so",
+        "libc.so",
+        "libdl.so",
+        "libandroid.so",
+        "libmediandk.so",
+        "libc++_shared.so"
+      ]
+    },
+    "x86_64/libvlcjni.so": {
+      "sizeBytes": 88872,
+      "sha256": "2b3130217b85cdae14968360c2f140119fb3054803d4b805d9521372d3599450",
+      "soname": "libvlcjni.so",
+      "needed": [
+        "libvlc.so",
+        "liblog.so",
+        "libc.so",
+        "libm.so",
+        "libdl.so"
+      ]
+    }
+  },
+  "bindings": {
+    "Lorg/videolan/libvlc/AWindow;": {
+      "nativeOnMouseEvent": "(JIIII)V",
+      "nativeOnWindowSize": "(JII)V"
+    },
+    "Lorg/videolan/libvlc/Dialog;": {
+      "nativeSetCallbacks": "(Lorg/videolan/libvlc/interfaces/ILibVLC;Z)V"
+    },
+    "Lorg/videolan/libvlc/Dialog$IdDialog;": {
+      "nativeDismiss": "(J)V"
+    },
+    "Lorg/videolan/libvlc/Dialog$LoginDialog;": {
+      "nativePostLogin": "(JLjava/lang/String;Ljava/lang/String;Z)V"
+    },
+    "Lorg/videolan/libvlc/Dialog$QuestionDialog;": {
+      "nativePostAction": "(JI)V"
+    },
+    "Lorg/videolan/libvlc/LibVLC;": {
+      "version": "()Ljava/lang/String;",
+      "majorVersion": "()I",
+      "compiler": "()Ljava/lang/String;",
+      "changeset": "()Ljava/lang/String;",
+      "nativeNew": "([Ljava/lang/String;Ljava/lang/String;)V",
+      "nativeRelease": "()V",
+      "nativeSetUserAgent": "(Ljava/lang/String;Ljava/lang/String;)V"
+    },
+    "Lorg/videolan/libvlc/Media;": {
+      "nativeNewFromPath": "(Lorg/videolan/libvlc/interfaces/ILibVLC;Ljava/lang/String;)V",
+      "nativeNewFromLocation": "(Lorg/videolan/libvlc/interfaces/ILibVLC;Ljava/lang/String;)V",
+      "nativeNewFromFd": "(Lorg/videolan/libvlc/interfaces/ILibVLC;Ljava/io/FileDescriptor;)V",
+      "nativeNewFromFdWithOffsetLength": "(Lorg/videolan/libvlc/interfaces/ILibVLC;Ljava/io/FileDescriptor;JJ)V",
+      "nativeNewFromMediaList": "(Lorg/videolan/libvlc/interfaces/IMediaList;I)V",
+      "nativeRelease": "()V",
+      "nativeParseAsync": "(II)Z",
+      "nativeParse": "(I)Z",
+      "nativeGetMrl": "()Ljava/lang/String;",
+      "nativeGetMeta": "(I)Ljava/lang/String;",
+      "nativeGetTracks": "(I)[Lorg/videolan/libvlc/interfaces/IMedia$Track;",
+      "nativeGetDuration": "()J",
+      "nativeGetType": "()I",
+      "nativeAddOption": "(Ljava/lang/String;)V",
+      "nativeAddSlave": "(IILjava/lang/String;)V",
+      "nativeClearSlaves": "()V",
+      "nativeGetSlaves": "()[Lorg/videolan/libvlc/interfaces/IMedia$Slave;",
+      "nativeGetStats": "()Lorg/videolan/libvlc/interfaces/IMedia$Stats;"
+    },
+    "Lorg/videolan/libvlc/MediaDiscoverer;": {
+      "nativeNew": "(Lorg/videolan/libvlc/interfaces/ILibVLC;Ljava/lang/String;)V",
+      "nativeRelease": "()V",
+      "nativeStart": "()Z",
+      "nativeStop": "()V",
+      "nativeList": "(Lorg/videolan/libvlc/interfaces/ILibVLC;I)[Lorg/videolan/libvlc/MediaDiscoverer$Description;"
+    },
+    "Lorg/videolan/libvlc/MediaList;": {
+      "nativeNewFromLibVlc": "(Lorg/videolan/libvlc/interfaces/ILibVLC;)V",
+      "nativeNewFromMediaDiscoverer": "(Lorg/videolan/libvlc/MediaDiscoverer;)V",
+      "nativeNewFromMedia": "(Lorg/videolan/libvlc/interfaces/IMedia;)V",
+      "nativeRelease": "()V",
+      "nativeGetCount": "()I",
+      "nativeLock": "()V",
+      "nativeUnlock": "()V"
+    },
+    "Lorg/videolan/libvlc/MediaPlayer;": {
+      "setRate": "(F)V",
+      "getRate": "()F",
+      "isPlaying": "()Z",
+      "isSeekable": "()Z",
+      "pause": "()V",
+      "getPlayerState": "()I",
+      "getVolume": "()I",
+      "setVolume": "(I)I",
+      "getTime": "()J",
+      "getPosition": "()F",
+      "getLength": "()J",
+      "getTitle": "()I",
+      "setTitle": "(I)V",
+      "getChapter": "()I",
+      "previousChapter": "()I",
+      "nextChapter": "()I",
+      "setChapter": "(I)V",
+      "navigate": "(I)V",
+      "nativeSetTime": "(JZ)J",
+      "nativeSetPosition": "(FZ)V",
+      "nativeNewFromLibVlc": "(Lorg/videolan/libvlc/interfaces/ILibVLC;Lorg/videolan/libvlc/AWindow;)V",
+      "nativeNewFromMedia": "(Lorg/videolan/libvlc/interfaces/IMedia;Lorg/videolan/libvlc/AWindow;)V",
+      "nativeRelease": "()V",
+      "nativeSetMedia": "(Lorg/videolan/libvlc/interfaces/IMedia;)V",
+      "nativePlay": "()V",
+      "nativeStop": "()V",
+      "nativeSetRenderer": "(Lorg/videolan/libvlc/RendererItem;)I",
+      "nativeSetVideoTitleDisplay": "(II)V",
+      "nativeGetScale": "()F",
+      "nativeSetScale": "(F)V",
+      "nativeGetAspectRatio": "()Ljava/lang/String;",
+      "nativeSetAspectRatio": "(Ljava/lang/String;)V",
+      "nativeGetDisplayFit": "()I",
+      "nativeSetDisplayFit": "(I)V",
+      "nativeUpdateViewpoint": "(FFFFZ)Z",
+      "nativeSetAudioOutput": "(Ljava/lang/String;)Z",
+      "nativeSetAudioOutputDevice": "(Ljava/lang/String;)Z",
+      "nativeGetTitles": "()[Lorg/videolan/libvlc/MediaPlayer$Title;",
+      "nativeGetChapters": "(I)[Lorg/videolan/libvlc/MediaPlayer$Chapter;",
+      "nativeGetTracks": "(IZ)[Lorg/videolan/libvlc/interfaces/IMedia$Track;",
+      "nativeGetSelectedTrack": "(I)Lorg/videolan/libvlc/interfaces/IMedia$Track;",
+      "nativeGetTrackFromID": "(Ljava/lang/String;)Lorg/videolan/libvlc/interfaces/IMedia$Track;",
+      "nativeSelectTrack": "(Ljava/lang/String;)Z",
+      "nativeSelectTracks": "(ILjava/lang/String;)V",
+      "nativeUnselectTrackType": "(I)V",
+      "nativeGetAudioDelay": "()J",
+      "nativeSetAudioDelay": "(J)Z",
+      "nativeGetSpuDelay": "()J",
+      "nativeSetSpuDelay": "(J)Z",
+      "nativeAddSlave": "(ILjava/lang/String;Z)Z",
+      "nativeRecord": "(Ljava/lang/String;Z)Z",
+      "nativeSetEqualizer": "(Lorg/videolan/libvlc/MediaPlayer$Equalizer;)Z",
+      "nativeGetTeletext": "()I",
+      "nativeSetTeletext": "(I)V",
+      "nativeGetTeletextTransparency": "()Z",
+      "nativeSetTeletextTransparency": "(Z)V"
+    },
+    "Lorg/videolan/libvlc/MediaPlayer$Equalizer;": {
+      "nativeGetPresetCount": "()I",
+      "nativeGetPresetName": "(I)Ljava/lang/String;",
+      "nativeGetBandCount": "()I",
+      "nativeGetBandFrequency": "(I)F",
+      "nativeNew": "()V",
+      "nativeNewFromPreset": "(I)V",
+      "nativeRelease": "()V",
+      "nativeGetPreAmp": "()F",
+      "nativeSetPreAmp": "(F)Z",
+      "nativeGetAmp": "(I)F",
+      "nativeSetAmp": "(IF)Z"
+    },
+    "Lorg/videolan/libvlc/RendererDiscoverer;": {
+      "nativeNew": "(Lorg/videolan/libvlc/interfaces/ILibVLC;Ljava/lang/String;)V",
+      "nativeRelease": "()V",
+      "nativeStart": "()Z",
+      "nativeStop": "()V",
+      "nativeList": "(Lorg/videolan/libvlc/interfaces/ILibVLC;)[Lorg/videolan/libvlc/RendererDiscoverer$Description;",
+      "nativeNewItem": "(J)Lorg/videolan/libvlc/RendererItem;"
+    },
+    "Lorg/videolan/libvlc/RendererItem;": {
+      "nativeReleaseItem": "()V"
+    },
+    "Lorg/videolan/libvlc/VLCObject;": {
+      "nativeDetachEvents": "()V",
+      "getInstance": "()J"
+    }
+  },
+  "bridge": {
+    "ndk": "26.1.10909125",
+    "cmake": "3.22.1",
+    "sources": {
+      "native/libvlc4-seek/CMakeLists.txt": "c44d31b52a1c204bc4f68a7e08bf5471dc8d41ded9f2e9d41bc4aaf78354494c",
+      "native/libvlc4-seek/vlc4_seek.c": "1c1895e3243ab42841997fc8effe820db127b53d94682ff2a5147d189cc4c252",
+      "platform/libmpv-android/src/main/kotlin/io/github/joyelliot/zivplayer/platform/libvlc/VlcSeekBridge.kt": "33e65ef24896f429da6e1677bf2e36f354c6d2a58b0ec8bebd0e68fdf1d1f3d1"
+    },
+    "libraries": {
+      "arm64-v8a/libzivplayer_vlc4.so": {
+        "sizeBytes": 30040,
+        "sha256": "13a3803d09bef656bfcb4bf9940b5938e1c05e9852277cfd672a7f230c76a815",
+        "soname": "libzivplayer_vlc4.so",
+        "needed": [
+          "libdl.so",
+          "libm.so",
+          "libc.so"
+        ]
+      },
+      "x86_64/libzivplayer_vlc4.so": {
+        "sizeBytes": 29120,
+        "sha256": "0f95c6030ddcb94c0fa1e9f6269c893c7453698faa765d97e68cb495ada8b68a",
+        "soname": "libzivplayer_vlc4.so",
+        "needed": [
+          "libdl.so",
+          "libm.so",
+          "libc.so"
+        ]
+      }
+    },
+    "bindings": {
+      "Lio/github/joyelliot/zivplayer/platform/libvlc/VlcSeekBridge;": {
+        "nativeOpen": "(J)J",
+        "nativeSeek": "(JJJZ)I",
+        "nativeClose": "(J)V"
+      }
+    }
+  }
+}

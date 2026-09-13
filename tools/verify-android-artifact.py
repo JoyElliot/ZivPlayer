@@ -231,15 +231,25 @@ def experimental_libass(abis: set[str]) -> tuple[dict, dict]:
     return result, lock["bindings"]
 
 
-def verify(apk: Path, exoplayer_experiment: bool = False) -> dict:
+def verify(apk: Path, exoplayer_experiment: bool = False, libvlc4_experiment: bool = False) -> dict:
     lock = staging.read_json(staging.DEFAULT_LOCK)[0]
     staging.verify(staging.DEFAULT_STAGE, lock)
     receipt = staging.read_json(staging.DEFAULT_STAGE / staging.RECEIPT_NAME)[0]
     expected = {f"lib/{item['abi']}/{item['library']}": item for item in receipt["artifacts"]}
     platform = platform_libraries({item["abi"] for item in receipt["artifacts"]})
+    require(not set(expected) & set(platform), "AndroidX native library collides with the original receipt")
     expected.update(platform)
-    experiment, experiment_methods = experimental_libass({item["abi"] for item in receipt["artifacts"]}) if exoplayer_experiment else ({}, {})
+    experiment, experiment_methods = experimental_libass({item["abi"] for item in receipt["artifacts"]}) if exoplayer_experiment or libvlc4_experiment else ({}, {})
+    require(not set(expected) & set(experiment), "libass native library collides with the original receipt")
     expected.update(experiment)
+    vlc, vlc_methods = {}, {}
+    if libvlc4_experiment:
+        from vlc4_artifact import extensions
+        vlc, vlc_methods = extensions(ROOT, {item["abi"] for item in receipt["artifacts"]}, expected, apk)
+        require(not set(expected) & set(vlc), "VLC native library collides with an existing library")
+        require(not set(experiment_methods) & set(vlc_methods), "VLC JNI descriptor collides with libass")
+        expected.update(vlc)
+        experiment_methods.update(vlc_methods)
     experiment_bindings = {name: [] for name in experiment_methods}
     contract = tomllib.loads((ROOT / "native/wrapper/jni-contract.toml").read_text(encoding="utf-8"))
     expected_methods = {item["name"]: item["descriptor"] for item in contract["methods"]}
@@ -270,7 +280,7 @@ def verify(apk: Path, exoplayer_experiment: bool = False) -> dict:
                     f"packaged native bytes differ from execution audit: {name}")
             native_records.append({"path": name, "sha256": sha.hexdigest(),
                                    "sizeBytes": info.file_size, "dataOffset": data_offset,
-                                   "source": (platform | experiment).get(name, {}).get("source", "native-execution-receipt")})
+                                   "source": (platform | experiment | vlc).get(name, {}).get("source", "native-execution-receipt")})
         for name in names:
             if re.fullmatch(r"classes(?:[0-9]+)?\.dex", name):
                 dex = Dex(archive.read(name))
@@ -279,13 +289,15 @@ def verify(apk: Path, exoplayer_experiment: bool = False) -> dict:
                     experiment_bindings[descriptor].extend(dex.find_binding(descriptor))
     require(bindings == [expected_methods], "APK DEX JNI class or sixteen native method descriptors differ")
     for descriptor, methods in experiment_methods.items():
-        require(experiment_bindings[descriptor] == [methods], f"APK libass JNI class/descriptors differ: {descriptor}")
+        require(experiment_bindings[descriptor] == [methods], f"APK experimental JNI class/descriptors differ: {descriptor}")
     apk_sha, apk_size = staging.digest(apk)
     return {"schemaVersion": 1, "apk": apk.name, "apkSha256": apk_sha, "apkSizeBytes": apk_size,
             "nativeReceiptSha256": lock["receiptSha256"], "artifacts": native_records,
             "bindingsClass": contract["bindingsClass"], "dexNativeMethods": expected_methods,
             **({"exoplayerExperiment": True, "experimentalLibass": experiment,
                 "libassDexNativeMethods": experiment_methods} if exoplayer_experiment else {}),
+            **({"libvlc4Experiment": True, "experimentalLibVlc": vlc,
+                "experimentalDexNativeMethods": experiment_methods} if libvlc4_experiment else {}),
             "runtimeRegistrationEvidence": "pending-device-art-smoke", "releaseInput": False}
 
 
@@ -294,13 +306,16 @@ def main() -> int:
     parser.add_argument("apk", type=Path)
     parser.add_argument("--report", type=Path)
     parser.add_argument("--exoplayer-experiment", action="store_true")
+    parser.add_argument("--libvlc4-experiment", action="store_true")
     args = parser.parse_args()
     try:
-        report = verify(args.apk, args.exoplayer_experiment)
+        report = verify(args.apk, args.exoplayer_experiment, args.libvlc4_experiment)
         if args.report:
             args.report.parent.mkdir(parents=True, exist_ok=True)
             args.report.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-        if args.exoplayer_experiment:
+        if args.libvlc4_experiment:
+            print(f"verified APK: {report['apk']}; 34 native libraries, original C++ runtime, 16-KiB ZIP/ELF alignment, 157 DEX JNI methods")
+        elif args.exoplayer_experiment:
             print(f"verified APK: {report['apk']}; 20 audited + 4 AndroidX + 4 libass libraries, original C++ runtime, 16-KiB ZIP/ELF alignment, 16 mpv + 19 libass DEX JNI methods")
         else:
             print(f"verified APK: {report['apk']}; 20 audited libraries + 4 locked AndroidX helpers, 16-KiB ZIP alignment, 16 DEX JNI methods")

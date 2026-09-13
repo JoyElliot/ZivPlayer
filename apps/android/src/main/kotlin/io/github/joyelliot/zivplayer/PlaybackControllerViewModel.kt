@@ -227,7 +227,7 @@ class PlaybackControllerViewModel(
                 mutableSeekPreviewFrame.value = null
                 cancelTemporarySpeed()
                 val uri = active.currentMediaItem?.localConfiguration?.uri
-                if (!io.github.joyelliot.zivplayer.platform.playback.PlaybackExperiment.usesExoPlayer &&
+                if (!io.github.joyelliot.zivplayer.platform.playback.PlaybackExperiment.usesNativeScrubPreview &&
                     allowLocalDecoder && uri?.scheme in setOf("content", "file")) {
                     created.renderer = ScrubPreviewRenderer(applicationContext, checkNotNull(uri),
                         onFrame = { frame ->

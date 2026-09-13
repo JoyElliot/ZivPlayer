@@ -54,6 +54,7 @@ ADR 记录某项设计的背景、决定和影响。以下按编号排列；历�
 | [0015](adr/0015-native-platforms-and-shared-contracts.md) | 各平台原生开发与共享行为契约 |
 | [0016](adr/0016-live-seek-preview-and-exact-commit.md) | 主画面实时定位预览与精确提交 |
 | [0017](adr/0017-exoplayer-libass-comparison.md) | ExoPlayer + libass 对比实验与回退边界 |
+| [0018](adr/0018-libvlc4-comparison.md) | libVLC 4 实验、定位桥接和分支保留 |
 | [0018](adr/0018-local-artwork-and-media-details.md) | 本地封面、媒体元数据与独立缓存 |
 
 ## 验证记录
@@ -65,6 +66,7 @@ ADR 记录某项设计的背景、决定和影响。以下按编号排列；历�
 | [2026-09-10](validation/2026-09-10-player-completion.md) | 拖动输入延迟、封面、元数据、触觉反馈与数据保留 |
 | [2026-09-10](validation/2026-09-10-flac-seek-recovery.md) | 当前 MKV 的 FLAC seek 超时、音频就绪与全屏回归 |
 | [2026-09-09](validation/2026-09-09-exoplayer-libass-comparison.md) | ExoPlayer + libass 原视频 Surface、长进度拖动与字幕对比 |
+| [2026-09-13](validation/2026-09-13-libvlc4-experiment.md) | libVLC 4 实验包、主机检查、原生/JNI 锁定与设备验收边界 |
 | [2026-09-09](validation/2026-09-09-scrub-suppression-and-surfaceview.md) | 拖动时临时暂停、大跨度预览、SurfaceView 与音频焦点 |
 | [2026-09-09](validation/2026-09-09-live-seek-preview.md) | 实时拖动、双击出帧延迟与精确定位 |
 | [2026-09-08](validation/2026-09-08-folder-home-and-portrait-player.md) | 文件夹首页、手势、横竖屏切换与画面比例 |

@@ -10,6 +10,7 @@ miuix = "0.9.3"
 coroutines = "1.11.0"
 media3 = "1.11.0"
 libass-media = "0.5.1"
+libvlc = "4.0.0-eap29"
 datastore = "1.2.1"
 room = "2.8.4"
 navigation = "2.10.0"
@@ -49,6 +50,7 @@ androidx-media3-ui = { module = "androidx.media3:media3-ui", version.ref = "medi
 androidx-media3-effect = { module = "androidx.media3:media3-effect", version.ref = "media3" }
 libass-media = { module = "io.github.peerless2012:ass-media", version.ref = "libass-media" }
 libass-kt = { module = "io.github.peerless2012:ass-kt", version.ref = "libass-media" }
+libvlc-all = { module = "org.videolan.android:libvlc-all", version.ref = "libvlc" }
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }

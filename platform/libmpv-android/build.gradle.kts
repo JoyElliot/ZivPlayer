@@ -26,6 +26,13 @@ android {
         version = release(37)
     }
     buildToolsVersion = "37.0.0"
+    ndkVersion = "26.1.10909125"
+    externalNativeBuild {
+        cmake {
+            path = rootProject.file("native/libvlc4-seek/CMakeLists.txt")
+            version = "3.22.1"
+        }
+    }
 
     defaultConfig {
         minSdk = 26
@@ -71,6 +78,7 @@ dependencies {
     implementation(libs.androidx.media3.effect)
     implementation(libs.libass.media)
     implementation(libs.libass.kt)
+    implementation(libs.libvlc.all)
 
     testImplementation(libs.junit4)
 }

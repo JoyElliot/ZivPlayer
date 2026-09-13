@@ -4,7 +4,7 @@
 
 本文介绍当前 Android 应用的本地开发流程。所有命令均从仓库根目录执行；示例以 Windows PowerShell 为主。
 
-当前 `codex/exoplayer-libass-comparison` 是 [ExoPlayer + libass 对比实验](adr/0017-exoplayer-libass-comparison.md)分支，默认运行 ExoPlayer。`-PplaybackEngine=libmpv` 只切换后端，本分支的 APK 仍包含两套依赖，需要下文的实验校验参数。完整的原 libmpv 基线保存在 `main` 的 `***` 提交。
+当前 `codex/libvlc4-comparison` 是 [libVLC 4 对比实验](adr/0018-libvlc4-comparison.md)分支，默认运行 libVLC 4.0.0-eap29。`-PplaybackEngine=exo` 或 `-PplaybackEngine=libmpv` 只切换后端，本分支 APK 仍包含三套依赖，统一使用下文的 VLC 实验校验参数。之前的完整 Exo/mpv 实验状态保留在 `codex/exoplayer-libass-comparison` 的 `***`，原 libmpv 基线保存在 `main` 的 `***`。
 
 ## 环境要求
 
@@ -12,6 +12,7 @@
 | --- | --- |
 | JDK | 21；应用和核心模块的 JVM 编译目标为 17 |
 | Android SDK | Platform 37、Build Tools 37.0.0 |
+| Android NDK / CMake | 26.1.10909125 / 3.22.1，用于独立的 VLC 定位事件 JNI 桥接 |
 | Gradle | 使用仓库自带 Wrapper，当前为 9.6.1 |
 | Python | 3.11 或更高，用于原生库和 APK 校验 |
 | FFmpeg / FFprobe | 生成真机测试素材时需要 |
@@ -55,10 +56,12 @@ python -B native/tools/android_staging_tool.py verify
 
 ```powershell
 .\gradlew.bat --offline :apps:android:assembleDebug
-python -B tools/verify-android-artifact.py apps/android/build/outputs/apk/debug/android-debug.apk --exoplayer-experiment
+python -B tools/verify-android-artifact.py apps/android/build/outputs/apk/debug/android-debug.apk --libvlc4-experiment
 ```
 
-实验校验保留原 staging receipt 和 20 个库的精确校验，再检查 4 个 AndroidX 辅助库、4 个锁定的 libass 库、16 KiB 对齐，以及原 16 个 mpv 和新增 19 个 libass JNI 方法。`main` 的原基线 APK 使用不带 `--exoplayer-experiment` 的严格默认校验。APK 校验不能替代真机播放验证。`assembleRelease` 也仅表示相应构建任务完成，不代表已经具备正式发布所需的签名、原生来源和分发材料。
+VLC 实验校验保留原 staging receipt 的 20 个库、4 个 AndroidX 辅助库和4 个 libass 库，再检查官方 AAR 的 4 个 VLC 库与两个 ABI 的独立定位桥接，共 34 个原生库、157 个 JNI 方法及 16 KiB 对齐。VLC AAR 的重复 C++ 运行库必须与原 receipt 字节一致，不能覆盖原校验值。桥接源码与输出散列锁在 `tools/libvlc4-experiment-lock.json`，修改桥接后需要重新构建并独立核对再更新散列；不同工具链或宿主路径生成不同字节时校验会拒绝。
+
+旧 Exo 分支使用 `--exoplayer-experiment`，`main` 原基线使用无实验参数的严格默认校验；两者都应拒绝当前 VLC APK。APK 校验不能替代真机播放验证。`assembleRelease` 也仅表示相应构建任务完成，不代表已经具备正式发布所需的签名、原生来源和分发材料。
 
 macOS / Linux 上的应用构建入口为 `./gradlew`，Python 命令通常为 `python3`。这只是构建主机的区别，当前应用目标仍为 Android。
 

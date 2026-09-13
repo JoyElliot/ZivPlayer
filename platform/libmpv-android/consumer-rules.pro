@@ -3,3 +3,8 @@
 -keep class io.github.joyelliot.zivplayer.platform.libmpv.MpvNativeBindings {
     native <methods>;
 }
+
+-keep class io.github.joyelliot.zivplayer.platform.libvlc.VlcSeekBridge {
+    native <methods>;
+    void onNativeSeekCompleted(long);
+}
