@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "group": "io.github.peerless2012",
+  "version": "0.5.1",
+  "aars": {
+    "ass-media": "ffa70257e49586ba3c7ee8795e641b936ec75a8867d8147cd0d8f6b6dabdcfa4",
+    "ass-kt": "1051212faf98ef956e06992b002d43cfdc81b6c60dcd32662e8d3ff52d584d65"
+  },
+  "libraries": {
+    "arm64-v8a/libass.so": {"sizeBytes": 3042280, "sha256": "f13e8a925ddaa73074105f9af89123b2206edbe4b502d748a6217a261dc62df4"},
+    "arm64-v8a/libasskt.so": {"sizeBytes": 17016, "sha256": "d7d221f40dbb94371f23b8a3c69995424bb6f505fe81bff6bf916289a1db487c"},
+    "x86_64/libass.so": {"sizeBytes": 3106968, "sha256": "00ca7ea1cae8a4eeb4d0adedd1074d57803cdbb4d392e0e69055bea106c66030"},
+    "x86_64/libasskt.so": {"sizeBytes": 16520, "sha256": "093af93b587b0ca7e5105c63a4980722d39ceb8e2a8e9b83e30623500eb62172"}
+  },
+  "needed": {
+    "libass.so": ["libz.so", "libm.so", "libdl.so", "libc.so"],
+    "libasskt.so": ["libass.so", "libandroid.so", "libjnigraphics.so", "libGLESv2.so", "libz.so", "liblog.so", "libm.so", "libdl.so", "libc.so"]
+  },
+  "bindings": {
+    "Lio/github/peerless2012/ass/Ass;": {
+      "nativeAssInit": "()J",
+      "nativeAssAddFont": "(JLjava/lang/String;[B)V",
+      "nativeAssClearFont": "(J)V",
+      "nativeAssDeinit": "(J)V"
+    },
+    "Lio/github/peerless2012/ass/AssRender;": {
+      "nativeAssRenderInit": "(J)J",
+      "nativeAssRenderSetFontScale": "(JF)V",
+      "nativeAssRenderSetCacheLimit": "(JII)V",
+      "nativeAssRenderSetStorageSize": "(JII)V",
+      "nativeAssRenderSetFrameSize": "(JII)V",
+      "nativeAssRenderFrame": "(JJJI)Lio/github/peerless2012/ass/AssFrame;",
+      "nativeAssRenderDeinit": "(J)V"
+    },
+    "Lio/github/peerless2012/ass/AssTrack;": {
+      "nativeAssTrackInit": "(J)J",
+      "nativeAssTrackGetWidth": "(J)I",
+      "nativeAssTrackGetHeight": "(J)I",
+      "nativeAssTrackGetEvents": "(J)[Lio/github/peerless2012/ass/AssEvent;",
+      "nativeAssTrackClearEvents": "(J)V",
+      "nativeAssTrackReadBuffer": "(J[BII)V",
+      "nativeAssTrackReadChunk": "(JJJ[BII)V",
+      "nativeAssTrackDeinit": "(J)V"
+    }
+  }
+}

@@ -4,7 +4,11 @@ package io.github.joyelliot.zivplayer
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.hapticfeedback.HapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -38,6 +42,12 @@ class FullscreenGestureTest {
     private var token = 0L
     private val brightness = mutableListOf<Float>()
     private val volumes = mutableListOf<Float>()
+    private val haptics = mutableListOf<HapticFeedbackType>()
+    private val hapticRecorder = object : HapticFeedback {
+        override fun performHapticFeedback(hapticFeedbackType: HapticFeedbackType) {
+            haptics += hapticFeedbackType
+        }
+    }
 
     @Test fun singleTapTogglesControlsAndDoubleTapOnlyTogglesPlayback() {
         showPlayer()
@@ -135,18 +145,45 @@ class FullscreenGestureTest {
         showPlayer()
         video().performTouchInput { down(Offset(width * 0.7f, height * 0.45f)) }
         compose.mainClock.advanceTimeBy(650)
-        compose.runOnIdle { assertEquals(2f, rates.last(), 0f) }
+        compose.runOnIdle {
+            assertEquals(2f, rates.last(), 0f)
+            assertEquals(listOf(HapticFeedbackType.GestureThresholdActivate), haptics)
+        }
         video().performTouchInput { moveTo(Offset(width * 0.05f, height * 0.45f)) }
         compose.runOnIdle { assertEquals(0.25f, rates.last(), 0f) }
         video().performTouchInput { up() }
-        compose.runOnIdle { assertEquals(listOf(1L), ended); assertTrue(seeks.isEmpty()) }
+        compose.runOnIdle {
+            assertEquals(listOf(1L), ended); assertTrue(seeks.isEmpty())
+            assertEquals(listOf(HapticFeedbackType.GestureThresholdActivate, HapticFeedbackType.GestureEnd), haptics)
+        }
         video().performTouchInput { down(Offset(width * 0.5f, height * 0.35f)) }
         compose.mainClock.advanceTimeBy(650)
         compose.runOnIdle { state.value = state.value.copy(playbackIdentity = "occurrence-2") }
         compose.mainClock.advanceTimeByFrame()
         compose.runOnIdle { assertEquals(listOf(1L, 2L), ended) }
         video().performTouchInput { up() }
-        compose.runOnIdle { assertEquals(0, playPause) }
+        compose.runOnIdle {
+            assertEquals(0, playPause)
+            assertEquals(listOf(HapticFeedbackType.GestureThresholdActivate, HapticFeedbackType.GestureEnd,
+                HapticFeedbackType.GestureThresholdActivate, HapticFeedbackType.GestureEnd), haptics)
+        }
+    }
+
+    @Test fun holdCancellationEndsHapticOnceAndDisabledHoldDoesNotVibrate() {
+        showPlayer()
+        video().performTouchInput { down(Offset(width * 0.5f, height * 0.35f)) }
+        compose.mainClock.advanceTimeBy(650)
+        video().performTouchInput { cancel() }
+        compose.runOnIdle {
+            assertEquals(listOf(1L), ended)
+            assertEquals(listOf(HapticFeedbackType.GestureThresholdActivate, HapticFeedbackType.GestureEnd), haptics)
+            state.value = state.value.copy(canSetSpeed = false)
+        }
+        compose.mainClock.advanceTimeByFrame()
+        video().performTouchInput { down(Offset(width * 0.5f, height * 0.35f)) }
+        compose.mainClock.advanceTimeBy(650)
+        video().performTouchInput { up() }
+        compose.runOnIdle { assertEquals(2, haptics.size); assertEquals(listOf(1L), ended) }
     }
 
     @Test fun quickMenuControlsConsumeTouchesAndDismiss() {
@@ -193,12 +230,14 @@ class FullscreenGestureTest {
     private fun showPlayer() {
         compose.mainClock.autoAdvance = false
         compose.setContent {
+            CompositionLocalProvider(LocalHapticFeedback provides hapticRecorder) {
             FullscreenPlayerScreen(state.value, videoContent = { Box {} }, onExit = {}, onPlayPause = { playPause++ },
                 onSeekTo = { seeks += it }, onPlaybackSpeedChange = {}, onVolumeChange = { volumes += it }, onRepeatModeChange = {},
                 onSelectTrack = { _, _ -> }, onOpenSubtitle = {}, onBeginTemporarySpeed = { ++token },
                 onPreviewSeekTo = { previews += it }, onCancelSeekPreview = { canceledPreviews++ },
                 onTemporarySpeedChange = { _, rate -> rates += rate }, onEndTemporarySpeed = { ended += it },
                 brightness = 0.5f, onBrightnessChange = { brightness += it })
+            }
         }
         compose.mainClock.advanceTimeByFrame()
     }

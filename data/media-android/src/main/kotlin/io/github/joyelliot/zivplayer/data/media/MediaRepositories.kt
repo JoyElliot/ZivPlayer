@@ -19,6 +19,7 @@ class MediaRepositories(context: Context, databaseName: String = "zivplayer-medi
     val library = RoomMediaLibraryRepository(database)
     val playbackPreferences = RoomMediaPlaybackPreferencesRepository(database)
     val resources = ManagedPlaybackResources(context.applicationContext, database)
+    val mediaDetails = LocalMediaDetailsStore(context.applicationContext)
     override fun close() = database.close()
 }
 

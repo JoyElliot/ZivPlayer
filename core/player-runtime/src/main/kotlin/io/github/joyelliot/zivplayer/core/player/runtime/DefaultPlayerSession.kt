@@ -471,17 +471,32 @@ class DefaultPlayerSession(
                 ?: accepted(changed = true)
         }
 
-        if (inFlightSeek != null) {
-            // Preserve precision as well as position: a release at the last preview target must commit.
-            queuedSeek = command
-            publish(
-                current.copy(timeline = current.timeline.copy(position = command.position)),
-                StateChangeCause.COMMAND,
-            )
-            return accepted(changed = true)
+        val pending = inFlightSeek
+        var replacedInFlight = false
+        if (pending != null) {
+            // A late preview must not erase a release/cancel already waiting to be committed.
+            if (command.precision == SeekPrecision.KEYFRAME && queuedSeek?.precision == SeekPrecision.EXACT) {
+                return accepted(changed = false)
+            }
+            val replacePreview = backend.supportsInFlightSeekReplacement &&
+                pending.precision == SeekPrecision.KEYFRAME && command.precision == SeekPrecision.KEYFRAME &&
+                pending.completionId == null && command.completionId == null && queuedSeek?.completionId == null
+            if (!replacePreview) {
+                // Preserve precision: a release at the last preview target must still commit.
+                queuedSeek = command
+                publish(current.copy(timeline = current.timeline.copy(position = command.position)), StateChangeCause.COMMAND)
+                return accepted(changed = true)
+            }
+            // The actor remains the only backend owner. Native scrubbing can now coalesce to
+            // the newest target without waiting for the old frame's completion round trip.
+            seekCompletionTimeoutJob?.cancel()
+            seekCompletionTimeoutJob = null
+            inFlightSeek = null
+            queuedSeek = null
+            replacedInFlight = true
         }
 
-        val error = startSeek(command)
+        val error = startSeek(command, if (replacedInFlight) ErrorRecovery.RESET else ErrorRecovery.RETRY)
         if (error != null) {
             enterError(error, StateChangeCause.COMMAND)
             return CommandResult.Failed(mutableSnapshot.value.revision, error)
@@ -917,7 +932,7 @@ class DefaultPlayerSession(
         mutableEvents.tryEmit(PlaybackEvent.SeekCompleted(nextSequence(), snapshot.revision, completionId, item.id, position))
     }
 
-    private suspend fun startSeek(command: PlayerCommand.SeekTo): PlayerError? {
+    private suspend fun startSeek(command: PlayerCommand.SeekTo, failureRecovery: ErrorRecovery = ErrorRecovery.RETRY): PlayerError? {
         val generation = activeGeneration ?: return backendOperationError("seek without active media")
         val request = BackendSeekRequest(
             generation = generation,
@@ -927,7 +942,7 @@ class DefaultPlayerSession(
             completionId = command.completionId,
         )
         inFlightSeek = request
-        val error = callBackend("seek") { seekTo(request) }
+        val error = callBackend("seek", failureRecovery) { seekTo(request) }
         if (error != null) {
             inFlightSeek = null
         } else {

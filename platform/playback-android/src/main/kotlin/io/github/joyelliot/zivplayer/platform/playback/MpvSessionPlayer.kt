@@ -42,6 +42,9 @@ import io.github.joyelliot.zivplayer.core.model.PlayerPreferences
 import io.github.joyelliot.zivplayer.core.model.PlaybackDiagnostics
 import io.github.joyelliot.zivplayer.core.model.TrackKind
 import io.github.joyelliot.zivplayer.core.media.MediaPlaybackPreferences
+import io.github.joyelliot.zivplayer.core.media.MediaDetails
+import io.github.joyelliot.zivplayer.core.media.MediaDetailsRequest
+import io.github.joyelliot.zivplayer.core.media.DurableMediaUri
 import io.github.joyelliot.zivplayer.core.media.SavedSubtitle
 import io.github.joyelliot.zivplayer.core.media.matchTrack
 import io.github.joyelliot.zivplayer.core.media.savedSelection
@@ -59,6 +62,7 @@ import io.github.joyelliot.zivplayer.platform.libmpv.LibmpvSurfaceLease
 import io.github.joyelliot.zivplayer.platform.libmpv.LibmpvSurfacePort
 import io.github.joyelliot.zivplayer.platform.libmpv.LibmpvConfigurationPort
 import io.github.joyelliot.zivplayer.platform.libmpv.LibmpvResourcePaths
+import io.github.joyelliot.zivplayer.platform.exoplayer.DirectScrubPort
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -90,6 +94,7 @@ internal data class PlaybackEngine(
     val session: PlayerSession,
     val surfacePort: LibmpvSurfacePort,
     val configurationPort: LibmpvConfigurationPort? = null,
+    val directScrubPort: DirectScrubPort? = null,
 )
 
 internal class QueueItemIdGenerator(
@@ -199,6 +204,9 @@ internal class MpvSessionPlayer(
     private var snapshotCollector: Job
     private var eventCollector: Job
     private var configurationJob: Job? = null
+    private var detailsJob: Job? = null
+    private var detailsCollector: Job? = null
+    private var detailsRequestKey: Triple<Long, QueueItemId, String>? = null
     private val configurationReady = CompletableDeferred<Unit>()
     private var preferences = PlayerPreferences()
     internal var configurationMessage: String? = null
@@ -280,6 +288,7 @@ internal class MpvSessionPlayer(
             if (lease == null) seekPreviewLease = SeekPreviewLease(owner, token, engineEpoch, intent, item.id, current.timeline.position)
             try {
                 dispatchOrThrow(PlayerCommand.SetPlaybackSuppressed(true))
+                engine.directScrubPort?.beginScrubbing()
                 if (phase == SeekPreviewContract.PREVIEW)
                     dispatchOrThrow(PlayerCommand.SeekTo(target, io.github.joyelliot.zivplayer.core.player.SeekPrecision.KEYFRAME))
             } catch (failure: Throwable) {
@@ -361,6 +370,7 @@ internal class MpvSessionPlayer(
         val lease = seekPreviewLease ?: return
         retiredSeekTokens[lease.owner] = maxOf(retiredSeekTokens[lease.owner] ?: 0L, lease.token)
         seekPreviewLease = null
+        engine.directScrubPort?.endScrubbing()
     }
 
     private fun invalidateSeekCompletion(message: String) {
@@ -384,6 +394,18 @@ internal class MpvSessionPlayer(
     }
 
     init {
+        detailsCollector = scope.launch {
+            val repository = preferencesProvider?.mediaDetailsRepository ?: return@launch
+            var previous = emptyMap<String, MediaDetails>()
+            repository.details.collect { next ->
+                val changed = retainedMediaItems.values.any { item ->
+                    val uri = item.localConfiguration?.uri?.toString()
+                    uri != null && previous[uri] != next[uri]
+                }
+                previous = next
+                if (changed && !shutdownStarted.get()) invalidateState()
+            }
+        }
         progressRecorder.bind(engineEpoch, snapshot)
         snapshotCollector = startSnapshotCollector(engine, engineEpoch)
         eventCollector = startEventCollector(engine, engineEpoch)
@@ -438,7 +460,8 @@ internal class MpvSessionPlayer(
 
         if (snapshot.queue.items.isNotEmpty()) {
             builder
-                .setPlaylist(snapshot.toMedia3Playlist(retainedMediaItems))
+                .setPlaylist(snapshot.toMedia3Playlist(retainedMediaItems,
+                    preferencesProvider?.mediaDetailsRepository?.details?.value.orEmpty()))
                 .setCurrentMediaItemIndex(checkNotNull(snapshot.queue.currentIndex))
                 .setContentPositionMs(snapshot.timeline.position.value)
                 .setContentBufferedPositionMs {
@@ -606,7 +629,7 @@ internal class MpvSessionPlayer(
         }
         val token = VideoSurfaceRequests.current()
         return launchFuture {
-            if (token != VideoSurfaceRequests.current()) return@launchFuture
+            if (token != VideoSurfaceRequests.current() || !videoOutput.isValid) return@launchFuture
             if (videoSurfaceRequestToken != token) videoSurfaceSize = null
             videoSurfaceRequestToken = token
             this.videoOutput = videoOutput
@@ -617,7 +640,9 @@ internal class MpvSessionPlayer(
     }
 
     override fun handleClearVideoOutput(videoOutput: Any?): ListenableFuture<*> {
+        val token = videoSurfaceRequestToken
         return launchFuture {
+            if (token != videoSurfaceRequestToken) return@launchFuture
             if (videoOutput != null && videoOutput !== this.videoOutput) {
                 return@launchFuture
             }
@@ -974,6 +999,8 @@ internal class MpvSessionPlayer(
             return
         }
         configurationJob?.cancel()
+        detailsJob?.cancel()
+        detailsCollector?.cancel()
         retireSeekPreview()
         retiredSeekTokens.clear()
         temporaryRateLease = null
@@ -1026,6 +1053,7 @@ internal class MpvSessionPlayer(
             observedEngine.session.snapshot.collect { next ->
                 if (engine === observedEngine && engineEpoch == observedEpoch) {
                     snapshot = next
+                    scheduleMediaDetails(next, observedEpoch)
                     pendingSeekCompletion?.let { pending ->
                         if (pending.epoch != observedEpoch || pending.item != next.queue.currentItem?.id ||
                             next.status !in SEEK_PREVIEW_STATES) invalidateSeekCompletion("The seek media is no longer active.")
@@ -1067,6 +1095,26 @@ internal class MpvSessionPlayer(
                 }
             }
         }
+
+    private fun scheduleMediaDetails(current: PlaybackSnapshot, epoch: Long) {
+        val repository = preferencesProvider?.mediaDetailsRepository ?: return
+        val item = current.queue.currentItem
+        val uri = item?.let { retainedMediaItems[it.id]?.localConfiguration?.uri?.toString() ?: it.media.source.locator }
+            ?.takeIf { Uri.parse(it).scheme in setOf("content", "file") }
+        val key = if (item != null && uri != null) Triple(epoch, item.id, uri) else null
+        if (key == detailsRequestKey) return
+        detailsRequestKey = key
+        detailsJob?.cancel()
+        if (key != null && item != null) detailsJob = scope.launch {
+            repeat(2) { attempt ->
+                if (attempt > 0) delay(1_500)
+                val loaded = try { repository.load(MediaDetailsRequest(DurableMediaUri(key.third), mimeType = item.media.source.mimeType)) }
+                catch (cancelled: CancellationException) { throw cancelled }
+                catch (_: Exception) { null }
+                if (loaded != null) return@launch
+            }
+        }
+    }
 
     private fun startEventCollector(observedEngine: PlaybackEngine, observedEpoch: Long): Job =
         scope.launch(
@@ -1149,9 +1197,10 @@ internal class MpvSessionPlayer(
     private suspend fun applyPlaybackConfiguration() {
         val port = engine.configurationPort ?: return
         try {
-            val paths = preferencesProvider?.resolvePlaybackResources(preferences.options) ?: PlaybackResourceLocations()
-            withContext(Dispatchers.IO) { port.configure(preferences.options, LibmpvResourcePaths(paths.fontsDirectory, paths.shaderFiles)) }
-            configurationMessage = null
+            val options = PlaybackExperiment.playbackOptions(preferences.options)
+            val paths = preferencesProvider?.resolvePlaybackResources(options) ?: PlaybackResourceLocations()
+            withContext(Dispatchers.IO) { port.configure(options, LibmpvResourcePaths(paths.fontsDirectory, paths.shaderFiles)) }
+            configurationMessage = port.configurationMessage
         } catch (failure: CancellationException) { throw failure
         } catch (failure: Exception) {
             configurationMessage = "部分播放设置未能应用：${failure.message}"
@@ -1441,6 +1490,7 @@ internal class MpvSessionPlayer(
             val queueItemId = queueItemIdGenerator.next()
             val mediaId = mediaItem.mediaId.ifBlank { "session:${queueItemId.value}" }
             val extras = android.os.Bundle(mediaItem.mediaMetadata.extras ?: android.os.Bundle.EMPTY).apply {
+                putString(PlaybackRequestMetadata.SOURCE_URI_EXTRA, locator)
                 putLong(PlaybackRequestMetadata.SEQUENCE_EXTRA, sequence)
                 if (!containsKey(PlaybackRequestMetadata.TOKEN_EXTRA)) putString(PlaybackRequestMetadata.TOKEN_EXTRA, "service:$sequence")
             }
@@ -1654,10 +1704,20 @@ internal fun PlaybackSnapshot.media3CommandPolicy(): Set<Int> {
 
 private fun PlaybackSnapshot.toMedia3Playlist(
     retainedMediaItems: Map<QueueItemId, Media3MediaItem>,
+    mediaDetails: Map<String, MediaDetails>,
 ): List<SimpleBasePlayer.MediaItemData> = queue.items.mapIndexed { index, item ->
     val isCurrent = index == queue.currentIndex
-    val mediaItem = retainedMediaItems[item.id]
+    val original = retainedMediaItems[item.id]
         ?: item.toMedia3MediaItem()
+    val details = original.localConfiguration?.uri?.toString()?.let(mediaDetails::get)
+    val mediaItem = if (details == null) original else original.buildUpon().setMediaMetadata(
+        original.mediaMetadata.buildUpon().apply {
+            (details.title ?: original.mediaMetadata.title?.takeUnless { it.isBlank() } ?: details.fileName)?.let(::setTitle)
+            details.artist?.let(::setArtist)
+            details.album?.let(::setAlbumTitle)
+            details.albumArtist?.let(::setAlbumArtist)
+            details.artworkLocator?.let { setArtworkUri(it.toUri()) }
+        }.build()).build()
     SimpleBasePlayer.MediaItemData.Builder(item.id.value)
         .setMediaItem(mediaItem)
         .setMediaMetadata(mediaItem.mediaMetadata)

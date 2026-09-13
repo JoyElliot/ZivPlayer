@@ -11,6 +11,8 @@ import androidx.lifecycle.viewModelScope
 import io.github.joyelliot.zivplayer.core.media.PlaybackCheckpoint
 import io.github.joyelliot.zivplayer.core.media.RecentMedia
 import io.github.joyelliot.zivplayer.core.media.LibraryMedia
+import io.github.joyelliot.zivplayer.core.media.MediaDetails
+import io.github.joyelliot.zivplayer.core.media.MediaDetailsRequest
 import io.github.joyelliot.zivplayer.core.model.MediaId
 import io.github.joyelliot.zivplayer.data.media.MediaDocumentForgetResult
 import io.github.joyelliot.zivplayer.data.media.MediaDocumentPersistence
@@ -20,6 +22,7 @@ import io.github.joyelliot.zivplayer.platform.playback.PlaybackRequestSequencer
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -73,15 +76,26 @@ class MediaSelectionViewModel(
     init {
         viewModelScope.launch {
             repository.observeRecentlyOpened(RECENT_MEDIA_LIMIT)
+                .combine(dependencies.mediaDetailsRepository.details) { recent, details ->
+                    recent.map { it.toUiItem(details[it.record.sourceUri.value]) }
+                }
                 .catch {
                     mutableRecentMedia.value = emptyList()
                     mutableHistoryUnavailable.value = true
                 }
                 .collect { recent ->
                     mutableHistoryUnavailable.value = false
-                    mutableRecentMedia.value = recent.map(RecentMedia::toUiItem)
+                    mutableRecentMedia.value = recent
                 }
         }
+    }
+
+    suspend fun loadRecentDetails(mediaId: String) {
+        try {
+            val record = repository.findById(MediaId(mediaId))?.record ?: return
+            dependencies.mediaDetailsRepository.load(MediaDetailsRequest(record.sourceUri, mimeType = record.mimeType))
+        } catch (cancelled: CancellationException) { throw cancelled }
+        catch (_: Exception) { /* The history row remains useful without optional details. */ }
     }
 
     fun onDocumentSelected(
@@ -321,20 +335,21 @@ internal fun PlaybackCheckpoint?.resumePositionMs(startFromBeginning: Boolean = 
         ?: position.coerceAtLeast(0L)
 }
 
-private fun RecentMedia.toUiItem(): RecentMediaUiItem {
-    val title = record.metadata.title.cleanText()
+private fun RecentMedia.toUiItem(details: MediaDetails? = null): RecentMediaUiItem {
+    val title = details?.title ?: record.metadata.title.cleanText()
         ?: Uri.parse(record.sourceUri.value).lastPathSegment.cleanText()
         ?: record.id.value
     val supportingText = listOfNotNull(
-        record.metadata.artist.cleanText(),
-        record.metadata.album.cleanText(),
+        details?.artist ?: record.metadata.artist.cleanText(),
+        details?.album ?: record.metadata.album.cleanText(),
     ).distinct().joinToString(METADATA_SEPARATOR).ifBlank { null }
     return RecentMediaUiItem(
         mediaId = record.id.value,
         title = title,
         supportingText = supportingText,
+        artworkLocator = details?.artworkLocator ?: record.metadata.artworkLocator,
         positionMs = checkpoint?.position?.value,
-        durationMs = checkpoint?.duration?.value,
+        durationMs = checkpoint?.duration?.value ?: details?.durationMs,
         completed = checkpoint?.completed == true,
     )
 }

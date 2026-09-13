@@ -17,6 +17,7 @@ class LibmpvResourcePaths(subtitleFontsDirectory: String? = null, shaderPaths: L
 }
 
 interface LibmpvConfigurationPort {
+    val configurationMessage: String? get() = null
     suspend fun configure(options: PlaybackOptions, resources: LibmpvResourcePaths)
     suspend fun readDiagnostics(): PlaybackDiagnostics
 }

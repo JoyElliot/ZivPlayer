@@ -26,6 +26,7 @@ import com.google.common.util.concurrent.SettableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import io.github.joyelliot.zivplayer.core.player.runtime.DefaultPlayerSession
 import io.github.joyelliot.zivplayer.platform.libmpv.LibmpvBackend
+import io.github.joyelliot.zivplayer.platform.exoplayer.ExoPlayerBackend
 
 /** Sole owner of the native player, core session, Media3 player, and MediaSession. */
 class PlaybackService : MediaSessionService() {
@@ -67,6 +68,17 @@ class PlaybackService : MediaSessionService() {
                     }
                 },
             ) {
+                if (PlaybackExperiment.usesExoPlayer) {
+                    val backend = ExoPlayerBackend(this)
+                    PlaybackEngine(
+                        session = DefaultPlayerSession(backend, onAutomaticTransition = { from, _ ->
+                            createdPlayer?.advanceAfterCompletion(from)
+                        }),
+                        surfacePort = backend,
+                        configurationPort = backend,
+                        directScrubPort = backend,
+                    )
+                } else {
                 val backend = LibmpvBackend(this)
                 PlaybackEngine(
                     session = DefaultPlayerSession(backend, onAutomaticTransition = { from, _ ->
@@ -75,6 +87,7 @@ class PlaybackService : MediaSessionService() {
                     surfacePort = backend,
                     configurationPort = backend,
                 )
+                }
             }
             val sessionBuilder = MediaSession.Builder(this, createdPlayer)
                 .setCallback(controllerGate)

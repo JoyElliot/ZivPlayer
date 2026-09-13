@@ -65,6 +65,12 @@ dependencies {
     api(project(":core:player-runtime"))
 
     implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.ui)
+    implementation(libs.androidx.media3.effect)
+    implementation(libs.libass.media)
+    implementation(libs.libass.kt)
 
     testImplementation(libs.junit4)
 }

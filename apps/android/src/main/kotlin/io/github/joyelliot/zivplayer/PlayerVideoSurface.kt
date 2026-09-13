@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -32,6 +33,7 @@ import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
 import io.github.joyelliot.zivplayer.platform.playback.VideoSurfaceRequestContract
 import io.github.joyelliot.zivplayer.platform.playback.VideoSurfaceRequests
+import io.github.joyelliot.zivplayer.platform.playback.PlaybackExperiment
 import io.github.joyelliot.zivplayer.core.model.VideoFit
 import kotlin.math.max
 import kotlin.math.roundToInt
@@ -49,8 +51,24 @@ internal fun PlayerVideoSurface(
     val context = LocalContext.current
     val viewport = remember(context) { VideoViewport(context) }
     val videoView = viewport.surfaceView
+    val sourceDimensions = remember(player) { mutableStateOf(0 to 0) }
+    DisposableEffect(player) {
+        fun updateSourceDimensions() {
+            val group = player?.currentTracks?.groups?.firstOrNull {
+                it.type == androidx.media3.common.C.TRACK_TYPE_VIDEO && it.isSelected
+            }
+            val format = group?.let { (0 until it.length).firstOrNull(it::isTrackSelected)?.let(it::getTrackFormat) }
+            sourceDimensions.value = (format?.width ?: 0) to (format?.height ?: 0)
+        }
+        val listener = object : Player.Listener {
+            override fun onTracksChanged(tracks: androidx.media3.common.Tracks) = updateSourceDimensions()
+        }
+        player?.addListener(listener)
+        updateSourceDimensions()
+        onDispose { player?.removeListener(listener) }
+    }
     AndroidView(factory = { viewport }, modifier = modifier.background(Color.Black), update = {
-        it.configure(videoAspectRatio, videoFit)
+        it.configure(videoAspectRatio, videoFit, sourceDimensions.value.first, sourceDimensions.value.second)
         it.showPreview(previewFrame, onPreviewPresented)
     })
 
@@ -83,6 +101,7 @@ internal fun PlayerVideoSurface(
             }
             fun detachSurface() {
                 viewport.onVideoSurfaceDetached()
+                attachedSurface?.let(PlaybackExperiment::beforeSurfaceDestroyed)
                 if (VideoSurfaceRequests.release(surfaceToken) && player.canSetVideoSurface()) {
                     attachedSurface?.let(player::clearVideoSurface)
                 }
@@ -181,6 +200,7 @@ internal fun PlayerVideoSurface(
 /** Keeps the renderer's buffer geometry stable while the window rotates. */
 private class VideoViewport(context: Context) : FrameLayout(context) {
     val surfaceView = SurfaceView(context)
+    private val subtitles = if (PlaybackExperiment.usesExoPlayer) PlaybackExperiment.subtitleView(context) else null
     private val previewView = ImageView(context).apply {
         tag = "seek-preview-frame"
         scaleType = ImageView.ScaleType.FIT_XY
@@ -207,6 +227,7 @@ private class VideoViewport(context: Context) : FrameLayout(context) {
         // Default SurfaceView ordering leaves app chrome and this preview above
         // the video. Setting z-order-on-top would hide controls and subtitles UI.
         addView(surfaceView)
+        subtitles?.let(::addView)
         addView(previewView)
     }
 
@@ -272,15 +293,18 @@ private class VideoViewport(context: Context) : FrameLayout(context) {
         }
     }
 
-    fun configure(aspectRatio: Float, fit: VideoFit) {
+    fun configure(aspectRatio: Float, fit: VideoFit, sourceWidth: Int = 0, sourceHeight: Int = 0) {
         val ratio = aspectRatio.takeIf { it.isFinite() && it > 0f } ?: (16f / 9f)
-        if (videoAspectRatio == ratio && videoFit == fit) return
+        val presentationChanged = videoAspectRatio != ratio || videoFit != fit
         videoAspectRatio = ratio
         videoFit = fit
-        val newWidth = (if (ratio >= 1f) renderLongEdge else (renderLongEdge * ratio).roundToInt())
+        val testSize = PlaybackExperiment.instrumentationSurfaceSize
+        val useSourceSize = PlaybackExperiment.usesExoPlayer && sourceWidth in 1..16384 && sourceHeight in 1..16384
+        val newWidth = (testSize?.first ?: if (useSourceSize) sourceWidth else if (ratio >= 1f) renderLongEdge else (renderLongEdge * ratio).roundToInt())
             .coerceAtLeast(2).let { it - it % 2 }
-        val newHeight = (if (ratio >= 1f) (renderLongEdge / ratio).roundToInt() else renderLongEdge)
+        val newHeight = (testSize?.second ?: if (useSourceSize) sourceHeight else if (ratio >= 1f) (renderLongEdge / ratio).roundToInt() else renderLongEdge)
             .coerceAtLeast(2).let { it - it % 2 }
+        if (!presentationChanged && renderWidth == newWidth && renderHeight == newHeight) return
         if (renderWidth != newWidth || renderHeight != newHeight) {
             renderWidth = newWidth
             renderHeight = newHeight
@@ -305,6 +329,8 @@ private class VideoViewport(context: Context) : FrameLayout(context) {
             MeasureSpec.makeMeasureSpec(childHeight.coerceAtLeast(1), MeasureSpec.EXACTLY))
         previewView.measure(MeasureSpec.makeMeasureSpec(childWidth.coerceAtLeast(1), MeasureSpec.EXACTLY),
             MeasureSpec.makeMeasureSpec(childHeight.coerceAtLeast(1), MeasureSpec.EXACTLY))
+        subtitles?.measure(MeasureSpec.makeMeasureSpec(childWidth.coerceAtLeast(1), MeasureSpec.EXACTLY),
+            MeasureSpec.makeMeasureSpec(childHeight.coerceAtLeast(1), MeasureSpec.EXACTLY))
     }
 
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
@@ -312,6 +338,7 @@ private class VideoViewport(context: Context) : FrameLayout(context) {
         val childTop = (height - surfaceView.measuredHeight) / 2
         surfaceView.layout(childLeft, childTop, childLeft + surfaceView.measuredWidth, childTop + surfaceView.measuredHeight)
         previewView.layout(childLeft, childTop, childLeft + surfaceView.measuredWidth, childTop + surfaceView.measuredHeight)
+        subtitles?.layout(childLeft, childTop, childLeft + surfaceView.measuredWidth, childTop + surfaceView.measuredHeight)
     }
 }
 

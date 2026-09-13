@@ -46,6 +46,7 @@ class ZivPlayerApplication : Application(), PlaybackHistoryProvider {
     val documentTreeLibrary by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { DocumentTreeLibrary(this, mediaRepositories) }
     val diagnosticsExporter by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { io.github.joyelliot.zivplayer.data.media.DiagnosticsExporter(this) }
     override val recentMediaRepository: RecentMediaRepository get() = mediaRepositories.recent
+    override val mediaDetailsRepository get() = mediaRepositories.mediaDetails
     override val playerPreferencesRepository get() = playerPreferences
     override val mediaPlaybackPreferencesRepository get() = mediaRepositories.playbackPreferences
 

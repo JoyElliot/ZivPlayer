@@ -40,6 +40,7 @@ fun PlayerQuickMenu(
     onPictureInPicture: (() -> Unit)? = null,
     onOpenMedia: (() -> Unit)? = null,
     onStop: (() -> Unit)? = null,
+    onMediaDetails: (() -> Unit)? = null,
 ) {
     var page by rememberSaveable(initialPage) { mutableStateOf(initialPage) }
     val title = stringResource(when (page) {
@@ -83,6 +84,7 @@ fun PlayerQuickMenu(
                             state.canSetVolume, description = stringResource(R.string.player_volume), onCancel = { volume = state.volume })
                         onPictureInPicture?.let { action -> ChoiceRow(stringResource(R.string.player_pip), false, state.canRenderVideo && state.hasVideo) { onDismiss(); action() } }
                         onOpenMedia?.let { action -> ChoiceRow(stringResource(R.string.player_open_media), false) { onDismiss(); action() } }
+                        onMediaDetails?.let { action -> ChoiceRow(stringResource(R.string.player_media_details), false, state.hasMedia) { onDismiss(); action() } }
                         onStop?.let { action -> ChoiceRow(stringResource(R.string.player_stop), false, state.canStop) { onDismiss(); action() } }
                         ZivPlaybackText(stringResource(R.string.player_gesture_help), Modifier.padding(horizontal = 4.dp), secondary = true, compact = true, maxLines = 6)
                     }

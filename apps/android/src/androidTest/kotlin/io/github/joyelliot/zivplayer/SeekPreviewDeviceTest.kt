@@ -51,11 +51,13 @@ class SeekPreviewDeviceTest {
     private val baseline = InstrumentationRegistry.getArguments().getString("seekBaseline") == "true"
     private val pixelThread = HandlerThread("SeekWindowPixels").apply { start() }
     private val windowPixels = Bitmap.createBitmap(640, 360, Bitmap.Config.ARGB_8888)
+    private lateinit var observedController: MediaController
 
     @Test fun renderedSeekAndLiveDrag() {
         val context = instrumentation.targetContext
         val controller = onMain { MediaController.Builder(context, SessionToken(context,
             ComponentName(context, PlaybackService::class.java))).buildAsync() }.get(15, TimeUnit.SECONDS)
+        observedController = controller
         val report = JSONObject().put("baseline", baseline)
         try {
             onMain {
@@ -323,7 +325,12 @@ class SeekPreviewDeviceTest {
         val event = MotionEvent.obtain(down, SystemClock.uptimeMillis(), action, x, y, 0)
         try { activity.activity.window.decorView.dispatchTouchEvent(event) } finally { event.recycle() }
     }
-    private fun previewVisible(): Boolean = onMain {
+    // Direct Surface previews have no ImageView. Observe the lease/suppression
+    // state for lifecycle assertions; frame assertions still sample actual pixels.
+    private fun previewVisible(): Boolean = bitmapPreviewVisible() || onMain {
+        observedController.playbackSuppressionReason == Player.PLAYBACK_SUPPRESSION_REASON_SCRUBBING
+    }
+    private fun bitmapPreviewVisible(): Boolean = onMain {
         activity.activity.window.decorView.findViewWithTag<ImageView>("seek-preview-frame")?.let {
             it.isShown && it.drawable != null
         } == true
@@ -333,7 +340,7 @@ class SeekPreviewDeviceTest {
         // Raw MotionEvents do not drive Compose Test's controlled frame clock.
         // Flush the pending overlay composition before sampling the window's pixels.
         activity.waitForIdle()
-        if (previewVisible()) return compositedFrameMs()
+        if (bitmapPreviewVisible()) return compositedFrameMs()
         val surface = onMain {
             fun find(view: View): SurfaceView? = when (view) {
                 is SurfaceView -> view

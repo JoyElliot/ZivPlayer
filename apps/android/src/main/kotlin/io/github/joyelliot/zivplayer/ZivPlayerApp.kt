@@ -99,6 +99,7 @@ fun ZivPlayerApp(
     onSubtitleSelected: (Uri?) -> Unit = {},
     onOpenRecent: (String) -> Unit = {},
     onForgetRecent: (String) -> Unit = {},
+    onLoadRecentDetails: suspend (String) -> Unit = {},
     library: LibraryViewModel? = null,
     settings: SettingsViewModel? = null,
     fullscreen: Boolean = false,
@@ -115,6 +116,14 @@ fun ZivPlayerApp(
     var destination by rememberSaveable { mutableStateOf(AppDestination.LIBRARY) }
     var showDiagnostics by rememberSaveable { mutableStateOf(false) }
     var showQueue by remember { mutableStateOf(false) }
+    var showMediaDetails by remember(playerState.mediaId) { mutableStateOf(false) }
+    var mediaDetailsLoading by remember { mutableStateOf(false) }
+    LaunchedEffect(showMediaDetails, playerState.sourceUri) {
+        val uri = playerState.sourceUri
+        if (!showMediaDetails || uri == null) return@LaunchedEffect
+        mediaDetailsLoading = true
+        try { library?.loadSourceDetails(uri) } finally { mediaDetailsLoading = false }
+    }
     var importKind by rememberSaveable { mutableStateOf(PlaybackResourceKind.FONT) }
     val preferences = settings?.preferences?.value ?: PlayerPreferences()
     val expanded = destination == AppDestination.PLAYER || fullscreen || pictureInPicture
@@ -262,6 +271,7 @@ fun ZivPlayerApp(
                 onRotate = { onFullscreenChange(!fullscreen) },
                 onPictureInPicture = onEnterPictureInPicture,
                 onOpenMedia = { openMedia.launch(arrayOf("video/*", "audio/*")) }, onStop = onStop,
+                onMediaDetails = { showMediaDetails = true },
                 statusMessage = selectionNotice?.toUserMessage(),
                 exitDescription = stringResource(io.github.joyelliot.zivplayer.feature.library.R.string.library_back_folders))
         } else when (destination) {
@@ -279,12 +289,15 @@ fun ZivPlayerApp(
                     onSettings = { destination = AppDestination.SETTINGS },
                     onBrowseBackChanged = { libraryBack = it },
                     foldersLoaded = library?.foldersLoaded?.value ?: true,
+                    mediaDetails = library?.details?.value.orEmpty(),
+                    onLoadDetails = { library?.loadDetails(it) },
                     nowPlaying = { MiniPlayer(playerState, { destination = AppDestination.PLAYER }, onPlayPause, { showQueue = true }) },
                 )
             }
             AppDestination.RECENT -> RecentMediaScreen(recentMedia, { destination = AppDestination.LIBRARY },
                 { destination = AppDestination.PLAYER; onOpenRecent(it) }, onForgetRecent,
-                selectionNotice?.toUserMessage() ?: if (historyUnavailable) stringResource(R.string.media_history_unavailable) else null)
+                selectionNotice?.toUserMessage() ?: if (historyUnavailable) stringResource(R.string.media_history_unavailable) else null,
+                onLoadDetails = onLoadRecentDetails)
             AppDestination.SETTINGS -> Column(Modifier.fillMaxSize().navigationBarsPadding()) {
                 Row(Modifier.statusBarsPadding().fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     ZivLibraryIconButton(ZivPlaybackIcon.BACK, stringResource(io.github.joyelliot.zivplayer.feature.player.R.string.player_back), {
@@ -307,6 +320,10 @@ fun ZivPlayerApp(
             AppDestination.PLAYER -> Unit
         }
         if (showQueue && !pictureInPicture) PlayerQueuePanel(playerState, { showQueue = false }, onSelectQueueItem)
+        if (showMediaDetails && !pictureInPicture) io.github.joyelliot.zivplayer.feature.library.MediaDetailsDialog(
+            playerState.sourceUri?.let { Uri.parse(it).lastPathSegment?.substringAfterLast('/') },
+            playerState.sourceUri?.let { library?.details?.value?.get(it) },
+            mediaDetailsLoading, onDismiss = { showMediaDetails = false })
     }
 }
 

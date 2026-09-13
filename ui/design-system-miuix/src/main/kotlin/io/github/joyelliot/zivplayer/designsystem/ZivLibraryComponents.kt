@@ -55,13 +55,10 @@ fun ZivLibraryChip(label: String, selected: Boolean = false, onClick: () -> Unit
 /** The row and its trailing action have separate touch targets and accessibility actions. */
 @Composable
 fun ZivLibraryRow(title: String, detail: String?, icon: ZivPlaybackIcon, onClick: () -> Unit,
-    modifier: Modifier = Modifier, trailing: @Composable () -> Unit = {}) {
+    modifier: Modifier = Modifier, artworkLocator: String? = null, trailing: @Composable () -> Unit = {}) {
     Row(modifier.fillMaxWidth().heightIn(min = 88.dp).clickable(role = Role.Button, onClick = onClick)
         .padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(56.dp).clip(RoundedCornerShape(14.dp))
-            .background(MiuixTheme.colorScheme.onBackground.copy(alpha = 0.06f)), contentAlignment = Alignment.Center) {
-            ZivPlaybackGlyph(icon, Modifier.size(32.dp), color = MiuixTheme.colorScheme.onBackground.copy(alpha = 0.6f))
-        }
+        ZivArtwork(artworkLocator, Modifier.size(56.dp).clip(RoundedCornerShape(14.dp)), icon)
         Column(Modifier.weight(1f).padding(start = 16.dp, end = 8.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
             ZivLibraryText(title)
             detail?.takeIf { it.isNotBlank() }?.let { ZivLibraryText(it, secondary = true) }

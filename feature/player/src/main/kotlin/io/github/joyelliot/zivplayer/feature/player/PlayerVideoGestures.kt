@@ -8,9 +8,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalViewConfiguration
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
@@ -64,6 +66,7 @@ internal fun PlayerVideoGestures(
     val seekBy by rememberUpdatedState(onSeekBy)
     val updatePreview by rememberUpdatedState(onPreviewSeekTo)
     val cancelPreview by rememberUpdatedState(onCancelSeekPreview)
+    val haptics by rememberUpdatedState(LocalHapticFeedback.current)
     val scope = rememberCoroutineScope()
     val configuration = LocalViewConfiguration.current
     val description = stringResource(R.string.player_video_area)
@@ -78,6 +81,7 @@ internal fun PlayerVideoGestures(
         var lastTapPosition = Offset.Zero
         awaitEachGesture {
             var speedToken: Long? = null
+            var speedHapticStarted = false
             var seeking = false
             var seekCommitted = false
             try {
@@ -167,6 +171,10 @@ internal fun PlayerVideoGestures(
                                 val rate = gesturePlaybackSpeed(fraction)
                                 if (rate != previousRate) {
                                     updateSpeed(checkNotNull(speedToken), rate)
+                                    if (!speedHapticStarted) {
+                                        speedHapticStarted = true
+                                        haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+                                    }
                                     previewSpeed(rate)
                                     previousRate = rate
                                 }
@@ -184,6 +192,7 @@ internal fun PlayerVideoGestures(
                 }
             } finally {
                 speedToken?.let(endSpeed)
+                if (speedHapticStarted) haptics.performHapticFeedback(HapticFeedbackType.GestureEnd)
                 if (seeking && !seekCommitted) cancelPreview()
                 previewSeek(null)
                 previewSpeed(null)

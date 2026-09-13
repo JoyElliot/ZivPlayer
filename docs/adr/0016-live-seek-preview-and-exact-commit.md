@@ -4,6 +4,8 @@
 - 日期：2026-09-09
 - 范围：更新 ADR 0013、0014 的横滑、时间轴与双击定位行为
 
+本文描述正式 libmpv 基线的独立预览路径。ExoPlayer 实验使用原视频 Surface 和 Media3 scrubbing，见 [ADR 0017](0017-exoplayer-libass-comparison.md)；2026-09-10 的预览请求替换能力与 EXACT 顺序保护补充于 [ADR 0005](0005-pure-player-contract-and-serialized-runtime.md)，性能依据见[拖动延迟验证](../validation/2026-09-10-player-completion.md)。
+
 ## 背景
 
 原横滑和时间轴拖动只改变时间提示，松手后才发送原生精确定位。仅改成频繁关键帧 seek 仍受 GOP 间隔限制，每个 GOP 只有一张新画面，而且反复重置音视频输出会造成跳到新画面后再次停顿。目标是让主画面连续显示拖动经过的中间帧，松手后精确定位，并保持随后播放的连续性。

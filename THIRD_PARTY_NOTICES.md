@@ -52,6 +52,7 @@ product notices as explicit pending gates.
 | mpv/libmpv | Playback engine | GPL-2.0-or-later in the selected GPL-compatible libmpv build | Corresponding source and build configuration must accompany distributions. |
 | FFmpeg | Demuxing and codecs | GPL-3.0-or-later in the selected GPL + version3 build | `--enable-nonfree` is prohibited. Exact configuration must be published. |
 | libass | ASS/SSA subtitle renderer | ISC AND Unlicense for the selected source set | Preserve the ISC notice and the compiled wyhash Unlicense notice. |
+| libass-android (`ass-media` / `ass-kt` 0.5.1) | Experimental ExoPlayer subtitle adapter and JNI AAR | MIT for the adapter | The experimental AAR/native hashes are pinned in `tools/exoplayer-experiment-lock.json`; its bundled libass/font stack is separate from the original libmpv receipt and still requires its own release source/notices inventory. |
 | libplacebo | GPU rendering and color processing | LGPL-2.1-or-later | Preserve license and corresponding-source obligations for the chosen linkage. |
 | dav1d | AV1 decoding used by FFmpeg | BSD-2-Clause | Preserve copyright and license text. |
 | mbedTLS | TLS used by curl and FFmpeg | Apache-2.0 OR GPL-2.0-or-later | Preserve the selected license and notices; it is statically linked in the reviewed graph. |
@@ -64,3 +65,27 @@ product notices as explicit pending gates.
 
 This inventory is not a substitute for the generated release SBOM or the
 complete corresponding-source bundle.
+
+## libass-android adapter notice
+
+MIT License
+
+Copyright (c) 2025 peerless2012
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

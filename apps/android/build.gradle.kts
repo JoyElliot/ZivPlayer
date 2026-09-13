@@ -42,6 +42,9 @@ android {
         jniLibs {
             useLegacyPackaging = false
             keepDebugSymbols += "**/*.so"
+            // The experiment's libass AAR also bundles a C++ runtime. APK verification
+            // must prove that the retained entry is the original audited native byte set.
+            pickFirsts += "**/libc++_shared.so"
         }
     }
 

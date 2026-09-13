@@ -19,6 +19,7 @@ import io.github.joyelliot.zivplayer.core.media.LibraryFolder
 import io.github.joyelliot.zivplayer.core.media.LibraryFolderStatus
 import io.github.joyelliot.zivplayer.core.media.LibraryMedia
 import io.github.joyelliot.zivplayer.core.media.MediaFileClassifier
+import io.github.joyelliot.zivplayer.core.media.MediaDetails
 import io.github.joyelliot.zivplayer.designsystem.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -42,6 +43,8 @@ fun LibraryScreen(
     onHistory: () -> Unit = {},
     onBrowseBackChanged: ((() -> Unit)?) -> Unit = {},
     foldersLoaded: Boolean = true,
+    mediaDetails: Map<String, MediaDetails> = emptyMap(),
+    onLoadDetails: suspend (LibraryMedia) -> Unit = {},
     nowPlaying: @Composable () -> Unit = {},
 ) {
     var search by rememberSaveable { mutableStateOf("") }
@@ -53,6 +56,13 @@ fun LibraryScreen(
     var menu by remember { mutableStateOf<Menu?>(null) }
     var actionFolder by remember { mutableStateOf<LibraryFolder?>(null) }
     var actionMedia by remember { mutableStateOf<LibraryMedia?>(null) }
+    var detailsMedia by remember { mutableStateOf<LibraryMedia?>(null) }
+    var detailsLoading by remember { mutableStateOf(false) }
+    LaunchedEffect(detailsMedia) {
+        val item = detailsMedia ?: return@LaunchedEffect
+        detailsLoading = true
+        try { onLoadDetails(item) } finally { detailsLoading = false }
+    }
     val selectedFolder = folders.firstOrNull { it.id == selectedFolderId }
     val browseMedia = selectedFolderId != null || filter != Filter.FOLDERS
     fun backToFolders() { selectedFolderId = null; selectedPath = ""; search = ""; searching = false; filter = Filter.FOLDERS }
@@ -165,13 +175,16 @@ fun LibraryScreen(
                 }
             } else {
                 items(shown, key = { "${it.folderId}:${it.sourceUri.value}" }) { item ->
+                    LaunchedEffect(item.sourceUri, item.modifiedEpochMs, item.sizeBytes) { onLoadDetails(item) }
                     val audio = MediaFileClassifier.isAudio(item.title, item.mimeType)
-                    val detail = listOfNotNull(item.sizeBytes?.let(::formatLibrarySize), item.directoryPath().takeIf { it.isNotBlank() && selectedFolderId == null }).joinToString(" · ")
-                    ZivLibraryRow(item.title, detail, if (audio) ZivPlaybackIcon.AUDIO else ZivPlaybackIcon.PLAY,
+                    val info = mediaDetails[item.sourceUri.value]
+                    val detail = listOfNotNull(info?.artist, info?.album, info?.durationMs?.let(::formatMediaDuration),
+                        item.sizeBytes?.let(::formatLibrarySize), item.directoryPath().takeIf { it.isNotBlank() && selectedFolderId == null }).distinct().joinToString(" · ")
+                    ZivLibraryRow(info?.title ?: item.title, detail, if (audio) ZivPlaybackIcon.AUDIO else ZivPlaybackIcon.PLAY,
                         onClick = {
                             if (shown.size > MAX_LIBRARY_QUEUE_ITEMS) onOpen(item)
                             else onOpenQueue(shown.toList(), shown.indexOf(item))
-                        }) {
+                        }, artworkLocator = info?.artworkLocator) {
                         ZivLibraryIconButton(ZivPlaybackIcon.MORE, stringResource(R.string.library_file_actions, item.title), { actionMedia = item; menu = Menu.MEDIA })
                     }
                 }
@@ -218,12 +231,15 @@ fun LibraryScreen(
                     ZivLibraryMenuItem(stringResource(R.string.library_remove), { menu = null; onRemoveFolder(folder.id) })
                 }
                 Menu.MEDIA -> actionMedia?.let { file ->
+                    ZivLibraryMenuItem(stringResource(R.string.library_details), { menu = null; detailsMedia = file })
                     ZivLibraryMenuItem(stringResource(if (file.favorite) R.string.library_unfavorite else R.string.library_favorite), { menu = null; onFavorite(file) })
                     ZivLibraryMenuItem(stringResource(if (file.hidden) R.string.library_unhide else R.string.library_hide), { menu = null; onHidden(file) })
                 }
             }
         }
     }
+    detailsMedia?.let { file -> MediaDetailsDialog(file.title, mediaDetails[file.sourceUri.value], detailsLoading,
+        onDismiss = { detailsMedia = null }) }
 }
 
 private fun Filter.label() = when (this) {
@@ -251,7 +267,7 @@ private fun folderStatus(status: LibraryFolderStatus): String? = when (status) {
     LibraryFolderStatus.FAILED -> stringResource(R.string.library_failed)
 }
 
-private fun formatLibrarySize(bytes: Long): String = when {
+internal fun formatLibrarySize(bytes: Long): String = when {
     bytes >= 1_073_741_824 -> "${bytes / 1_073_741_824}.${bytes % 1_073_741_824 * 10 / 1_073_741_824} GB"
     bytes >= 1_048_576 -> "${bytes / 1_048_576}.${bytes % 1_048_576 * 10 / 1_048_576} MB"
     else -> "${bytes / 1024} KB"

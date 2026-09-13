@@ -12,6 +12,7 @@ import android.net.Uri
 /** Process-level dependency exposed by the application to the playback service. */
 interface PlaybackHistoryProvider {
     val recentMediaRepository: RecentMediaRepository
+    val mediaDetailsRepository: io.github.joyelliot.zivplayer.core.media.MediaDetailsRepository? get() = null
     val playerPreferencesRepository: PlayerPreferencesRepository? get() = null
     val mediaPlaybackPreferencesRepository: MediaPlaybackPreferencesRepository? get() = null
     suspend fun resolvePlaybackResources(options: PlaybackOptions): PlaybackResourceLocations = PlaybackResourceLocations()

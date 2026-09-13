@@ -12,6 +12,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.joyelliot.zivplayer.core.media.LibraryFolder
 import io.github.joyelliot.zivplayer.core.media.LibraryMedia
+import io.github.joyelliot.zivplayer.core.media.MediaDetails
+import io.github.joyelliot.zivplayer.core.media.MediaDetailsRequest
 import io.github.joyelliot.zivplayer.data.media.LibraryScanProgress
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -27,6 +29,7 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     val media = mutableStateOf<List<LibraryMedia>>(emptyList())
     val progress = mutableStateOf<LibraryScanProgress?>(null)
     val message = mutableStateOf<String?>(null)
+    val details = mutableStateOf<Map<String, MediaDetails>>(emptyMap())
     private var scanJob: Job? = null
     private var scanFolderId: String? = null
     private var scanRequest = 0L
@@ -34,6 +37,7 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     private val initialization = operation { app.mediaRepositories.library.markInterruptedScans() }
 
     init {
+        viewModelScope.launch { app.mediaRepositories.mediaDetails.details.collect { details.value = it } }
         viewModelScope.launch {
             for ((request, update) in scanUpdates) if (request == scanRequest) progress.value = update
         }
@@ -100,6 +104,16 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
         app.mediaRepositories.library.setHidden(item.folderId, item.sourceUri, !item.hidden)
     }
     fun clearMessage() { message.value = null }
+
+    suspend fun loadDetails(item: LibraryMedia) {
+        app.mediaRepositories.mediaDetails.load(MediaDetailsRequest(item.sourceUri, item.title, item.mimeType,
+            item.sizeBytes, item.modifiedEpochMs))
+    }
+
+    suspend fun loadSourceDetails(uri: String) {
+        app.mediaRepositories.mediaDetails.load(MediaDetailsRequest(
+            io.github.joyelliot.zivplayer.core.media.DurableMediaUri(uri)))
+    }
 
     private fun operation(action: suspend () -> Unit): Job = viewModelScope.launch {
         try { action() } catch (failure: CancellationException) { throw failure

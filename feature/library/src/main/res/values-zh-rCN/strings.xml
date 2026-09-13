@@ -45,4 +45,25 @@
     <string name="library_back_folders">返回文件夹</string>
     <string name="library_play_all">播放全部</string>
     <string name="library_item_actions">更多操作</string>
+    <string name="library_details">媒体信息</string>
+    <string name="library_filename">文件名</string>
+    <string name="library_metadata_title">标题</string>
+    <string name="library_artist">艺术家</string>
+    <string name="library_album">专辑</string>
+    <string name="library_album_artist">专辑艺术家</string>
+    <string name="library_year">年份</string>
+    <string name="library_genre">流派</string>
+    <string name="library_track">音轨序号</string>
+    <string name="library_disc">碟片序号</string>
+    <string name="library_duration">时长</string>
+    <string name="library_size">文件大小</string>
+    <string name="library_format">格式</string>
+    <string name="library_resolution">分辨率</string>
+    <string name="library_rotation">旋转角度</string>
+    <string name="library_video_codec">视频编码</string>
+    <string name="library_audio_codec">音频编码</string>
+    <string name="library_bitrate">码率</string>
+    <string name="library_sample_rate">采样率</string>
+    <string name="library_channels">声道数</string>
+    <string name="library_metadata_optional">仅展示文件中可读取的信息。</string>
 </resources>

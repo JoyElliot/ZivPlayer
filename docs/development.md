@@ -4,6 +4,8 @@
 
 本文介绍当前 Android 应用的本地开发流程。所有命令均从仓库根目录执行；示例以 Windows PowerShell 为主。
 
+当前 `codex/exoplayer-libass-comparison` 是 [ExoPlayer + libass 对比实验](adr/0017-exoplayer-libass-comparison.md)分支，默认运行 ExoPlayer。`-PplaybackEngine=libmpv` 只切换后端，本分支的 APK 仍包含两套依赖，需要下文的实验校验参数。完整的原 libmpv 基线保存在 `main` 的 `***` 提交。
+
 ## 环境要求
 
 | 工具 | 当前要求 |
@@ -49,12 +51,14 @@ python -B native/tools/android_staging_tool.py verify
 
 首次构建可能需要联网获取已锁定的 Gradle 依赖。只有在本机缓存完整时，才使用 `--offline`；离线参数不会自动准备缺失依赖。
 
+项目默认将应用构建的 Java 内存目标设为约 2 GiB。[根配置](../gradle.properties)使用 896 MiB 堆、768 MiB Metaspace 上限和 128 MiB 代码缓存，并将 JVM 可用处理器数设为 4、Gradle worker 设为 1。Kotlin 在 Gradle 进程内编译；独立的 [build-logic 配置](../build-logic/gradle.properties)也指定该策略，避免另起 Kotlin 守护进程。Gradle 空闲 10 分钟后退出。这是构建资源预算，不是操作系统级的内存硬限额；测试、Lint 的独立 JVM 仍有自己的开销。
+
 ```powershell
 .\gradlew.bat --offline :apps:android:assembleDebug
-python -B tools/verify-android-artifact.py apps/android/build/outputs/apk/debug/android-debug.apk
+python -B tools/verify-android-artifact.py apps/android/build/outputs/apk/debug/android-debug.apk --exoplayer-experiment
 ```
 
-APK 校验检查原生库、AndroidX 辅助库、16 KiB ZIP 对齐和 DEX 中的 JNI 方法。APK 校验不能替代真机播放验证。`assembleRelease` 也仅表示相应构建任务完成，不代表已经具备正式发布所需的签名、原生来源和分发材料。
+实验校验保留原 staging receipt 和 20 个库的精确校验，再检查 4 个 AndroidX 辅助库、4 个锁定的 libass 库、16 KiB 对齐，以及原 16 个 mpv 和新增 19 个 libass JNI 方法。`main` 的原基线 APK 使用不带 `--exoplayer-experiment` 的严格默认校验。APK 校验不能替代真机播放验证。`assembleRelease` 也仅表示相应构建任务完成，不代表已经具备正式发布所需的签名、原生来源和分发材料。
 
 macOS / Linux 上的应用构建入口为 `./gradlew`，Python 命令通常为 `python3`。这只是构建主机的区别，当前应用目标仍为 Android。
 
@@ -89,6 +93,7 @@ Android 静态检查与测试 APK 编译：
 ```powershell
 .\tools\create-device-fixtures.ps1
 .\tools\create-seek-fixture.ps1
+.\tools\create-metadata-fixtures.ps1
 .\gradlew.bat :apps:android:assembleDebugAndroidTest
 ```
 
@@ -106,4 +111,4 @@ Android 静态检查与测试 APK 编译：
 
 新增文档以中文为主，维护约定见[文档导航](README.md)。构建日志、设备结果和一次性工作区信息放入专门记录，不逐次追加到根 README。
 
-当前先完成 Android 开发，仓库保留 `main`。正式上线后再确定 beta 和稳定版的发布方式。
+当前先完成 Android 开发，以 `main` 保存正式基线，后端对比在独立实验分支进行。正式上线后再确定 beta 和稳定版的发布方式。

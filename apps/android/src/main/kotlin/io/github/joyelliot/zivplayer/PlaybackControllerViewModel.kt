@@ -74,7 +74,7 @@ class PlaybackControllerViewModel(
     private data class SeekPreview(val token: Long, val identity: SpeedPlaybackIdentity, val playWhenReady: Boolean,
         var positionMs: Long, var sentAtMs: Long = Long.MIN_VALUE,
         var renderer: ScrubPreviewRenderer? = null, var nativePreview: Boolean = false,
-        var admitted: Boolean = false)
+        var admitted: Boolean = false, var nativeRequest: ListenableFuture<SessionResult>? = null)
     private var seekPreviewSerial = 0L
     private var seekPreview: SeekPreview? = null
     private var seekPreviewJob: Job? = null
@@ -227,7 +227,8 @@ class PlaybackControllerViewModel(
                 mutableSeekPreviewFrame.value = null
                 cancelTemporarySpeed()
                 val uri = active.currentMediaItem?.localConfiguration?.uri
-                if (allowLocalDecoder && uri?.scheme in setOf("content", "file")) {
+                if (!io.github.joyelliot.zivplayer.platform.playback.PlaybackExperiment.usesExoPlayer &&
+                    allowLocalDecoder && uri?.scheme in setOf("content", "file")) {
                     created.renderer = ScrubPreviewRenderer(applicationContext, checkNotNull(uri),
                         onFrame = { frame ->
                             if (seekPreview === created && created.identity == speedIdentity(active))
@@ -238,7 +239,7 @@ class PlaybackControllerViewModel(
                                 created.renderer = null
                                 created.nativePreview = true
                                 mutableSeekPreviewFrame.value = null
-                                sendSeekPreview(active, created, SeekPreviewContract.PREVIEW)
+                                requestSeekPreview(active, created)
                             }
                         })
                 } else created.nativePreview = true
@@ -259,22 +260,41 @@ class PlaybackControllerViewModel(
 
     private fun requestSeekPreview(active: MediaController, preview: SeekPreview) {
         preview.renderer?.let { it.request(preview.positionMs); return }
+        // Custom commands cross MediaController/MediaSession and the service operation gate.
+        // Keep one admission in flight; its reply sends the latest finger position. A timer
+        // alone bounds the input rate but still builds a FIFO of obsolete preview requests.
+        if (preview.nativeRequest != null) return
         val now = SystemClock.uptimeMillis()
-        if (preview.sentAtMs == Long.MIN_VALUE || now - preview.sentAtMs >= SEEK_PREVIEW_INTERVAL_MS) {
+        val intervalMs = if (io.github.joyelliot.zivplayer.platform.playback.PlaybackExperiment.usesExoPlayer) 16L else SEEK_PREVIEW_INTERVAL_MS
+        if (preview.sentAtMs == Long.MIN_VALUE || now - preview.sentAtMs >= intervalMs) {
             seekPreviewJob?.cancel()
             seekPreviewJob = null
             preview.sentAtMs = now
-            sendSeekPreview(active, preview, SeekPreviewContract.PREVIEW)
+            sendNativeSeekPreview(active, preview)
         } else if (seekPreviewJob == null) {
             seekPreviewJob = viewModelScope.launch {
-                delay(SEEK_PREVIEW_INTERVAL_MS - (now - preview.sentAtMs))
+                delay(intervalMs - (now - preview.sentAtMs))
                 seekPreviewJob = null
                 if (seekPreview === preview && preview.identity == speedIdentity(active)) {
                     preview.sentAtMs = SystemClock.uptimeMillis()
-                    sendSeekPreview(active, preview, SeekPreviewContract.PREVIEW)
+                    sendNativeSeekPreview(active, preview)
                 }
             }
         }
+    }
+
+    private fun sendNativeSeekPreview(active: MediaController, preview: SeekPreview) {
+        val position = preview.positionMs
+        val request = sendSeekPreview(active, preview, SeekPreviewContract.PREVIEW) ?: return
+        preview.nativeRequest = request
+        request.addListener({
+            if (preview.nativeRequest !== request) return@addListener
+            preview.nativeRequest = null
+            if (seekPreview !== preview || preview.identity != speedIdentity(active)) return@addListener
+            if (runCatching { request.get().resultCode }.getOrNull() != SessionResult.RESULT_SUCCESS) {
+                finishSeekPreview(resumePlayback = false)
+            } else if (preview.positionMs != position) requestSeekPreview(active, preview)
+        }, mainExecutor)
     }
 
     fun cancelSeekPreview() = finishSeekPreview(resumePlayback = true)
@@ -666,6 +686,8 @@ class PlaybackControllerViewModel(
             canNext = player.isCommandAvailable(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM),
             canSelectQueueItem = player.isCommandAvailable(Player.COMMAND_SEEK_TO_MEDIA_ITEM),
             title = metadata.title.cleanText(),
+            artworkLocator = metadata.artworkUri?.toString(),
+            sourceUri = metadata.extras?.getString(PlaybackRequestMetadata.SOURCE_URI_EXTRA),
             supportingText = listOfNotNull(
                 metadata.artist.cleanText(),
                 metadata.albumTitle.cleanText(),

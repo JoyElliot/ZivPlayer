@@ -118,10 +118,6 @@ class ContinuousScrubDeviceTest {
             await { !previewVisible() && frameMs()?.let { abs(it - gestureOrigin) < if (playingDuringDrag) 1_200 else 150 } == true }
             report.put("committedFrameMs", frameMs())
             check(onMain { controller.playWhenReady == playingDuringDrag })
-            if (spanMs <= 20_000) {
-                check(forward.getDouble("visibleFps") >= 10) { "Forward frames too sparse: $forward" }
-                check(reverse.getDouble("visibleFps") >= 15) { "Reverse frames too sparse: $reverse" }
-            }
             onMain { controller.play() }
             SystemClock.sleep(700)
             val target = onMain { val value = controller.currentPosition + 5_000; vm.seekBy(5_000); value }
@@ -139,6 +135,12 @@ class ContinuousScrubDeviceTest {
             report.put("playingSeek", JSONObject().put("targetMs", target).put("changedFrames", samples))
             check(onMain { controller.isPlaying })
             check((0 until samples.length()).count { samples.getJSONObject(it).getLong("frameMs") >= target - 100 } >= 15)
+            // Collect commit/continued-playback evidence even if the performance
+            // floor fails on an experimental backend. Keep the original thresholds.
+            if (spanMs <= 20_000) {
+                check(forward.getDouble("visibleFps") >= 10) { "Forward frames too sparse: $forward" }
+                check(reverse.getDouble("visibleFps") >= 15) { "Reverse frames too sparse: $reverse" }
+            }
         } finally {
             File(context.cacheDir, "seek-continuous-ui.json").writeText(report.toString(2))
             onMain { controller.stop(); controller.release() }

@@ -100,6 +100,13 @@ interface PlayerBackend {
     /** Must remain active until [close]; early completion is a terminal failure. */
     val events: Flow<BackendEvent>
 
+    /**
+     * The backend can replace an unfinished KEYFRAME preview with a newer one. It must discard
+     * superseded work/events or label them with the old seek generation. The runtime never uses
+     * this capability to replace an EXACT seek or a request carrying a completion ID.
+     */
+    val supportsInFlightSeekReplacement: Boolean get() = false
+
     suspend fun load(request: BackendLoadRequest)
 
     suspend fun play()

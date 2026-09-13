@@ -3,10 +3,13 @@ package io.github.joyelliot.zivplayer
 
 import android.content.ComponentName
 import android.graphics.Bitmap
-import android.graphics.Rect
+import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.os.*
 import android.view.PixelCopy
+import android.view.SurfaceView
+import android.view.View
+import android.view.ViewGroup
 import android.widget.ImageView
 import androidx.lifecycle.ViewModelProvider
 import androidx.media3.common.MediaItem
@@ -53,8 +56,15 @@ class PersonalScrubBenchmarkTest {
             ComponentName(context, PlaybackService::class.java))).buildAsync() }.get(15, TimeUnit.SECONDS)
         val pixels = Bitmap.createBitmap(96, 54, Bitmap.Config.ARGB_8888)
         val thread = HandlerThread("PersonalScrubPixels").apply { start() }
-        val report = JSONObject().put("sampleKind", "composited-preview-pixel-changes")
+        val report = JSONObject().put("sampleKind", "preview-bitmap-and-main-producer-pixel-changes")
             .put("inputKind", "viewmodel-preview-entry-point")
+        // Reflection keeps this exact test APK runnable against the committed libmpv APK.
+        val exoObservation = runCatching { Class.forName(
+            "io.github.joyelliot.zivplayer.platform.exoplayer.ExoFrameObservation") }.getOrNull()
+        fun releasedFrameMs(): Long? = exoObservation?.let { type ->
+            onMain { type.getMethod("getPositionMs").invoke(type.getField("INSTANCE").get(null)) as Long }
+                ?.takeIf { it >= 0 }
+        }
         try {
             onMain {
                 controller.setMediaItem(MediaItem.Builder().setMediaId(id).setUri(uri)
@@ -67,48 +77,79 @@ class PersonalScrubBenchmarkTest {
                     .apply { isAccessible = true }.invoke(activity, true)
             }
             await { onMain { controller.playbackState == Player.STATE_READY && controller.duration > 600_000 } }
-            onMain { controller.seekTo(500_000); controller.play() }
+            val duration = onMain { controller.duration }
+            val wide = args.getString("wideSweep") == "true"
+            val fromMs = if (wide) (duration * 0.10).toLong() else 500_000L
+            val toMs = if (wide) (duration * 0.90).toLong() else 520_000L
+            val commitMs = (fromMs + toMs) / 2
+            report.put("durationMs", duration).put("fromMs", fromMs).put("toMs", toMs)
+                .put("commitMs", commitMs).put("wideSweep", wide)
+            onMain { controller.seekTo(fromMs); controller.play() }
             await { onMain { controller.isPlaying && vm.controller.value?.isPlaying == true &&
-                controller.currentPosition in 500_000..502_000 && activity.hasWindowFocus() } }
+                controller.currentPosition in fromMs..fromMs + 2_000 && activity.hasWindowFocus() } }
             SystemClock.sleep(250)
+            val surface = onMain { findSurface(activity.window.decorView) }
+            checkNotNull(surface)
+            report.put("surfaceBufferWidth", onMain { surface.holder.surfaceFrame.width() })
+                .put("surfaceBufferHeight", onMain { surface.holder.surfaceFrame.height() })
             val modes = JSONArray()
-            for ((name, from, to) in listOf(Triple("forward", 500_000L, 520_000L),
-                    Triple("reverse", 520_000L, 500_000L))) {
+            for ((name, from, to) in listOf(Triple("forward", fromMs, toMs), Triple("reverse", toMs, fromMs))) {
                 val start = SystemClock.elapsedRealtimeNanos()
                 val samples = JSONArray()
+                val producerSamples = JSONArray()
                 var lastHash: Int? = null
+                var lastProducerHash: Int? = null
                 while (true) {
                     val elapsed = (SystemClock.elapsedRealtimeNanos() - start) / 1_000_000.0
                     if (elapsed >= 2_000) break
                     val target = from + ((to - from) * elapsed / 2_000).toLong()
                     onMain { vm.previewSeekTo(target) }
-                    val rect = onMain {
+                    val previewPixels = onMain {
                         activity.window.decorView.findViewWithTag<ImageView>("seek-preview-frame")
-                            ?.takeIf { it.isShown && it.drawable != null }?.let {
-                                val location = IntArray(2); it.getLocationInWindow(location)
-                                Rect(location[0], location[1], location[0] + it.width, location[1] + it.height)
+                            ?.takeIf { it.isShown }?.let { it.drawable as? BitmapDrawable }?.bitmap
+                            ?.takeUnless(Bitmap::isRecycled)?.let { bitmap ->
+                                // Sample the actual preview image. Window PixelCopy also
+                                // includes moving controls and can inflate the frame count.
+                                val colors = IntArray(96 * 54) { index ->
+                                    bitmap.getPixel((index % 96) * bitmap.width / 96,
+                                        (index / 96) * bitmap.height / 54)
+                                }
+                                colors.contentHashCode() to vm.seekPreviewFrame.value?.positionMs
                             }
                     }
-                    if (rect != null && !rect.isEmpty) {
+                    var producerHash: Int? = null
+                    if (surface.holder.surface.isValid) {
                         val latch = CountDownLatch(1)
                         var copied = false
-                        PixelCopy.request(activity.window, rect, pixels, {
-                            copied = it == PixelCopy.SUCCESS; latch.countDown()
-                        }, Handler(thread.looper))
+                        PixelCopy.request(surface, pixels, { copied = it == PixelCopy.SUCCESS; latch.countDown() }, Handler(thread.looper))
                         if (latch.await(1, TimeUnit.SECONDS) && copied) {
                             val colors = IntArray(96 * 54); pixels.getPixels(colors, 0, 96, 0, 0, 96, 54)
-                            val hash = colors.contentHashCode()
-                            if (hash != lastHash) {
-                                samples.put(JSONObject().put("elapsedMs", elapsed).put("targetMs", target)
-                                    .put("previewStatePositionMs", onMain { vm.seekPreviewFrame.value?.positionMs }))
-                                lastHash = hash
+                            producerHash = colors.contentHashCode()
+                            if (producerHash != lastProducerHash) {
+                                producerSamples.put(JSONObject().put("elapsedMs", elapsed).put("targetMs", target)
+                                    .put("decoderReleasePositionMs", releasedFrameMs()))
+                                lastProducerHash = producerHash
                             }
                         }
+                    }
+                    if (previewPixels != null) {
+                            val (hash, previewPosition) = previewPixels
+                            if (hash != lastHash) {
+                                samples.put(JSONObject().put("elapsedMs", elapsed).put("targetMs", target)
+                                    .put("previewStatePositionMs", previewPosition))
+                                lastHash = hash
+                            }
+                    } else if (producerHash != null && producerHash != lastHash) {
+                        samples.put(JSONObject().put("elapsedMs", elapsed).put("targetMs", target)
+                            .put("decoderReleasePositionMs", releasedFrameMs()))
+                        lastHash = producerHash
                     }
                     SystemClock.sleep(12)
                 }
                 modes.put(JSONObject().put("mode", name).put("pixelChangesPerSecond", samples.length() / 2.0)
-                    .put("changedPixels", samples))
+                    .put("changedPixels", samples).put("mainSurfaceChangesPerSecond", producerSamples.length() / 2.0)
+                    .put("mainSurfaceChanges", producerSamples).put("maxVisibleGapMs", maximumGap(samples))
+                    .put("maxMainSurfaceGapMs", maximumGap(producerSamples)))
             }
             report.put("modes", modes)
             report.put("duringDrag", onMain { JSONObject().put("playWhenReady", controller.playWhenReady)
@@ -118,12 +159,16 @@ class PersonalScrubBenchmarkTest {
                     controller.playbackSuppressionReason == Player.PLAYBACK_SUPPRESSION_REASON_SCRUBBING
             })
             val release = SystemClock.elapsedRealtime()
-            onMain { vm.seekTo(510_000) }
-            await { onMain { vm.seekPreviewFrame.value == null && controller.isPlaying && abs(controller.currentPosition - 510_000) < 2_000 } }
+            onMain { vm.seekTo(commitMs) }
+            await { onMain { vm.seekPreviewFrame.value == null && controller.isPlaying && abs(controller.currentPosition - commitMs) < 2_000 } }
             report.put("commitAndResumeMs", SystemClock.elapsedRealtime() - release)
             val first = onMain { controller.currentPosition }
             SystemClock.sleep(700)
             check(onMain { controller.isPlaying && controller.currentPosition > first + 400 })
+            exoObservation?.let { type ->
+                val state = onMain { type.getMethod("subtitleState").invoke(type.getField("INSTANCE").get(null)) as Map<*, *> }
+                report.put("subtitleState", JSONObject(state))
+            }
             check(runBlocking { app.mediaRepositories.recent.findById(MediaId(id)) } == null)
             instrumentation.uiAutomation.takeScreenshot()?.let { bitmap ->
                 try { File(context.cacheDir, "personal-scrub-resumed.png").outputStream().use {
@@ -136,6 +181,22 @@ class PersonalScrubBenchmarkTest {
             thread.quitSafely()
             pixels.recycle()
         }
+    }
+
+    private fun maximumGap(samples: JSONArray): Double {
+        var previous = 0.0
+        var longest = 0.0
+        for (index in 0 until samples.length()) {
+            val current = samples.getJSONObject(index).getDouble("elapsedMs")
+            longest = maxOf(longest, current - previous)
+            previous = current
+        }
+        return maxOf(longest, 2_000 - previous)
+    }
+    private fun findSurface(view: View): SurfaceView? = when (view) {
+        is SurfaceView -> view
+        is ViewGroup -> (0 until view.childCount).firstNotNullOfOrNull { findSurface(view.getChildAt(it)) }
+        else -> null
     }
 
     private fun await(predicate: () -> Boolean) {

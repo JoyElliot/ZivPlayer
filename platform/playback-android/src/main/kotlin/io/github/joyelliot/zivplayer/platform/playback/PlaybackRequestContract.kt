@@ -5,6 +5,7 @@ package io.github.joyelliot.zivplayer.platform.playback
 import java.util.concurrent.atomic.AtomicLong
 
 object PlaybackRequestMetadata {
+    const val SOURCE_URI_EXTRA = "io.github.joyelliot.zivplayer.extra.SOURCE_URI"
     const val TOKEN_EXTRA = "io.github.joyelliot.zivplayer.extra.PLAYBACK_REQUEST_TOKEN"
     const val SEQUENCE_EXTRA = "io.github.joyelliot.zivplayer.extra.PLAYBACK_REQUEST_SEQUENCE"
 }

@@ -4,6 +4,7 @@
 - 日期：2026-09-08
 - 范围：替代 ADR 0009 的纵向播放面板，更新 ADR 0013 的首页与双击交互
 - 后续更新：主视频输出已由 TextureView 改为 SurfaceView；当前重绘、双击出帧与拖动实时预览规则见 [ADR 0016](0016-live-seek-preview-and-exact-commit.md)。下文保留本决策时的实现背景。
+- 后续更新：已授权本地文件的封面、时长与媒体信息读取见 [ADR 0018](0018-local-artwork-and-media-details.md)。
 
 ## 背景
 

@@ -45,4 +45,25 @@
     <string name="library_back_folders">Folders</string>
     <string name="library_play_all">Play all</string>
     <string name="library_item_actions">More</string>
+    <string name="library_details">Media information</string>
+    <string name="library_filename">File name</string>
+    <string name="library_metadata_title">Title</string>
+    <string name="library_artist">Artist</string>
+    <string name="library_album">Album</string>
+    <string name="library_album_artist">Album artist</string>
+    <string name="library_year">Year</string>
+    <string name="library_genre">Genre</string>
+    <string name="library_track">Track number</string>
+    <string name="library_disc">Disc number</string>
+    <string name="library_duration">Duration</string>
+    <string name="library_size">File size</string>
+    <string name="library_format">Format</string>
+    <string name="library_resolution">Resolution</string>
+    <string name="library_rotation">Rotation</string>
+    <string name="library_video_codec">Video codec</string>
+    <string name="library_audio_codec">Audio codec</string>
+    <string name="library_bitrate">Bitrate</string>
+    <string name="library_sample_rate">Sample rate</string>
+    <string name="library_channels">Channels</string>
+    <string name="library_metadata_optional">Only information available in the file is shown.</string>
 </resources>

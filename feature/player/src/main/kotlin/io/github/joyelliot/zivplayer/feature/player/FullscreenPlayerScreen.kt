@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
@@ -51,6 +52,7 @@ fun FullscreenPlayerScreen(
     onPictureInPicture: (() -> Unit)? = null,
     onOpenMedia: (() -> Unit)? = null,
     onStop: (() -> Unit)? = null,
+    onMediaDetails: (() -> Unit)? = null,
     statusMessage: String? = null,
     exitDescription: String? = null,
     modifier: Modifier = Modifier,
@@ -100,14 +102,27 @@ fun FullscreenPlayerScreen(
             val direction = LocalLayoutDirection.current
             val controlsWidth = maxWidth - safeInsets.calculateLeftPadding(direction) - safeInsets.calculateRightPadding(direction) - 40.dp
             val compact = controlsWidth < 480.dp
+            val audioArtworkSize = if (compact) (maxHeight - 400.dp).coerceIn(80.dp, 240.dp)
+                else (maxHeight - 180.dp).coerceIn(80.dp, 160.dp)
             videoContent()
             val audioReady = state.hasMedia && !state.hasVideo && state.playbackStatus in
                 listOf(PlayerPlaybackStatus.PLAYING, PlayerPlaybackStatus.PAUSED, PlayerPlaybackStatus.ENDED)
-            if (audioReady) Column(Modifier.align(Alignment.TopCenter).statusBarsPadding()
-                .padding(top = if (compact) 120.dp else 72.dp, start = 32.dp, end = 32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                ZivPlaybackGlyph(ZivPlaybackIcon.AUDIO, Modifier.size(72.dp))
-                ZivPlaybackText(state.title.orEmpty(), title = true, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            if (audioReady) {
+                if (compact) Column(Modifier.align(Alignment.Center).padding(start = 32.dp, end = 32.dp, top = 32.dp, bottom = 140.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    ZivArtwork(state.artworkLocator, Modifier.size(audioArtworkSize)
+                        .clip(RoundedCornerShape(20.dp)), color = Color.White)
+                    ZivPlaybackText(state.title.orEmpty(), title = true, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                    state.supportingText?.let { ZivPlaybackText(it, textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
+                } else Row(Modifier.align(Alignment.Center).widthIn(max = 680.dp).padding(start = 40.dp, end = 40.dp, bottom = 40.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(28.dp)) {
+                    ZivArtwork(state.artworkLocator, Modifier.size(audioArtworkSize)
+                        .clip(RoundedCornerShape(20.dp)), color = Color.White)
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        ZivPlaybackText(state.title.orEmpty(), title = true)
+                        state.supportingText?.let { ZivPlaybackText(it) }
+                    }
+                }
             }
             PlayerVideoGestures(state, interactionEnabled && !locked && menuPage == null && !queueVisible,
                 onToggleControls = { controlsVisible = !controlsVisible; interactionRevision++ }, onPlayPause = onPlayPause,
@@ -135,7 +150,9 @@ fun FullscreenPlayerScreen(
                     }
                     ZivPlaybackIconButton(ZivPlaybackIcon.MORE, stringResource(R.string.player_quick_menu), { openMenu(PlayerQuickPage.MAIN) })
                 }
-                if (compact) Row(Modifier.align(Alignment.Center), horizontalArrangement = Arrangement.spacedBy(36.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (compact) Row(Modifier.align(if (audioReady) Alignment.BottomCenter else Alignment.Center)
+                    .padding(bottom = if (audioReady) 164.dp else 0.dp),
+                    horizontalArrangement = Arrangement.spacedBy(36.dp), verticalAlignment = Alignment.CenterVertically) {
                     ZivPlaybackIconButton(ZivPlaybackIcon.PREVIOUS, stringResource(R.string.player_previous), { reveal(); onPrevious() }, enabled = canPrevious)
                     ZivPlaybackIconButton(if (state.playWhenReady) ZivPlaybackIcon.PAUSE else ZivPlaybackIcon.PLAY,
                         stringResource(if (state.playWhenReady) R.string.player_pause else R.string.player_play),
@@ -230,7 +247,8 @@ fun FullscreenPlayerScreen(
                 PlayerQuickMenu(state, { menuPage = null; reveal() }, onPlaybackSpeedChange, onVolumeChange,
                     onRepeatModeChange, onSelectTrack, onOpenSubtitle, videoOptions, onVideoOptionSelected,
                     initialPage = page, onQueue = { menuPage = null; onQueue() },
-                    onPictureInPicture = onPictureInPicture, onOpenMedia = onOpenMedia, onStop = onStop)
+                    onPictureInPicture = onPictureInPicture, onOpenMedia = onOpenMedia, onStop = onStop,
+                    onMediaDetails = onMediaDetails)
             }
         }
     }

@@ -157,13 +157,90 @@ def platform_libraries(abis: set[str]) -> dict[str, dict]:
     return result
 
 
-def verify(apk: Path) -> dict:
+def experimental_libass(abis: set[str]) -> tuple[dict, dict]:
+    """Add independent Maven provenance without changing the native execution receipt."""
+    lock = json.loads((ROOT / "tools/exoplayer-experiment-lock.json").read_text(encoding="utf-8"))
+    require(lock["schemaVersion"] == 1 and lock["group"] == "io.github.peerless2012" and lock["version"] == "0.5.1",
+            "unsupported libass experiment lock")
+    require(set(lock["libraries"]) == {f"{abi}/{lib}" for abi in abis for lib in ("libass.so", "libasskt.so")},
+            "libass experiment ABI/library inventory differs")
+    require(len(lock["bindings"]) == 3 and sum(map(len, lock["bindings"].values())) == 19,
+            "libass experiment requires three JNI classes and nineteen native methods")
+    dependency_lock = (ROOT / "apps/android/gradle.lockfile").read_text(encoding="utf-8")
+    metadata = ET.parse(ROOT / "gradle/verification-metadata.xml").getroot()
+    for node in metadata.iter():
+        node.tag = node.tag.rsplit("}", 1)[-1]
+    cache = Path(os.environ.get("GRADLE_USER_HOME", str(Path.home() / ".gradle"))) / "caches/modules-2/files-2.1"
+    bridge = None
+    for artifact, expected_sha in lock["aars"].items():
+        coordinate = f"{lock['group']}:{artifact}:{lock['version']}"
+        require(any(line.startswith(coordinate + "=") for line in dependency_lock.splitlines()),
+                f"libass experiment dependency is not locked: {coordinate}")
+        aar_name = f"{artifact}-{lock['version']}.aar"
+        checksums = [node.attrib["value"] for component in metadata.iter("component")
+                     if component.attrib == {"group": lock["group"], "name": artifact, "version": lock["version"]}
+                     for entry in component.findall("artifact") if entry.get("name") == aar_name
+                     for node in entry.findall("sha256")]
+        require(checksums == [expected_sha], f"libass experiment AAR checksum differs: {coordinate}")
+        accepted = [path for path in (cache / lock["group"] / artifact / lock["version"]).glob(f"*/{aar_name}")
+                    if staging.digest(path)[0] == expected_sha]
+        require(bool(accepted), f"verified libass experiment AAR missing: {coordinate}")
+        if artifact == "ass-kt":
+            bridge = accepted[0]
+    require(bridge is not None, "libass bridge AAR missing")
+    result = {}
+    with zipfile.ZipFile(bridge) as archive:
+        for relative, expected in lock["libraries"].items():
+            abi, library = relative.split("/")
+            raw = archive.read("jni/" + relative)
+            require((hashlib.sha256(raw).hexdigest(), len(raw)) == (expected["sha256"], expected["sizeBytes"]),
+                    f"locked libass AAR native bytes differ: {relative}")
+            require(raw[:6] == b"\x7fELF\x02\x01" and struct.unpack_from("<H", raw, 16)[0] == 3 and
+                    struct.unpack_from("<H", raw, 18)[0] == {"arm64-v8a": 183, "x86_64": 62}[abi],
+                    f"libass experiment ELF type or machine differs: {relative}")
+            phoff = struct.unpack_from("<Q", raw, 32)[0]
+            entry_size, count = struct.unpack_from("<HH", raw, 54)
+            require(entry_size == 56 and 0 < count < 256, "invalid libass program headers")
+            headers = [struct.unpack_from("<IIQQQQQQ", raw, phoff + i * entry_size) for i in range(count)]
+            loads = [header for header in headers if header[0] == 1]
+            require(bool(loads) and all(h[7] >= 16384 and h[2] % h[7] == h[3] % h[7] for h in loads),
+                    f"libass ELF LOAD alignment differs: {relative}")
+            dynamic = [h for h in headers if h[0] == 2]
+            require(len(dynamic) == 1, "libass needs exactly one dynamic table")
+            tags = []
+            for offset in range(dynamic[0][2], dynamic[0][2] + dynamic[0][5], 16):
+                tag, value = struct.unpack_from("<qQ", raw, offset)
+                if tag == 0:
+                    break
+                tags.append((tag, value))
+            strings = [value for tag, value in tags if tag == 5]
+            require(len(strings) == 1, "libass dynamic string table differs")
+            string_loads = [h for h in loads if h[3] <= strings[0] < h[3] + h[5]]
+            require(len(string_loads) == 1, "libass dynamic strings are not file-backed")
+            string_base = string_loads[0][2] + strings[0] - string_loads[0][3]
+            def string(value: int) -> str:
+                start = string_base + value
+                return raw[start:raw.index(b"\0", start)].decode("ascii")
+            needed = [string(value) for tag, value in tags if tag == 1]
+            sonames = [string(value) for tag, value in tags if tag == 14]
+            require(sonames == [library] and needed == lock["needed"][library],
+                    f"libass SONAME/NEEDED differs: {relative}")
+            require("libc++_shared.so" not in needed, "experimental libass may not require a second C++ runtime")
+            result["lib/" + relative] = dict(expected, source="io.github.peerless2012:ass-kt:0.5.1",
+                                            aarSha256=lock["aars"]["ass-kt"], needed=needed)
+    return result, lock["bindings"]
+
+
+def verify(apk: Path, exoplayer_experiment: bool = False) -> dict:
     lock = staging.read_json(staging.DEFAULT_LOCK)[0]
     staging.verify(staging.DEFAULT_STAGE, lock)
     receipt = staging.read_json(staging.DEFAULT_STAGE / staging.RECEIPT_NAME)[0]
     expected = {f"lib/{item['abi']}/{item['library']}": item for item in receipt["artifacts"]}
     platform = platform_libraries({item["abi"] for item in receipt["artifacts"]})
     expected.update(platform)
+    experiment, experiment_methods = experimental_libass({item["abi"] for item in receipt["artifacts"]}) if exoplayer_experiment else ({}, {})
+    expected.update(experiment)
+    experiment_bindings = {name: [] for name in experiment_methods}
     contract = tomllib.loads((ROOT / "native/wrapper/jni-contract.toml").read_text(encoding="utf-8"))
     expected_methods = {item["name"]: item["descriptor"] for item in contract["methods"]}
     require(contract["schemaVersion"] == 1 and contract["kind"] == "zivplayer-libmpv-jni-contract" and
@@ -175,7 +252,7 @@ def verify(apk: Path) -> dict:
         names = archive.namelist()
         require(len(names) == len(set(names)), "APK has duplicate ZIP entry names")
         require({name for name in names if name.endswith(".so")} == set(expected),
-                "APK native inventory differs from the twenty audited libraries and four locked AndroidX helpers")
+                "APK native inventory differs from the audited libraries and explicitly selected locked extensions")
         for name, item in expected.items():
             info = archive.getinfo(name)
             require(info.compress_type == zipfile.ZIP_STORED, f"native library is compressed: {name}")
@@ -193,15 +270,22 @@ def verify(apk: Path) -> dict:
                     f"packaged native bytes differ from execution audit: {name}")
             native_records.append({"path": name, "sha256": sha.hexdigest(),
                                    "sizeBytes": info.file_size, "dataOffset": data_offset,
-                                   "source": platform[name]["source"] if name in platform else "native-execution-receipt"})
+                                   "source": (platform | experiment).get(name, {}).get("source", "native-execution-receipt")})
         for name in names:
             if re.fullmatch(r"classes(?:[0-9]+)?\.dex", name):
-                bindings.extend(Dex(archive.read(name)).find_binding(f"L{contract['bindingsClass']};"))
+                dex = Dex(archive.read(name))
+                bindings.extend(dex.find_binding(f"L{contract['bindingsClass']};"))
+                for descriptor in experiment_methods:
+                    experiment_bindings[descriptor].extend(dex.find_binding(descriptor))
     require(bindings == [expected_methods], "APK DEX JNI class or sixteen native method descriptors differ")
+    for descriptor, methods in experiment_methods.items():
+        require(experiment_bindings[descriptor] == [methods], f"APK libass JNI class/descriptors differ: {descriptor}")
     apk_sha, apk_size = staging.digest(apk)
     return {"schemaVersion": 1, "apk": apk.name, "apkSha256": apk_sha, "apkSizeBytes": apk_size,
             "nativeReceiptSha256": lock["receiptSha256"], "artifacts": native_records,
             "bindingsClass": contract["bindingsClass"], "dexNativeMethods": expected_methods,
+            **({"exoplayerExperiment": True, "experimentalLibass": experiment,
+                "libassDexNativeMethods": experiment_methods} if exoplayer_experiment else {}),
             "runtimeRegistrationEvidence": "pending-device-art-smoke", "releaseInput": False}
 
 
@@ -209,13 +293,17 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("apk", type=Path)
     parser.add_argument("--report", type=Path)
+    parser.add_argument("--exoplayer-experiment", action="store_true")
     args = parser.parse_args()
     try:
-        report = verify(args.apk)
+        report = verify(args.apk, args.exoplayer_experiment)
         if args.report:
             args.report.parent.mkdir(parents=True, exist_ok=True)
             args.report.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-        print(f"verified APK: {report['apk']}; 20 audited libraries + 4 locked AndroidX helpers, 16-KiB ZIP alignment, 16 DEX JNI methods")
+        if args.exoplayer_experiment:
+            print(f"verified APK: {report['apk']}; 20 audited + 4 AndroidX + 4 libass libraries, original C++ runtime, 16-KiB ZIP/ELF alignment, 16 mpv + 19 libass DEX JNI methods")
+        else:
+            print(f"verified APK: {report['apk']}; 20 audited libraries + 4 locked AndroidX helpers, 16-KiB ZIP alignment, 16 DEX JNI methods")
         print(f"SHA-256: {report['apkSha256']}")
         return 0
     except (OSError, ValueError, KeyError, IndexError, struct.error, zipfile.BadZipFile) as error:

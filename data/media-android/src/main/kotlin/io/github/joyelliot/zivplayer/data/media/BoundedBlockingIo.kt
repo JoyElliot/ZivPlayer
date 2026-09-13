@@ -13,8 +13,10 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 
 /** A provider may ignore cancellation. A stuck call occupies at most one daemon worker. */
 internal class BoundedBlockingIo(name: String) {
-    private val executor = ThreadPoolExecutor(1, 1, 0, TimeUnit.MILLISECONDS, ArrayBlockingQueue(1),
-        { task -> Thread(task, name).apply { isDaemon = true } }, ThreadPoolExecutor.AbortPolicy())
+    private val executor = ThreadPoolExecutor(1, 1, 60, TimeUnit.SECONDS, ArrayBlockingQueue(1),
+        { task -> Thread(task, name).apply { isDaemon = true } }, ThreadPoolExecutor.AbortPolicy()).apply {
+        allowCoreThreadTimeOut(true)
+    }
 
     suspend fun <T> run(onCancel: () -> Unit = {}, block: (isActive: () -> Boolean) -> T): T =
         suspendCancellableCoroutine { continuation ->

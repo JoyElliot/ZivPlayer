@@ -263,7 +263,13 @@ class NativePlaybackSmokeTest {
         val deadline = SystemClock.elapsedRealtime() + 15_000
         while (SystemClock.elapsedRealtime() < deadline) {
             val done = onMain {
-                check(controller.playerError == null) { "$description: ${controller.playerError}" }
+                check(controller.playerError == null) {
+                    val nativeDetail = runCatching {
+                        val type = Class.forName("io.github.joyelliot.zivplayer.platform.exoplayer.ExoFrameObservation")
+                        type.getMethod("getLastError").invoke(type.getField("INSTANCE").get(null))
+                    }.getOrNull()
+                    "$description: ${controller.playerError}; $nativeDetail"
+                }
                 controller.predicate()
             }
             if (done) return

@@ -52,6 +52,113 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class DefaultPlayerSessionTest {
     @Test
+    fun replacingPreviewsIgnoreOldFramesAndKeepOnlyTheLatestDeadline() = runTest {
+        val backend = FakeBackend(supportsInFlightSeekReplacement = true)
+        val session = newSession(backend, backendOperationTimeoutMillis = 500)
+        runCurrent()
+        dispatch(session, PlayerCommand.SetQueue(items()))
+        val generation = backend.loads.single().generation
+        backend.emit(BackendEvent.Prepared(generation, Milliseconds(20_000), capabilities = allCapabilities()))
+        runCurrent()
+        dispatch(session, PlayerCommand.SeekTo(Milliseconds(5_000), SeekPrecision.KEYFRAME))
+        val first = backend.seekRequests.single()
+        advanceTimeBy(200)
+        dispatch(session, PlayerCommand.SeekTo(Milliseconds(8_000), SeekPrecision.KEYFRAME))
+        assertEquals(2, backend.seekRequests.size)
+        val latest = backend.seekRequests.last()
+        assertNotEquals(first.seekGeneration, latest.seekGeneration)
+        backend.emit(BackendEvent.SeekCompleted(generation, first.seekGeneration, Milliseconds(5_000)))
+        backend.emit(BackendEvent.PositionChanged(generation, Milliseconds(5_000), Milliseconds(20_000), null, first.seekGeneration))
+        runCurrent()
+        assertEquals(Milliseconds(8_000), session.snapshot.value.timeline.position)
+        advanceTimeBy(301); runCurrent()
+        assertFalse(session.snapshot.value.status == PlayerStatus.ERROR)
+        backend.emit(BackendEvent.SeekCompleted(generation, latest.seekGeneration, Milliseconds(8_000)))
+        runCurrent()
+        advanceTimeBy(500); runCurrent()
+        assertFalse(session.snapshot.value.status == PlayerStatus.ERROR)
+        close(session)
+    }
+
+    @Test
+    fun exactCommitSurvivesLatePreviewAndOnlyCompletesAfterItsOwnFrame() = runTest {
+        val backend = FakeBackend(supportsInFlightSeekReplacement = true)
+        val session = newSession(backend)
+        val completions = mutableListOf<PlaybackEvent.SeekCompleted>()
+        val collector = launch { session.events.collect { if (it is PlaybackEvent.SeekCompleted) completions += it } }
+        runCurrent()
+        dispatch(session, PlayerCommand.SetQueue(items()))
+        val generation = backend.loads.single().generation
+        backend.emit(BackendEvent.Prepared(generation, Milliseconds(20_000), capabilities = allCapabilities()))
+        runCurrent()
+        dispatch(session, PlayerCommand.SeekTo(Milliseconds(5_000), SeekPrecision.KEYFRAME))
+        dispatch(session, PlayerCommand.SeekTo(Milliseconds(8_000), SeekPrecision.KEYFRAME))
+        val preview = backend.seekRequests.last()
+        dispatch(session, PlayerCommand.SeekTo(Milliseconds(8_000), completionId = 91))
+        dispatch(session, PlayerCommand.SeekTo(Milliseconds(12_000), SeekPrecision.KEYFRAME))
+        assertEquals(2, backend.seekRequests.size)
+        assertEquals(Milliseconds(8_000), session.snapshot.value.timeline.position)
+        backend.emit(BackendEvent.SeekCompleted(generation, preview.seekGeneration, Milliseconds(8_000)))
+        runCurrent()
+        val exact = backend.seekRequests.last()
+        assertEquals(3, backend.seekRequests.size)
+        assertEquals(SeekPrecision.EXACT, exact.precision)
+        assertEquals(91L, exact.completionId)
+        assertTrue(completions.isEmpty())
+        backend.emit(BackendEvent.SeekCompleted(generation, preview.seekGeneration, Milliseconds(7_000)))
+        runCurrent()
+        assertTrue(completions.isEmpty())
+        backend.emit(BackendEvent.SeekCompleted(generation, exact.seekGeneration, Milliseconds(8_000)))
+        runCurrent()
+        assertEquals(listOf(91L), completions.map { it.completionId })
+        collector.cancel()
+        close(session)
+    }
+
+    @Test
+    fun exactSeekIsNotReplacedAndStopDiscardsBothOldSeekGenerations() = runTest {
+        val backend = FakeBackend(supportsInFlightSeekReplacement = true)
+        val session = newSession(backend, backendOperationTimeoutMillis = 500)
+        runCurrent()
+        dispatch(session, PlayerCommand.SetQueue(items()))
+        val generation = backend.loads.single().generation
+        backend.emit(BackendEvent.Prepared(generation, Milliseconds(20_000), capabilities = allCapabilities()))
+        runCurrent()
+        dispatch(session, PlayerCommand.SeekTo(Milliseconds(5_000)))
+        val exact = backend.seekRequests.single()
+        dispatch(session, PlayerCommand.SeekTo(Milliseconds(8_000), SeekPrecision.KEYFRAME))
+        assertEquals(1, backend.seekRequests.size)
+        backend.emit(BackendEvent.SeekCompleted(generation, exact.seekGeneration, Milliseconds(5_000)))
+        runCurrent()
+        val preview = backend.seekRequests.last()
+        dispatch(session, PlayerCommand.SeekTo(Milliseconds(9_000), SeekPrecision.KEYFRAME))
+        val replacement = backend.seekRequests.last()
+        dispatch(session, PlayerCommand.Stop)
+        backend.emit(BackendEvent.SeekCompleted(generation, preview.seekGeneration, Milliseconds(8_000)))
+        backend.emit(BackendEvent.SeekCompleted(generation, replacement.seekGeneration, Milliseconds(9_000)))
+        advanceTimeBy(501); runCurrent()
+        assertEquals(PlayerStatus.IDLE, session.snapshot.value.status)
+        assertEquals(Milliseconds.ZERO, session.snapshot.value.timeline.position)
+        close(session)
+    }
+
+    @Test
+    fun failedPreviewReplacementRequiresAnEngineReset() = runTest {
+        val backend = FakeBackend(supportsInFlightSeekReplacement = true)
+        val session = newSession(backend)
+        runCurrent()
+        dispatch(session, PlayerCommand.SetQueue(items()))
+        backend.emit(BackendEvent.Prepared(backend.loads.single().generation, Milliseconds(20_000), capabilities = allCapabilities()))
+        runCurrent()
+        dispatch(session, PlayerCommand.SeekTo(Milliseconds(5_000), SeekPrecision.KEYFRAME))
+        backend.seekFailure = IllegalStateException("replacement failed")
+        dispatch(session, PlayerCommand.SeekTo(Milliseconds(8_000), SeekPrecision.KEYFRAME))
+        assertEquals(PlayerStatus.ERROR, session.snapshot.value.status)
+        assertEquals(ErrorRecovery.RESET, session.snapshot.value.error?.recovery)
+        close(session)
+    }
+
+    @Test
     fun suppressionPausesTheBackendPreservesIntentAndSurvivesSeekAndLateCallbacks() = runTest {
         val backend = FakeBackend()
         val session = newSession(backend)
@@ -1292,6 +1399,7 @@ class DefaultPlayerSessionTest {
 
     private class FakeBackend(
         eventFlow: Flow<BackendEvent>? = null,
+        override val supportsInFlightSeekReplacement: Boolean = false,
     ) : PlayerBackend {
         private val mutableEvents = MutableSharedFlow<BackendEvent>(extraBufferCapacity = 32)
         override val events: Flow<BackendEvent> = eventFlow ?: mutableEvents
@@ -1312,6 +1420,7 @@ class DefaultPlayerSessionTest {
         var loadFailure: Throwable? = null
         var playFailure: Throwable? = null
         var stopFailure: Throwable? = null
+        var seekFailure: Throwable? = null
 
         suspend fun emit(event: BackendEvent) {
             mutableEvents.emit(event)
@@ -1338,6 +1447,7 @@ class DefaultPlayerSessionTest {
         override suspend fun seekTo(request: BackendSeekRequest) {
             callOrder += "seek"
             seekRequests += request
+            seekFailure?.let { throw it }
         }
 
         override suspend fun stop() {

@@ -15,6 +15,8 @@ android {
 
     defaultConfig {
         minSdk = 26
+        buildConfigField("boolean", "EXOPLAYER_EXPERIMENT",
+            (providers.gradleProperty("playbackEngine").orElse("exo").get() == "exo").toString())
 
         ndk {
             abiFilters += listOf("arm64-v8a", "x86_64")
@@ -25,6 +27,7 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+    buildFeatures { buildConfig = true }
 }
 
 kotlin {

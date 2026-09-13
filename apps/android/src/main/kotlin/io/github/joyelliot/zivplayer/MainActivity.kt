@@ -140,6 +140,7 @@ class MainActivity : ComponentActivity() {
                 playerState = playbackController.playerState.value,
                 pendingPlayback = mediaSelection.pendingPlayback.value,
                 recentMedia = mediaSelection.recentMedia.value,
+                onLoadRecentDetails = mediaSelection::loadRecentDetails,
                 selectionNotice = mediaSelection.notice.value,
                 historyUnavailable = mediaSelection.historyUnavailable.value,
                 onDocumentSelected = { selection ->
