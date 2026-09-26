@@ -4,14 +4,16 @@ package io.github.joyelliot.zivplayer.feature.settings
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import io.github.joyelliot.zivplayer.core.model.PlaybackDiagnostics
 import io.github.joyelliot.zivplayer.designsystem.*
 import java.util.Locale
 
 @Composable
 fun DiagnosticsScreen(snapshot: PlaybackDiagnostics?, device: String, message: String?,
-    onBack: () -> Unit, onExport: () -> Unit) {
-    ZivScreen(stringResource(R.string.settings_diagnostics)) {
+    onBack: () -> Unit, onExport: () -> Unit, bottomPadding: Dp = 0.dp) {
+    ZivScreen(stringResource(R.string.settings_diagnostics), bottomPadding = bottomPadding) {
         ZivPrimaryButton(stringResource(R.string.diagnostics_back), onBack)
         ZivText(device)
         ZivText(stringResource(R.string.diagnostics_hint))

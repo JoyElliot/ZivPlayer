@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-30
+- Updated: 2026-09-26; the app and UI modules now require API 33 under [ADR 0019](0019-feishu-home-and-glass-navigation.md). The table below records the initial baseline; native artifacts and toolchain versions are unchanged.
 
 ## Decision
 

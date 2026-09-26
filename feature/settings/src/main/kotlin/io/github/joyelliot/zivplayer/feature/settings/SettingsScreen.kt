@@ -8,6 +8,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import io.github.joyelliot.zivplayer.core.media.PlaybackResource
 import io.github.joyelliot.zivplayer.core.media.PlaybackResourceKind
 import io.github.joyelliot.zivplayer.core.model.*
@@ -20,9 +21,10 @@ fun SettingsScreen(
     onUpdate: ((PlayerPreferences) -> PlayerPreferences) -> Unit,
     onImport: (PlaybackResourceKind) -> Unit, onDelete: (PlaybackResource) -> Unit,
     onDiagnostics: () -> Unit,
+    bottomPadding: Dp = 0.dp,
 ) {
     val options = value.options
-    ZivScreen(stringResource(R.string.settings_title)) {
+    ZivScreen(stringResource(R.string.settings_title), bottomPadding = bottomPadding) {
         message?.let { ZivStatusText(it) }
         Section(stringResource(R.string.settings_general), initiallyExpanded = true) {
             Choice(stringResource(R.string.settings_appearance), stringResource(when (value.appearance) {

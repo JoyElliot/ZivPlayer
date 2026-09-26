@@ -15,7 +15,7 @@ android {
     buildToolsVersion = "37.0.0"
 
     defaultConfig {
-        minSdk = 26
+        minSdk = 33
     }
 
     buildFeatures {
@@ -42,5 +42,6 @@ dependencies {
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.miuix.ui)
+    implementation(libs.miuix.blur)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-30
+- Updated: 2026-09-26; [ADR 0019](0019-feishu-home-and-glass-navigation.md) raises the development app minimum to API 33 and adopts MIUIX blur for home navigation.
 
 ## Context
 
@@ -27,6 +28,7 @@ an official Xiaomi SDK and its public API is explicitly experimental.
 ## Consequences
 
 MIUIX upgrades are localized to one module, and a future replacement does not
-rewrite feature logic. Some MIUIX components are intentionally deferred:
-`miuix-blur` requires API 33, while the navigation modules are changing between
-the current stable and release-candidate lines.
+rewrite feature logic. At the time of this initial decision, `miuix-blur` was
+deferred because it requires API 33, while the navigation modules were changing
+between the stable and release-candidate lines. [ADR 0019](0019-feishu-home-and-glass-navigation.md)
+now adopts blur and raises the app/UI minimum to API 33.

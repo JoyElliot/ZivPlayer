@@ -24,7 +24,7 @@
     <string name="player_repeat_one">单曲循环开</string>
     <string name="player_volume">音量</string>
     <string name="player_volume_description">音量 %1$d%%</string>
-    <string name="player_recent_title">最近打开</string>
+    <string name="player_recent_title">最近播放</string>
     <string name="player_recent_empty">已获得持久访问权限的文档会显示在这里。</string>
     <string name="player_recent_completed">已播完，将从头播放</string>
     <string name="player_recent_resume">从 %1$s 继续</string>

@@ -25,6 +25,7 @@
     <string name="library_rescan">Scan again</string>
     <string name="library_remove">Remove index</string>
     <string name="library_search">Search name or path</string>
+    <string name="library_close_search">Close search</string>
     <string name="library_all">All media</string>
     <string name="library_video">Video</string>
     <string name="library_audio">Audio</string>

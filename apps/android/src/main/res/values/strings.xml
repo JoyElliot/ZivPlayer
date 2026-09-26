@@ -12,7 +12,6 @@
     <string name="subtitle_loading">Opening subtitle…</string>
     <string name="subtitle_added">Subtitle added. Its track appears in the list when available.</string>
     <string name="subtitle_failed">The subtitle could not be opened.</string>
-    <string name="app_library">Library</string>
     <string name="app_play_pause">Play / pause</string>
     <string name="app_pip_unavailable">Picture-in-picture is unavailable. Check the app permission in Android settings.</string>
     <string name="diagnostics_read_failed">Could not read playback diagnostics.</string>

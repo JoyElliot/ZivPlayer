@@ -25,6 +25,7 @@
     <string name="library_rescan">重新扫描</string>
     <string name="library_remove">移除索引</string>
     <string name="library_search">搜索名称或路径</string>
+    <string name="library_close_search">关闭搜索</string>
     <string name="library_all">全部媒体</string>
     <string name="library_video">视频</string>
     <string name="library_audio">音频</string>

@@ -24,7 +24,7 @@
     <string name="player_repeat_one">Loop one</string>
     <string name="player_volume">Volume</string>
     <string name="player_volume_description">Volume %1$d percent</string>
-    <string name="player_recent_title">Recently opened</string>
+    <string name="player_recent_title">Recently played</string>
     <string name="player_recent_empty">Durable documents you open will appear here.</string>
     <string name="player_recent_completed">Finished — opens from the beginning</string>
     <string name="player_recent_resume">Resume at %1$s</string>

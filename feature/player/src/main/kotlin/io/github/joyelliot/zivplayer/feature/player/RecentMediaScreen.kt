@@ -10,19 +10,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import io.github.joyelliot.zivplayer.designsystem.*
 
 @Composable
 fun RecentMediaScreen(items: List<RecentMediaUiItem>, onBack: () -> Unit,
-    onOpen: (String) -> Unit, onForget: (String) -> Unit, message: String? = null) {
+    onOpen: (String) -> Unit, onForget: (String) -> Unit, message: String? = null, showBack: Boolean = true,
+    bottomPadding: Dp = 0.dp) {
     var actionItem by remember { mutableStateOf<RecentMediaUiItem?>(null) }
     ZivLibrarySurface(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
-        Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        ZivPageHeader(stringResource(R.string.player_recent_title), leading = if (showBack) ({
             ZivLibraryIconButton(ZivPlaybackIcon.BACK, stringResource(R.string.player_back), onBack)
-            ZivLibraryText(stringResource(R.string.player_recent_title), title = true)
-        }
+        }) else null)
         message?.let { ZivStatusText(it, Modifier.padding(20.dp)) }
-        LazyColumn(Modifier.fillMaxSize()) {
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = bottomPadding + 16.dp)) {
             if (items.isEmpty()) item { ZivLibraryText(stringResource(R.string.player_recent_empty), Modifier.padding(24.dp), secondary = true) }
             items(items, key = { it.mediaId }) { item ->
                 val detail = if (item.completed) stringResource(R.string.player_recent_completed)
@@ -41,15 +42,19 @@ fun RecentMediaScreen(items: List<RecentMediaUiItem>, onBack: () -> Unit,
 @Composable
 fun MiniPlayer(state: PlayerUiState, onOpen: () -> Unit, onPlayPause: () -> Unit, onQueue: () -> Unit) {
     if (!state.hasMedia) return
-    ZivCard(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), onClick = onOpen) {
-        Row(Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f).padding(end = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    ZivMiniPlayerSurface(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), onClick = onOpen) {
+        Row(Modifier.fillMaxWidth().heightIn(min = 68.dp).padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            ZivLibraryTile(if (state.hasVideo) ZivPlaybackIcon.PLAY else ZivPlaybackIcon.AUDIO, Modifier.size(40.dp))
+            Column(Modifier.weight(1f).padding(start = 12.dp, end = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 ZivLibraryText(state.title.orEmpty(), maxLines = 1)
                 ZivLibraryText("${formatPlaybackTime(state.positionMs)} / ${state.durationMs?.let(::formatPlaybackTime) ?: "--:--"}", secondary = true, maxLines = 1)
             }
             ZivLibraryIconButton(if (state.playWhenReady) ZivPlaybackIcon.PAUSE else ZivPlaybackIcon.PLAY,
                 stringResource(if (state.playWhenReady) R.string.player_pause else R.string.player_play), onPlayPause, enabled = state.canPlayPause)
             ZivLibraryIconButton(ZivPlaybackIcon.LIST, stringResource(R.string.player_queue), onQueue)
+        }
+        state.durationMs?.takeIf { it > 0 }?.let {
+            ZivMiniPlayerProgress(state.timelineProgress)
         }
     }
 }

@@ -8,13 +8,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.selected
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -31,7 +30,7 @@ fun ZivLibrarySurface(modifier: Modifier = Modifier, content: @Composable Column
 @Composable
 fun ZivLibraryText(text: String, modifier: Modifier = Modifier, secondary: Boolean = false,
     title: Boolean = false, maxLines: Int = 2) {
-    Text(text, modifier, color = MiuixTheme.colorScheme.onBackground.copy(alpha = if (secondary) 0.55f else 1f),
+    Text(text, modifier, color = if (secondary) MiuixTheme.colorScheme.onSurfaceVariantSummary else MiuixTheme.colorScheme.onBackground,
         fontSize = if (title) 26.sp else if (secondary) 13.sp else 16.sp,
         fontWeight = if (title) FontWeight.Bold else FontWeight.Normal,
         maxLines = maxLines, overflow = TextOverflow.Ellipsis)
@@ -45,24 +44,28 @@ fun ZivLibraryIconButton(icon: ZivPlaybackIcon, description: String, onClick: ()
 
 @Composable
 fun ZivLibraryChip(label: String, selected: Boolean = false, onClick: () -> Unit) {
-    Box(Modifier.clip(RoundedCornerShape(24.dp))
-        .background(MiuixTheme.colorScheme.onBackground.copy(alpha = if (selected) 0.13f else 0.05f))
-        .semantics { this.selected = selected }
-        .clickable(role = Role.Tab, onClick = onClick).heightIn(min = 44.dp).padding(horizontal = 20.dp, vertical = 10.dp),
-        contentAlignment = Alignment.Center) { ZivLibraryText(label, maxLines = 1) }
+    val colors = MiuixTheme.colorScheme
+    Box(Modifier.clip(RoundedCornerShape(16.dp))
+        .background(if (selected) colors.primary.copy(alpha = 0.12f) else colors.onBackground.copy(alpha = 0.04f))
+        .selectable(selected, role = Role.Tab, onClick = onClick)
+        .heightIn(min = 48.dp).padding(horizontal = 18.dp, vertical = 10.dp),
+        contentAlignment = Alignment.Center) {
+        Text(label, color = if (selected) colors.primary else colors.onSurfaceVariantSummary,
+            fontSize = 14.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+            maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
 }
 
 /** The row and its trailing action have separate touch targets and accessibility actions. */
 @Composable
 fun ZivLibraryRow(title: String, detail: String?, icon: ZivPlaybackIcon, onClick: () -> Unit,
     modifier: Modifier = Modifier, trailing: @Composable () -> Unit = {}) {
-    Row(modifier.fillMaxWidth().heightIn(min = 88.dp).clickable(role = Role.Button, onClick = onClick)
-        .padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(56.dp).clip(RoundedCornerShape(14.dp))
-            .background(MiuixTheme.colorScheme.onBackground.copy(alpha = 0.06f)), contentAlignment = Alignment.Center) {
-            ZivPlaybackGlyph(icon, Modifier.size(32.dp), color = MiuixTheme.colorScheme.onBackground.copy(alpha = 0.6f))
-        }
-        Column(Modifier.weight(1f).padding(start = 16.dp, end = 8.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+    Row(modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
+        .clip(RoundedCornerShape(22.dp)).background(MiuixTheme.colorScheme.surfaceContainer)
+        .heightIn(min = 84.dp).clickable(role = Role.Button, onClick = onClick)
+        .padding(start = 14.dp, end = 4.dp, top = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        ZivLibraryTile(icon)
+        Column(Modifier.weight(1f).padding(start = 14.dp, end = 8.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
             ZivLibraryText(title)
             detail?.takeIf { it.isNotBlank() }?.let { ZivLibraryText(it, secondary = true) }
         }

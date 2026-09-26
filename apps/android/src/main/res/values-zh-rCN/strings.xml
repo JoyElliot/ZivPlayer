@@ -12,7 +12,6 @@
     <string name="subtitle_loading">正在打开字幕…</string>
     <string name="subtitle_added">字幕已添加，可用后会显示在轨道列表中。</string>
     <string name="subtitle_failed">无法打开此字幕。</string>
-    <string name="app_library">媒体库</string>
     <string name="app_play_pause">播放 / 暂停</string>
     <string name="app_pip_unavailable">当前无法进入画中画，请检查 Android 设置中的画中画权限。</string>
     <string name="diagnostics_read_failed">暂时无法读取播放诊断。</string>

@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -15,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import io.github.joyelliot.zivplayer.core.media.LibraryFolder
 import io.github.joyelliot.zivplayer.core.media.LibraryFolderStatus
 import io.github.joyelliot.zivplayer.core.media.LibraryMedia
@@ -24,6 +26,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 private enum class Filter { FOLDERS, ALL, VIDEO, AUDIO, FAVORITES, HIDDEN }
+enum class LibraryMediaKind { VIDEO, AUDIO }
 private enum class Sort { NAME, MODIFIED, SIZE }
 private enum class Menu { HOME, SORT, MANAGE, MEDIA, FOLDER }
 private const val MAX_LIBRARY_QUEUE_ITEMS = 500
@@ -43,6 +46,8 @@ fun LibraryScreen(
     onBrowseBackChanged: ((() -> Unit)?) -> Unit = {},
     foldersLoaded: Boolean = true,
     nowPlaying: @Composable () -> Unit = {},
+    bottomPadding: Dp = 0.dp,
+    mediaKind: LibraryMediaKind? = null,
 ) {
     var search by rememberSaveable { mutableStateOf("") }
     var searching by rememberSaveable { mutableStateOf(false) }
@@ -66,13 +71,14 @@ fun LibraryScreen(
     LaunchedEffect(foldersLoaded, folders, selectedFolderId) {
         if (foldersLoaded && selectedFolderId != null && selectedFolder == null) backToFolders()
     }
-    val request = remember(media, folders, search, filter, sort, selectedFolderId, selectedPath) { Any() }
+    val request = remember(media, folders, search, filter, sort, selectedFolderId, selectedPath, mediaKind) { Any() }
     val projection by produceState<LibrarySnapshot?>(null, request) {
         value = withContext(Dispatchers.Default) {
             val query = search.trim()
             val rootNames = folders.associate { it.id to it.name }
             val selected = media.filter { item ->
-                (selectedFolderId == null || (item.folderId == selectedFolderId && item.directoryPath() == selectedPath)) &&
+                (mediaKind == null || MediaFileClassifier.isAudio(item.title, item.mimeType) == (mediaKind == LibraryMediaKind.AUDIO)) &&
+                    (selectedFolderId == null || (item.folderId == selectedFolderId && item.directoryPath() == selectedPath)) &&
                     (if (filter == Filter.HIDDEN) item.hidden else !item.hidden) &&
                     (query.isBlank() || item.title.contains(query, true) || item.relativePath.contains(query, true) || rootNames[item.folderId]?.contains(query, true) == true) &&
                     when (filter) {
@@ -114,21 +120,28 @@ fun LibraryScreen(
         if (previousScrollKey != scrollKey) { listState.scrollToItem(0); previousScrollKey = scrollKey }
     }
     val pageTitle = selectedFolder?.let { selectedPath.substringAfterLast('/').ifBlank { it.name } }
-        ?: stringResource(filter.label())
+        ?: stringResource(when {
+            filter == Filter.HIDDEN -> R.string.library_hidden
+            mediaKind == LibraryMediaKind.VIDEO -> R.string.library_video
+            mediaKind == LibraryMediaKind.AUDIO -> R.string.library_audio
+            filter == Filter.FOLDERS -> R.string.library_title
+            else -> filter.label()
+        })
     ZivLibrarySurface(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
-        Row(Modifier.fillMaxWidth().padding(start = if (selectedFolderId == null) 20.dp else 4.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
-            verticalAlignment = Alignment.CenterVertically) {
-            if (selectedFolderId != null) ZivLibraryIconButton(ZivPlaybackIcon.BACK, stringResource(R.string.library_back_folders), ::browseBack)
-            ZivLibraryText(pageTitle, Modifier.weight(1f), title = selectedFolderId == null, maxLines = 1)
-            ZivLibraryIconButton(if (searching) ZivPlaybackIcon.CLOSE else ZivPlaybackIcon.SEARCH,
-                stringResource(R.string.library_search), { searching = !searching; if (!searching) search = "" })
+        ZivPageHeader(pageTitle, leading = if (selectedFolderId != null) ({
+            ZivLibraryIconButton(ZivPlaybackIcon.BACK, stringResource(R.string.library_back_folders), ::browseBack)
+        }) else null) {
+            ZivLibraryIconButton(ZivPlaybackIcon.ADD, stringResource(R.string.library_add_folder), onAddFolder)
             ZivLibraryIconButton(ZivPlaybackIcon.SORT, stringResource(R.string.library_sort), { menu = Menu.SORT })
             ZivLibraryIconButton(ZivPlaybackIcon.MORE, stringResource(R.string.library_item_actions), { menu = Menu.HOME })
         }
-        if (searching) ZivTextField(search, { search = it.take(200) }, stringResource(R.string.library_search), Modifier.padding(horizontal = 20.dp, vertical = 4.dp))
-        if (selectedFolderId == null) Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 8.dp),
+        if (searching) Row(Modifier.padding(start = 16.dp, end = 8.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            ZivTextField(search, { search = it.take(200) }, stringResource(R.string.library_search), Modifier.weight(1f))
+            ZivLibraryIconButton(ZivPlaybackIcon.CLOSE, stringResource(R.string.library_close_search), { searching = false; search = "" })
+        } else ZivSearchEntry(stringResource(R.string.library_search), { searching = true }, Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+        if (selectedFolderId == null) Row(Modifier.fillMaxWidth().selectableGroup().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Filter.entries.filter { it != Filter.HIDDEN }.forEach { item ->
+            Filter.entries.filter { it != Filter.HIDDEN && (mediaKind == null || it !in listOf(Filter.VIDEO, Filter.AUDIO)) }.forEach { item ->
                 ZivLibraryChip(stringResource(item.label()), filter == item) { filter = item }
             }
         }
@@ -142,7 +155,7 @@ fun LibraryScreen(
             ZivLibraryIconButton(ZivPlaybackIcon.PLAY, stringResource(R.string.library_play_all), { onOpenQueue(shown.toList(), 0) }, enabled = shown.isNotEmpty())
         }
         if (loading) Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) { ZivLoadingIndicator() }
-        else LazyColumn(Modifier.weight(1f).fillMaxWidth(), state = listState, contentPadding = PaddingValues(bottom = 16.dp)) {
+        else LazyColumn(Modifier.weight(1f).fillMaxWidth(), state = listState, contentPadding = PaddingValues(bottom = bottomPadding + 16.dp)) {
             if (!browseMedia) {
                 items(directories, key = { it.key }) { directory ->
                     val files = directory.media
