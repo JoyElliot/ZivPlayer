@@ -39,14 +39,15 @@ internal fun MiniPlayerArtwork(state: PlayerUiState) {
             }
         }
         val bitmap = frame
+        // 12 dp inside the shell's 20 dp corner, with an 8 dp inset on both axes.
+        val artwork = Modifier.size(width = 56.dp, height = 32.dp).clip(RoundedCornerShape(12.dp))
         if (bitmap != null) {
             Image(bitmap.asImageBitmap(), contentDescription = null,
-                modifier = Modifier.size(width = 48.dp, height = 34.dp).clip(RoundedCornerShape(10.dp))
-                    .testTag("mini_video_thumbnail"),
+                modifier = artwork.testTag("mini_video_thumbnail"),
                 contentScale = ContentScale.Crop)
         } else {
             ZivLibraryTile(if (state.hasVideo) ZivPlaybackIcon.PLAY else ZivPlaybackIcon.AUDIO,
-                Modifier.size(width = 48.dp, height = 34.dp).testTag("mini_artwork_placeholder"))
+                artwork.testTag("mini_artwork_placeholder"), cornerRadius = 12.dp)
         }
     }
 }

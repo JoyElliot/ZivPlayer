@@ -58,14 +58,14 @@ internal fun RecentMediaActions(item: RecentMediaUiItem?, onDismiss: () -> Unit,
 fun MiniPlayer(state: PlayerUiState, onOpen: () -> Unit, onPlayPause: () -> Unit) {
     if (!state.hasMedia) return
     ZivMiniPlayerSurface(onClick = onOpen) {
-        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("mini_player")
-            .padding(start = 8.dp, end = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("mini_player"),
+            verticalAlignment = Alignment.CenterVertically) {
             MiniPlayerArtwork(state)
             Column(Modifier.weight(1f).padding(start = 8.dp, end = 2.dp, top = 4.dp, bottom = 4.dp)) {
                 ZivLibraryText(state.title.orEmpty(), maxLines = 1)
                 ZivLibraryText("${formatPlaybackTime(state.positionMs)} / ${state.durationMs?.let(::formatPlaybackTime) ?: "--:--"}", secondary = true, maxLines = 1)
             }
-            ZivLibraryIconButton(if (state.playWhenReady) ZivPlaybackIcon.PAUSE else ZivPlaybackIcon.PLAY,
+            ZivMiniPlayerButton(if (state.playWhenReady) ZivPlaybackIcon.PAUSE else ZivPlaybackIcon.PLAY,
                 stringResource(if (state.playWhenReady) R.string.player_pause else R.string.player_play), onPlayPause, enabled = state.canPlayPause)
         }
     }
