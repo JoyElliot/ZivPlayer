@@ -5,10 +5,12 @@ package io.github.joyelliot.zivplayer.feature.player
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import io.github.joyelliot.zivplayer.designsystem.*
@@ -24,18 +26,31 @@ fun RecentMediaScreen(items: List<RecentMediaUiItem>, onBack: () -> Unit,
         }) else null)
         message?.let { ZivStatusText(it, Modifier.padding(20.dp)) }
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = bottomPadding + 16.dp)) {
-            if (items.isEmpty()) item { ZivLibraryText(stringResource(R.string.player_recent_empty), Modifier.padding(24.dp), secondary = true) }
-            items(items, key = { it.mediaId }) { item ->
-                val detail = if (item.completed) stringResource(R.string.player_recent_completed)
-                    else item.positionMs?.let { stringResource(R.string.player_recent_resume, formatPlaybackTime(it)) }
-                ZivLibraryRow(item.title, detail, ZivPlaybackIcon.HISTORY, { onOpen(item.mediaId) }) {
-                    ZivLibraryIconButton(ZivPlaybackIcon.MORE, stringResource(R.string.player_quick_menu), { actionItem = item })
-                }
-            }
+            recentMediaItems(items, onOpen) { actionItem = it }
         }
     }
-    actionItem?.let { item -> ZivLibraryDialog(item.title, { actionItem = null }) {
-        ZivLibraryMenuItem(stringResource(R.string.player_recent_forget), { actionItem = null; onForget(item.mediaId) })
+    RecentMediaActions(actionItem, { actionItem = null }, onForget)
+}
+
+internal fun LazyListScope.recentMediaItems(items: List<RecentMediaUiItem>, onOpen: (String) -> Unit,
+    onActions: (RecentMediaUiItem) -> Unit) {
+    if (items.isEmpty()) item("empty_history") {
+        ZivLibraryText(stringResource(R.string.player_recent_empty), Modifier.padding(24.dp), secondary = true)
+    }
+    items(items, key = { "history_${it.mediaId}" }) { item ->
+        val detail = if (item.completed) stringResource(R.string.player_recent_completed)
+            else item.positionMs?.let { stringResource(R.string.player_recent_resume, formatPlaybackTime(it)) }
+        ZivLibraryRow(item.title, detail, ZivPlaybackIcon.HISTORY, { onOpen(item.mediaId) },
+            Modifier.testTag("history_${item.mediaId}")) {
+            ZivLibraryIconButton(ZivPlaybackIcon.MORE, stringResource(R.string.player_quick_menu), { onActions(item) })
+        }
+    }
+}
+
+@Composable
+internal fun RecentMediaActions(item: RecentMediaUiItem?, onDismiss: () -> Unit, onForget: (String) -> Unit) {
+    item?.let { ZivLibraryDialog(it.title, onDismiss) {
+        ZivLibraryMenuItem(stringResource(R.string.player_recent_forget), { onDismiss(); onForget(it.mediaId) })
     } }
 }
 

@@ -64,4 +64,7 @@
     <string name="player_lock_controls">锁定控制</string>
     <string name="player_unlock_controls">解锁控制</string>
     <string name="player_speed_temporary_hint">长按画面可临时 2 倍速播放，左右滑动调整倍率，松手后恢复此速度。</string>
+    <string name="player_queue_title">队列</string>
+    <string name="player_history_title">播放历史</string>
+    <string name="player_queue_current">当前播放</string>
 </resources>

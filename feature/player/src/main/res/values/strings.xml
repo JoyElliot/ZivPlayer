@@ -64,4 +64,7 @@
     <string name="player_lock_controls">Lock controls</string>
     <string name="player_unlock_controls">Unlock controls</string>
     <string name="player_speed_temporary_hint">Hold the video for temporary 2× playback. Slide left or right to adjust it; release to restore this speed.</string>
+    <string name="player_queue_title">Queue</string>
+    <string name="player_history_title">Playback history</string>
+    <string name="player_queue_current">Now playing</string>
 </resources>

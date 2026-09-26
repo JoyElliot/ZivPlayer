@@ -48,7 +48,7 @@ import io.github.joyelliot.zivplayer.feature.player.FullscreenPlayerScreen
 import io.github.joyelliot.zivplayer.feature.player.PlayerQueuePanel
 import io.github.joyelliot.zivplayer.feature.player.PlayerQuickOption
 import io.github.joyelliot.zivplayer.feature.player.MiniPlayer
-import io.github.joyelliot.zivplayer.feature.player.RecentMediaScreen
+import io.github.joyelliot.zivplayer.feature.player.PlaybackQueueScreen
 import io.github.joyelliot.zivplayer.feature.player.PlayerRepeatMode
 import io.github.joyelliot.zivplayer.feature.player.PlayerUiState
 import io.github.joyelliot.zivplayer.feature.player.PlayerTrackKind
@@ -263,12 +263,12 @@ fun ZivPlayerApp(
                 else io.github.joyelliot.zivplayer.feature.player.R.string.player_back))
         } else ZivHomeScaffold(bottomBar = {
             MiniPlayer(playerState, ::openPlayer, onPlayPause, { showQueue = true })
-            val destinations = listOf(AppDestination.VIDEO, AppDestination.AUDIO, AppDestination.RECENT, AppDestination.SETTINGS)
+            val destinations = listOf(AppDestination.VIDEO, AppDestination.AUDIO, AppDestination.QUEUE, AppDestination.SETTINGS)
             ZivNavigationBar(
                 items = listOf(
                     ZivNavigationItem(stringResource(io.github.joyelliot.zivplayer.feature.library.R.string.library_video), ZivPlaybackIcon.PLAY, "app_video"),
                     ZivNavigationItem(stringResource(io.github.joyelliot.zivplayer.feature.library.R.string.library_audio), ZivPlaybackIcon.AUDIO, "app_audio"),
-                    ZivNavigationItem(stringResource(io.github.joyelliot.zivplayer.feature.player.R.string.player_recent_title), ZivPlaybackIcon.HISTORY, "app_recent"),
+                    ZivNavigationItem(stringResource(io.github.joyelliot.zivplayer.feature.player.R.string.player_queue_title), ZivPlaybackIcon.LIST, "app_queue"),
                     ZivNavigationItem(stringResource(io.github.joyelliot.zivplayer.feature.settings.R.string.settings_title), ZivPlaybackIcon.SETTINGS, "app_settings"),
                 ),
                 selectedIndex = destinations.indexOf(destination),
@@ -287,7 +287,7 @@ fun ZivPlayerApp(
                             onOpen = { item -> openPlayer(); onDocumentSelected(OpenMediaDocumentResult(Uri.parse(item.sourceUri.value), 0)) },
                             onOpenQueue = { items, index -> openPlayer(); onLibraryPlaylist(items, index) },
                             onOpenFile = { openMedia.launch(arrayOf(if (destination == AppDestination.AUDIO) "audio/*" else "video/*")) },
-                            onHistory = { destination = AppDestination.RECENT },
+                            onHistory = { destination = AppDestination.QUEUE },
                             onSettings = { destination = AppDestination.SETTINGS },
                             onBrowseBackChanged = { libraryBack = it },
                             foldersLoaded = library?.foldersLoaded?.value ?: true,
@@ -295,10 +295,10 @@ fun ZivPlayerApp(
                             mediaKind = if (destination == AppDestination.AUDIO) LibraryMediaKind.AUDIO else LibraryMediaKind.VIDEO,
                         )
                     }
-                    AppDestination.RECENT -> RecentMediaScreen(recentMedia, { destination = AppDestination.VIDEO },
+                    AppDestination.QUEUE -> PlaybackQueueScreen(playerState, recentMedia, onSelectQueueItem,
                         { openPlayer(); onOpenRecent(it) }, onForgetRecent,
                         selectionNotice?.toUserMessage() ?: if (historyUnavailable) stringResource(R.string.media_history_unavailable) else null,
-                        showBack = false, bottomPadding = bottomPadding)
+                        bottomPadding = bottomPadding)
                     AppDestination.SETTINGS -> {
                         if (showDiagnostics) DiagnosticsScreen(
                             snapshot = diagnostics, device = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL} · Android ${android.os.Build.VERSION.RELEASE}",
@@ -319,7 +319,7 @@ fun ZivPlayerApp(
     }
 }
 
-private enum class AppDestination { VIDEO, AUDIO, PLAYER, SETTINGS, RECENT }
+private enum class AppDestination { VIDEO, AUDIO, PLAYER, SETTINGS, QUEUE }
 
 @Composable
 private fun MediaSelectionNotice.toUserMessage(): String = when (this) {
