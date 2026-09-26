@@ -55,21 +55,19 @@ internal fun RecentMediaActions(item: RecentMediaUiItem?, onDismiss: () -> Unit,
 }
 
 @Composable
-fun MiniPlayer(state: PlayerUiState, onOpen: () -> Unit, onPlayPause: () -> Unit, onQueue: () -> Unit) {
+fun MiniPlayer(state: PlayerUiState, onOpen: () -> Unit, onPlayPause: () -> Unit) {
     if (!state.hasMedia) return
-    ZivMiniPlayerSurface(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), onClick = onOpen) {
-        Row(Modifier.fillMaxWidth().heightIn(min = 68.dp).padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            ZivLibraryTile(if (state.hasVideo) ZivPlaybackIcon.PLAY else ZivPlaybackIcon.AUDIO, Modifier.size(40.dp))
-            Column(Modifier.weight(1f).padding(start = 12.dp, end = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    ZivMiniPlayerSurface(onClick = onOpen,
+        progress = state.durationMs?.takeIf { it > 0 }?.let { state.timelineProgress }) {
+        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("mini_player")
+            .padding(start = 8.dp, end = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+            ZivLibraryTile(if (state.hasVideo) ZivPlaybackIcon.PLAY else ZivPlaybackIcon.AUDIO, Modifier.size(36.dp))
+            Column(Modifier.weight(1f).padding(start = 8.dp, end = 2.dp, top = 4.dp, bottom = 4.dp)) {
                 ZivLibraryText(state.title.orEmpty(), maxLines = 1)
                 ZivLibraryText("${formatPlaybackTime(state.positionMs)} / ${state.durationMs?.let(::formatPlaybackTime) ?: "--:--"}", secondary = true, maxLines = 1)
             }
             ZivLibraryIconButton(if (state.playWhenReady) ZivPlaybackIcon.PAUSE else ZivPlaybackIcon.PLAY,
                 stringResource(if (state.playWhenReady) R.string.player_pause else R.string.player_play), onPlayPause, enabled = state.canPlayPause)
-            ZivLibraryIconButton(ZivPlaybackIcon.LIST, stringResource(R.string.player_queue), onQueue)
-        }
-        state.durationMs?.takeIf { it > 0 }?.let {
-            ZivMiniPlayerProgress(state.timelineProgress)
         }
     }
 }

@@ -3,7 +3,7 @@
 package io.github.joyelliot.zivplayer.designsystem
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,6 +11,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.dropShadow
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathMeasure
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -21,6 +30,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.blur.blur
+import top.yukonga.miuix.kmp.blur.drawBackdrop
+import top.yukonga.miuix.kmp.blur.highlight.Highlight
+import io.github.joyelliot.zivplayer.designsystem.liquid.lens
 
 /** Page chrome shared by the library, history and settings. */
 @Composable
@@ -78,29 +91,56 @@ data class ZivNavigationItem(val label: String, val icon: ZivPlaybackIcon, val t
 
 /** Uses the reference navigation's press, drag and refracted icon layers. */
 @Composable
-fun ZivNavigationBar(items: List<ZivNavigationItem>, selectedIndex: Int, onSelect: (Int) -> Unit) {
+fun ZivNavigationBar(items: List<ZivNavigationItem>, selectedIndex: Int, onSelect: (Int) -> Unit,
+    nowPlaying: (@Composable () -> Unit)? = null) {
     require(items.isNotEmpty() && selectedIndex in items.indices)
     val backdrop = LocalHomeBackdrop.current
     io.github.joyelliot.zivplayer.designsystem.liquid.LiquidGlassNavigationBar(
         items, selectedIndex, onSelect, backdrop, isBlurActive = backdrop != null,
+        nowPlaying = nowPlaying,
     )
 }
 
 @Composable
-fun ZivMiniPlayerSurface(modifier: Modifier = Modifier, onClick: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
-    val colors = MiuixTheme.colorScheme
-    Column(
-        modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp))
-            .homeGlass(24.dp, colors.surfaceContainer.copy(alpha = 0.65f), blurRadius = 8.dp)
-            .border(1.dp, colors.primary.copy(alpha = 0.10f), RoundedCornerShape(24.dp))
-            .clickable(role = Role.Button, onClick = onClick),
-        content = content,
-    )
+fun ZivMiniPlayerSurface(onClick: () -> Unit, progress: Float?, content: @Composable () -> Unit) {
+    val shape = RoundedCornerShape(24.dp)
+    val backdrop = LocalHomeBackdrop.current
+    val color = MiuixTheme.colorScheme.surfaceContainer
+    val dark = MiuixTheme.colorScheme.background.luminance() < 0.5f
+    Box(Modifier.fillMaxWidth()
+        .dropShadow(shape, Shadow(radius = 5.dp, color = Color.Black, alpha = 0.12f))
+        .then(if (backdrop != null) Modifier.drawBackdrop(
+            backdrop, shape = { shape },
+            effects = {
+                padding = maxOf(padding, 14.dp.toPx())
+                blur(4.dp.toPx())
+                lens(14.dp.toPx(), 14.dp.toPx())
+            },
+            highlight = { if (dark) Highlight.GlassStrokeMiddleDark else Highlight.GlassStrokeMiddleLight },
+            onDrawSurface = { drawRect(color.copy(alpha = 0.65f)) },
+        ) else Modifier.background(color, shape))
+        .clip(shape).clickable(role = Role.Button, onClick = onClick)) {
+        content()
+        progress?.let { ZivMiniPlayerProgress(it, Modifier.matchParentSize()) }
+    }
 }
 
+/** Progress follows the upper rim and takes no space away from the card content. */
 @Composable
-fun ZivMiniPlayerProgress(progress: Float) {
-    Box(Modifier.fillMaxWidth().height(2.dp).background(MiuixTheme.colorScheme.primary.copy(alpha = 0.08f))) {
-        Box(Modifier.fillMaxWidth(progress.coerceIn(0f, 1f)).fillMaxHeight().background(MiuixTheme.colorScheme.primary))
+private fun ZivMiniPlayerProgress(progress: Float, modifier: Modifier) {
+    val color = MiuixTheme.colorScheme.primary
+    Canvas(modifier) {
+        val stroke = 2.dp.toPx()
+        val inset = stroke / 2f
+        val radius = minOf(24.dp.toPx(), size.height / 2f, size.width / 2f)
+        val edge = Path().apply {
+            arcTo(Rect(inset, inset, radius * 2 - inset, radius * 2 - inset), 180f, 90f, true)
+            lineTo(size.width - radius, inset)
+            arcTo(Rect(size.width - radius * 2 + inset, inset, size.width - inset, radius * 2 - inset), 270f, 90f, false)
+        }
+        val measure = PathMeasure().apply { setPath(edge, false) }
+        val segment = Path()
+        measure.getSegment(0f, measure.length * progress.coerceIn(0f, 1f), segment)
+        drawPath(segment, color, style = Stroke(stroke, cap = StrokeCap.Round))
     }
 }

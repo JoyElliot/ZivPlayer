@@ -262,7 +262,6 @@ fun ZivPlayerApp(
                     io.github.joyelliot.zivplayer.feature.library.R.string.library_back_folders
                 else io.github.joyelliot.zivplayer.feature.player.R.string.player_back))
         } else ZivHomeScaffold(bottomBar = {
-            MiniPlayer(playerState, ::openPlayer, onPlayPause, { showQueue = true })
             val destinations = listOf(AppDestination.VIDEO, AppDestination.AUDIO, AppDestination.QUEUE, AppDestination.SETTINGS)
             ZivNavigationBar(
                 items = listOf(
@@ -273,6 +272,7 @@ fun ZivPlayerApp(
                 ),
                 selectedIndex = destinations.indexOf(destination),
                 onSelect = { index -> destination = destinations[index]; showDiagnostics = false },
+                nowPlaying = if (playerState.hasMedia) ({ MiniPlayer(playerState, ::openPlayer, onPlayPause) }) else null,
             )
         }) { bottomPadding ->
             pageState.SaveableStateProvider(destination.name) {
