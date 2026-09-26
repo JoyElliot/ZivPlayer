@@ -60,7 +60,7 @@ fun MiniPlayer(state: PlayerUiState, onOpen: () -> Unit, onPlayPause: () -> Unit
     ZivMiniPlayerSurface(onClick = onOpen) {
         Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("mini_player")
             .padding(start = 8.dp, end = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-            ZivLibraryTile(if (state.hasVideo) ZivPlaybackIcon.PLAY else ZivPlaybackIcon.AUDIO, Modifier.size(36.dp))
+            MiniPlayerArtwork(state)
             Column(Modifier.weight(1f).padding(start = 8.dp, end = 2.dp, top = 4.dp, bottom = 4.dp)) {
                 ZivLibraryText(state.title.orEmpty(), maxLines = 1)
                 ZivLibraryText("${formatPlaybackTime(state.positionMs)} / ${state.durationMs?.let(::formatPlaybackTime) ?: "--:--"}", secondary = true, maxLines = 1)

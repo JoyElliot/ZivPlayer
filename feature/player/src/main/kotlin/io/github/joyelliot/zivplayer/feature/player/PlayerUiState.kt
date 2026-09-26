@@ -43,6 +43,7 @@ data class PlayerUiState(
     val connectionStatus: PlayerConnectionStatus = PlayerConnectionStatus.CONNECTING,
     val playbackStatus: PlayerPlaybackStatus = PlayerPlaybackStatus.EMPTY,
     val mediaId: String? = null,
+    val sourceUri: String? = null,
     val playbackIdentity: String? = null,
     val queue: List<PlayerQueueUiItem> = emptyList(),
     val canPrevious: Boolean = false,

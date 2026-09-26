@@ -448,6 +448,7 @@ class PlaybackControllerViewModel(
             connectionStatus = PlayerConnectionStatus.CONNECTED,
             playbackStatus = playbackStatus,
             mediaId = currentMediaId,
+            sourceUri = (currentItem?.localConfiguration?.uri ?: currentItem?.requestMetadata?.mediaUri)?.toString(),
             playbackIdentity = speedIdentity(player)?.toString(),
             queue = (0 until player.mediaItemCount).map { index ->
                 val item = player.getMediaItemAt(index)
