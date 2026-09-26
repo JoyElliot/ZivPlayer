@@ -11,15 +11,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathMeasure
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -30,10 +26,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.blur.blur
-import top.yukonga.miuix.kmp.blur.drawBackdrop
-import top.yukonga.miuix.kmp.blur.highlight.Highlight
-import io.github.joyelliot.zivplayer.designsystem.liquid.lens
 
 /** Page chrome shared by the library, history and settings. */
 @Composable
@@ -92,51 +84,37 @@ data class ZivNavigationItem(val label: String, val icon: ZivPlaybackIcon, val t
 /** Uses the reference navigation's press, drag and refracted icon layers. */
 @Composable
 fun ZivNavigationBar(items: List<ZivNavigationItem>, selectedIndex: Int, onSelect: (Int) -> Unit,
-    nowPlaying: (@Composable () -> Unit)? = null) {
+    nowPlaying: (@Composable () -> Unit)? = null, nowPlayingProgress: Float? = null) {
     require(items.isNotEmpty() && selectedIndex in items.indices)
     val backdrop = LocalHomeBackdrop.current
     io.github.joyelliot.zivplayer.designsystem.liquid.LiquidGlassNavigationBar(
         items, selectedIndex, onSelect, backdrop, isBlurActive = backdrop != null,
         nowPlaying = nowPlaying,
+        nowPlayingProgress = nowPlayingProgress,
     )
 }
 
 @Composable
-fun ZivMiniPlayerSurface(onClick: () -> Unit, progress: Float?, content: @Composable () -> Unit) {
+fun ZivMiniPlayerSurface(onClick: () -> Unit, content: @Composable () -> Unit) {
     val shape = RoundedCornerShape(24.dp)
-    val backdrop = LocalHomeBackdrop.current
-    val color = MiuixTheme.colorScheme.surfaceContainer
-    val dark = MiuixTheme.colorScheme.background.luminance() < 0.5f
-    Box(Modifier.fillMaxWidth()
-        .dropShadow(shape, Shadow(radius = 5.dp, color = Color.Black, alpha = 0.12f))
-        .then(if (backdrop != null) Modifier.drawBackdrop(
-            backdrop, shape = { shape },
-            effects = {
-                padding = maxOf(padding, 14.dp.toPx())
-                blur(4.dp.toPx())
-                lens(14.dp.toPx(), 14.dp.toPx())
-            },
-            highlight = { if (dark) Highlight.GlassStrokeMiddleDark else Highlight.GlassStrokeMiddleLight },
-            onDrawSurface = { drawRect(color.copy(alpha = 0.65f)) },
-        ) else Modifier.background(color, shape))
-        .clip(shape).clickable(role = Role.Button, onClick = onClick)) {
+    Box(Modifier.fillMaxWidth().clip(shape).clickable(role = Role.Button, onClick = onClick)) {
         content()
-        progress?.let { ZivMiniPlayerProgress(it, Modifier.matchParentSize()) }
     }
 }
 
 /** Progress follows the upper rim and takes no space away from the card content. */
 @Composable
-private fun ZivMiniPlayerProgress(progress: Float, modifier: Modifier) {
+internal fun ZivMiniPlayerProgress(progress: Float, modifier: Modifier) {
     val color = MiuixTheme.colorScheme.primary
     Canvas(modifier) {
         val stroke = 2.dp.toPx()
         val inset = stroke / 2f
+        val side = 12.dp.toPx()
         val radius = minOf(24.dp.toPx(), size.height / 2f, size.width / 2f)
         val edge = Path().apply {
-            arcTo(Rect(inset, inset, radius * 2 - inset, radius * 2 - inset), 180f, 90f, true)
-            lineTo(size.width - radius, inset)
-            arcTo(Rect(size.width - radius * 2 + inset, inset, size.width - inset, radius * 2 - inset), 270f, 90f, false)
+            arcTo(Rect(side + inset, inset, side + radius * 2 - inset, radius * 2 - inset), 180f, 90f, true)
+            lineTo(size.width - side - radius, inset)
+            arcTo(Rect(size.width - side - radius * 2 + inset, inset, size.width - side - inset, radius * 2 - inset), 270f, 90f, false)
         }
         val measure = PathMeasure().apply { setPath(edge, false) }
         val segment = Path()

@@ -57,8 +57,7 @@ internal fun RecentMediaActions(item: RecentMediaUiItem?, onDismiss: () -> Unit,
 @Composable
 fun MiniPlayer(state: PlayerUiState, onOpen: () -> Unit, onPlayPause: () -> Unit) {
     if (!state.hasMedia) return
-    ZivMiniPlayerSurface(onClick = onOpen,
-        progress = state.durationMs?.takeIf { it > 0 }?.let { state.timelineProgress }) {
+    ZivMiniPlayerSurface(onClick = onOpen) {
         Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("mini_player")
             .padding(start = 8.dp, end = 2.dp), verticalAlignment = Alignment.CenterVertically) {
             ZivLibraryTile(if (state.hasVideo) ZivPlaybackIcon.PLAY else ZivPlaybackIcon.AUDIO, Modifier.size(36.dp))

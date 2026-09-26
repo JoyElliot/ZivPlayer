@@ -273,6 +273,7 @@ fun ZivPlayerApp(
                 selectedIndex = destinations.indexOf(destination),
                 onSelect = { index -> destination = destinations[index]; showDiagnostics = false },
                 nowPlaying = if (playerState.hasMedia) ({ MiniPlayer(playerState, ::openPlayer, onPlayPause) }) else null,
+                nowPlayingProgress = playerState.durationMs?.takeIf { it > 0 }?.let { playerState.timelineProgress },
             )
         }) { bottomPadding ->
             pageState.SaveableStateProvider(destination.name) {
