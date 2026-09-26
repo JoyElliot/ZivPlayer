@@ -1,0 +1,13 @@
+Liquid glass navigation adaptations
+
+Copyright 2026, compose-miuix-ui contributors
+Original AndroidLiquidGlass: Copyright 2025 Kyant
+Licensed under the Apache License, Version 2.0 (see Apache-2.0.txt).
+
+Source: FangFeishu Android UI, commit 8676095d
+https://github.com/Kyant0/AndroidLiquidGlass
+
+ZivPlayer modifications (2026): player tab models and icons, shared home
+backdrop/insets, hidden capture-layer semantics, pointer cancellation cleanup,
+and shader padding and finite-normal guards. Original press/drag spring,
+distance-based tap motion, tab magnification, refraction and highlights retained.

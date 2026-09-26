@@ -24,7 +24,7 @@ import top.yukonga.miuix.kmp.blur.runtimeShaderEffect
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 
-private val LocalHomeBackdrop = staticCompositionLocalOf<LayerBackdrop?> { null }
+internal val LocalHomeBackdrop = staticCompositionLocalOf<LayerBackdrop?> { null }
 
 /** Capture only page content, never the glass that samples it. */
 @Composable
