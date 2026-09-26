@@ -26,8 +26,10 @@ fun PlaybackQueueScreen(
     onForgetHistory: (String) -> Unit,
     message: String? = null,
     bottomPadding: Dp = 0.dp,
+    active: Boolean = true,
 ) {
     var actionItem by remember { mutableStateOf<RecentMediaUiItem?>(null) }
+    LaunchedEffect(active) { if (!active) actionItem = null }
     ZivLibrarySurface(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
         ZivPageHeader(stringResource(R.string.player_queue_title))
         LazyColumn(Modifier.fillMaxSize().testTag("playback_queue_list"),
@@ -51,7 +53,7 @@ fun PlaybackQueueScreen(
             recentMediaItems(history, onOpenHistory) { actionItem = it }
         }
     }
-    RecentMediaActions(actionItem, { actionItem = null }, onForgetHistory)
+    RecentMediaActions(actionItem.takeIf { active }, { actionItem = null }, onForgetHistory)
 }
 
 @Composable

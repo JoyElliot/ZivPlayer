@@ -48,6 +48,7 @@ fun LibraryScreen(
     nowPlaying: @Composable () -> Unit = {},
     bottomPadding: Dp = 0.dp,
     mediaKind: LibraryMediaKind? = null,
+    active: Boolean = true,
 ) {
     var search by rememberSaveable { mutableStateOf("") }
     var searching by rememberSaveable { mutableStateOf(false) }
@@ -58,6 +59,7 @@ fun LibraryScreen(
     var menu by remember { mutableStateOf<Menu?>(null) }
     var actionFolder by remember { mutableStateOf<LibraryFolder?>(null) }
     var actionMedia by remember { mutableStateOf<LibraryMedia?>(null) }
+    LaunchedEffect(active) { if (!active) { menu = null; actionFolder = null; actionMedia = null } }
     val selectedFolder = folders.firstOrNull { it.id == selectedFolderId }
     val browseMedia = selectedFolderId != null || filter != Filter.FOLDERS
     fun backToFolders() { selectedFolderId = null; selectedPath = ""; search = ""; searching = false; filter = Filter.FOLDERS }
@@ -193,15 +195,15 @@ fun LibraryScreen(
         }
         nowPlaying()
     }
-    menu?.let { active ->
-        ZivLibraryDialog(when (active) {
+    menu?.takeIf { active }?.let { activeMenu ->
+        ZivLibraryDialog(when (activeMenu) {
             Menu.SORT -> stringResource(R.string.library_sort)
             Menu.MANAGE -> stringResource(R.string.library_manage_folders)
             Menu.FOLDER -> actionFolder?.name.orEmpty()
             Menu.MEDIA -> actionMedia?.title.orEmpty()
             Menu.HOME -> stringResource(R.string.library_title)
         }, { menu = null }) {
-            when (active) {
+            when (activeMenu) {
                 Menu.HOME -> {
                     ZivLibraryMenuItem(stringResource(R.string.library_open_file), { menu = null; onOpenFile() })
                     ZivLibraryMenuItem(stringResource(R.string.library_add_folder), { menu = null; onAddFolder() })
