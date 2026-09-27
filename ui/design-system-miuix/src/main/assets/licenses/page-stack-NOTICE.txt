@@ -1,0 +1,11 @@
+Layered page navigation adaptations
+
+Copyright 2026, compose-miuix-ui contributors
+Licensed under the Apache License, Version 2.0 (see Apache-2.0.txt).
+
+Source: FangFeishu Android UI, commit 8676095d
+FfPageStack.kt, StackNavTransitions.kt, StackDetailContainer.kt
+
+ZivPlayer modifications (2026): explicit saved route state, stable entry IDs,
+window-relative physical corners, input and accessibility isolation, and
+separation of motion rendering from platform back handling.
