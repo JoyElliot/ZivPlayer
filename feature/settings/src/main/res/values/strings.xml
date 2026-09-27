@@ -81,4 +81,13 @@
     <string name="diagnostics_video_bitrate">Video bitrate</string>
     <string name="diagnostics_audio_bitrate">Audio bitrate</string>
     <string name="diagnostics_export">Export diagnostic JSON</string>
+    <string name="settings_back">Back to previous page</string>
+    <string name="settings_fonts">Font management</string>
+    <string name="settings_general_summary">Theme, playback behavior, speed and seeking</string>
+    <string name="settings_video_summary">Decoding, scaling, HDR and cache</string>
+    <string name="settings_audio_summary">Adjust audio and video timing</string>
+    <string name="settings_subtitles_summary">Timing, appearance and font management</string>
+    <string name="settings_shaders_summary">Import and arrange rendering effects</string>
+    <string name="settings_resources_summary">Manage imported fonts, shaders and subtitles</string>
+    <string name="settings_diagnostics_summary">Playback measurements and diagnostic export</string>
 </resources>

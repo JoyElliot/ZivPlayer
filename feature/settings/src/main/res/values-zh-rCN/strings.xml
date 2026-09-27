@@ -81,4 +81,13 @@
     <string name="diagnostics_video_bitrate">视频码率</string>
     <string name="diagnostics_audio_bitrate">音频码率</string>
     <string name="diagnostics_export">导出诊断 JSON</string>
+    <string name="settings_back">返回上一级</string>
+    <string name="settings_fonts">字体管理</string>
+    <string name="settings_general_summary">主题、播放行为、倍速与快进</string>
+    <string name="settings_video_summary">解码、画面适配、HDR 与缓存</string>
+    <string name="settings_audio_summary">调整声音与画面的同步</string>
+    <string name="settings_subtitles_summary">同步、字幕样式与字体管理</string>
+    <string name="settings_shaders_summary">导入并排列画面处理效果</string>
+    <string name="settings_resources_summary">管理字体、Shader 与字幕副本</string>
+    <string name="settings_diagnostics_summary">查看播放数据并导出诊断</string>
 </resources>

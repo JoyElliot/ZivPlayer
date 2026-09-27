@@ -13,8 +13,9 @@ import java.util.Locale
 @Composable
 fun DiagnosticsScreen(snapshot: PlaybackDiagnostics?, device: String, message: String?,
     onBack: () -> Unit, onExport: () -> Unit, bottomPadding: Dp = 0.dp) {
-    ZivScreen(stringResource(R.string.settings_diagnostics), bottomPadding = bottomPadding) {
-        ZivPrimaryButton(stringResource(R.string.diagnostics_back), onBack)
+    ZivScreen(stringResource(R.string.settings_diagnostics), bottomPadding = bottomPadding, leading = {
+        ZivLibraryIconButton(ZivPlaybackIcon.BACK, stringResource(R.string.diagnostics_back), onBack)
+    }) {
         ZivText(device)
         ZivText(stringResource(R.string.diagnostics_hint))
         message?.let { ZivStatusText(it) }
