@@ -29,6 +29,8 @@ class ZivPageStackState internal constructor(
     private var popping = false
     private var generation = 0L
     private var motion: Job? = null
+    private var backToken: Long? = null
+    private var backStart = 1f
     val canPop: Boolean get() = entries.isNotEmpty()
     val currentRoute: String? get() = entries.lastOrNull()?.route
 
@@ -43,6 +45,7 @@ class ZivPageStackState internal constructor(
 
     fun pop(): Boolean {
         if (!canPop || popping) return false
+        backToken = null
         popping = true
         settle(0f, (320 * coverage).toInt().coerceAtLeast(120)) {
             entries = entries.dropLast(1)
@@ -50,6 +53,31 @@ class ZivPageStackState internal constructor(
             popping = false
         }
         return true
+    }
+
+    internal fun beginBack(): Long? {
+        if (!canPop || popping) return null
+        motion?.cancel()
+        val token = ++generation
+        backToken = token
+        backStart = coverage
+        isTransitionRunning = true
+        return token
+    }
+
+    internal fun seekBack(token: Long, progress: Float) {
+        if (backToken == token && progress.isFinite()) coverage = backStart * (1f - progress.coerceIn(0f, 1f))
+    }
+
+    internal fun completeBack(token: Long) {
+        if (backToken == token) pop()
+    }
+
+    internal fun cancelBack(token: Long? = backToken) {
+        if (token != null && backToken == token) {
+            backToken = null
+            settle(1f, 160)
+        }
     }
 
     private fun settle(target: Float, duration: Int, finished: () -> Unit = {}) {

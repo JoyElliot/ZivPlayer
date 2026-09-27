@@ -15,7 +15,9 @@
 - 读取当前窗口四个物理圆角，布局或 Insets 变化时刷新；不覆盖 Compose 的 Insets 监听。尚未取得窗口 Insets 时参考 framework 圆角尺寸，完全缺失回退 28 dp；已取得 Insets 而某角为空时视为该角不与窗口相交，使用直角，避免分屏误用整块屏幕的圆角。与参考项目只处理左侧圆角相比，此处两侧均匹配当前窗口，适用于返回途中露出的卡片边缘。
 - 覆盖页以下的内容不暴露可交互无障碍节点，并阻止穿透触摸；导航时清除输入焦点。过渡期间阻止重复 push，pop 可以打断尚未结束的入场；同一个退出只提交一次。保存状态保留每层路由、条目身份及内容状态，已提交但尚在退场的页不在恢复后复活。
 - 共享状态和渲染组件先独立提交，系统返回适配随后单独接入，再让设置分类详情使用同一个完整窗口宿主。
+- `ZivPredictiveBackHandler` 单独绑定 Activity 的系统返回流；每个手势绑定自己的代次，手势进度直接驱动同一前景位移、父页缩放/位移和遮罩。正常结束才弹出一层，退出从当前进度续接，取消在 160 ms 内回到原页；重复完成、旧取消和退出中的再次返回不能弹出更多层。普通返回按钮沿用相同退场路径。宿主关闭处理器时取消尚在进行的预览。
+- 显式启用 `enableOnBackInvokedCallback`，设计系统复用项目已锁定的 Activity Compose 1.13.0；特性只调用公共状态/处理器，不依赖 Activity 或业务导航控制器。
 
 ## 来源与验证
 
-层叠视觉结构取自 FangFeishu 的 Apache-2.0 实现，保留原声明与打包通知。平台圆角接口见 [Android rounded corners](https://developer.android.com/develop/ui/views/layout/insets/rounded-corners)。具体检查与边界记录在 [验证记录](../validation/2026-09-27-layered-settings.md)。
+层叠视觉结构取自 FangFeishu 的 Apache-2.0 实现，保留原声明与打包通知。平台接口见 [Android rounded corners](https://developer.android.com/develop/ui/views/layout/insets/rounded-corners) 和 [Predictive back progress](https://developer.android.com/develop/ui/compose/system/predictive-back-progress)。具体检查与边界记录在 [验证记录](../validation/2026-09-27-layered-settings.md)。

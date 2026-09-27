@@ -36,6 +36,11 @@ kotlin {
 }
 
 dependencies {
+    implementation(libs.androidx.activity.compose)
+    constraints {
+        // Keep standalone feature graphs on the same AndroidX Core baseline as the app.
+        implementation(libs.androidx.core.ktx)
+    }
     api(platform(libs.androidx.compose.bom))
     api(libs.androidx.compose.runtime)
     api(libs.androidx.compose.ui)
