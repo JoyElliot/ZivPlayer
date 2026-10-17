@@ -7,8 +7,8 @@ buildscript {
     }
 
     dependencies {
-        // AGP 9.3 embeds an older Kotlin compiler. MIUIX 0.9.3 publishes
-        // Kotlin 2.4 metadata, so the project deliberately overrides it.
+        // Keep AGP's built-in Kotlin compiler aligned with the Kotlin/Compose
+        // plugins and the Kotlin 2.4 metadata published by MIUIX.
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:${libs.versions.kotlin.get()}")
     }
 
