@@ -29,7 +29,10 @@ sealed interface PlayerCommand {
 
     data object Pause : PlayerCommand
 
-    data class SeekTo(val position: Milliseconds) : PlayerCommand
+    data class SeekTo(
+        val position: Milliseconds,
+        val precision: SeekPrecision = SeekPrecision.EXACT,
+    ) : PlayerCommand
 
     data object Stop : PlayerCommand
 
@@ -54,6 +57,9 @@ sealed interface PlayerCommand {
 
     data object ClearQueue : PlayerCommand
 }
+
+/** Keyframes are for transient scrubbing; release always requests an exact frame. */
+enum class SeekPrecision { EXACT, KEYFRAME }
 
 sealed interface CommandResult {
     val revision: Long

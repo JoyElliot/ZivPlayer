@@ -31,6 +31,34 @@ import org.junit.Test
 
 class LibmpvBackendTest {
     @Test
+    fun previewUsesKeyframesAndReleaseUsesExactWithoutChangingPauseOrOutput() = runBlocking {
+        val client = FakeMpvClient()
+        val backend = LibmpvBackend(TestContext, MpvClientFactory { client }, { "/test/mpv" },
+            MpvMediaSourceOpener { OpenMpvMediaSource("fd://12") {} })
+        val load = loadRequest()
+        backend.load(load)
+        client.emit(MpvClientEvent(MpvEventType.START_FILE.rawValue))
+        client.emit(MpvClientEvent(MpvEventType.FILE_LOADED.rawValue))
+        backend.pause()
+        client.commands.clear()
+        client.stringWrites.clear()
+        for ((index, precision) in io.github.joyelliot.zivplayer.core.player.SeekPrecision.entries.withIndex()) {
+            backend.seekTo(io.github.joyelliot.zivplayer.core.player.runtime.BackendSeekRequest(
+                load.generation, io.github.joyelliot.zivplayer.core.player.runtime.SeekGeneration(index + 1L),
+                Milliseconds(5_500), precision))
+            listOf(true, false).forEach { seeking ->
+                client.property(MpvPropertyChange("seeking", MpvPropertyFormat.FLAG.rawValue,
+                    MpvPropertyValue.Flag(seeking), 6L))
+            }
+        }
+        assertEquals(listOf("absolute+exact", "absolute+keyframes"), client.commands.map { it[2] })
+        assertTrue(client.commands.all { it[0] == "seek" && it[1].toDouble() == 5.5 })
+        assertEquals(true, client.flags["pause"])
+        assertTrue(client.stringWrites.isEmpty())
+        backend.close()
+    }
+
+    @Test
     fun outputDiagnosticsSurviveMediaChangesAndClearWhenNativeOutputDisappears() {
         val client = FakeMpvClient()
         val observer = MpvDiagnosticsObserver()

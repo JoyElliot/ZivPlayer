@@ -17,6 +17,7 @@ import io.github.joyelliot.zivplayer.core.player.PlayerCapabilities
 import io.github.joyelliot.zivplayer.core.player.PlayerCapability
 import io.github.joyelliot.zivplayer.core.player.PlayerError
 import io.github.joyelliot.zivplayer.core.player.PlayerErrorKind
+import io.github.joyelliot.zivplayer.core.player.SeekPrecision
 import io.github.joyelliot.zivplayer.core.player.runtime.BackendEvent
 import io.github.joyelliot.zivplayer.core.player.runtime.BackendLoadRequest
 import io.github.joyelliot.zivplayer.core.player.runtime.BackendSeekRequest
@@ -322,7 +323,8 @@ class LibmpvBackend internal constructor(
         try {
             withPlayer { player ->
                 player.command(
-                    arrayOf(COMMAND_SEEK, request.position.toSecondsString(), SEEK_ABSOLUTE_EXACT),
+                    arrayOf(COMMAND_SEEK, request.position.toSecondsString(),
+                        if (request.precision == SeekPrecision.KEYFRAME) SEEK_ABSOLUTE_KEYFRAME else SEEK_ABSOLUTE_EXACT),
                 )
             }
         } catch (failure: Throwable) {
@@ -777,6 +779,7 @@ class LibmpvBackend internal constructor(
         const val LOAD_REPLACE = "replace"
         const val NO_PLAYLIST_INDEX = "-1"
         const val SEEK_ABSOLUTE_EXACT = "absolute+exact"
+        const val SEEK_ABSOLUTE_KEYFRAME = "absolute+keyframes"
         const val OPTION_START = "start"
         const val OPTION_CONFIG = "config"
         const val OPTION_FORCE_WINDOW = "force-window"

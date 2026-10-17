@@ -11,6 +11,7 @@ import io.github.joyelliot.zivplayer.core.model.TrackKind
 import io.github.joyelliot.zivplayer.core.model.VolumePercent
 import io.github.joyelliot.zivplayer.core.player.PlayerCapabilities
 import io.github.joyelliot.zivplayer.core.player.PlayerError
+import io.github.joyelliot.zivplayer.core.player.SeekPrecision
 import io.github.joyelliot.zivplayer.core.player.TrackSnapshot
 import kotlinx.coroutines.flow.Flow
 
@@ -38,6 +39,7 @@ data class BackendSeekRequest(
     val generation: LoadGeneration,
     val seekGeneration: SeekGeneration,
     val position: Milliseconds,
+    val precision: SeekPrecision = SeekPrecision.EXACT,
 )
 
 sealed interface BackendEvent {

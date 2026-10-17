@@ -522,6 +522,59 @@ class DefaultPlayerSessionTest {
     }
 
     @Test
+    fun scrubStormKeepsOnePendingTargetAndRefinesIdenticalReleaseWithoutPausing() = runTest {
+        for (playing in listOf(false, true)) {
+            val backend = FakeBackend()
+            val session = newSession(backend)
+            runCurrent()
+            dispatch(session, PlayerCommand.SetQueue(items(), playWhenReady = playing))
+            val generation = backend.loads.single().generation
+            backend.emit(BackendEvent.Prepared(generation, Milliseconds(20_000), capabilities = allCapabilities()))
+            runCurrent()
+            val pauses = backend.pauseCount
+            repeat(1_000) { offset ->
+                dispatch(session, PlayerCommand.SeekTo(Milliseconds(5_000L + offset),
+                    io.github.joyelliot.zivplayer.core.player.SeekPrecision.KEYFRAME))
+            }
+            dispatch(session, PlayerCommand.SeekTo(Milliseconds(5_999)))
+            assertEquals(1, backend.seekRequests.size)
+            val first = backend.seekRequests.single()
+            backend.emit(BackendEvent.SeekCompleted(generation, first.seekGeneration, Milliseconds(5_999)))
+            runCurrent()
+            val final = backend.seekRequests.last()
+            assertEquals(2, backend.seekRequests.size)
+            assertEquals(Milliseconds(5_999), final.position)
+            assertEquals(io.github.joyelliot.zivplayer.core.player.SeekPrecision.EXACT, final.precision)
+            backend.emit(BackendEvent.SeekCompleted(generation, final.seekGeneration, Milliseconds(5_999)))
+            runCurrent()
+            assertEquals(playing, session.snapshot.value.playWhenReady)
+            assertEquals(pauses, backend.pauseCount)
+            close(session)
+        }
+    }
+
+    @Test
+    fun completedPreviewStillAllowsExactSeekAtTheSameTimestamp() = runTest {
+        val backend = FakeBackend()
+        val session = newSession(backend)
+        runCurrent()
+        dispatch(session, PlayerCommand.SetQueue(items()))
+        val generation = backend.loads.single().generation
+        backend.emit(BackendEvent.Prepared(generation, Milliseconds(20_000), capabilities = allCapabilities()))
+        runCurrent()
+        dispatch(session, PlayerCommand.SeekTo(Milliseconds(5_000),
+            io.github.joyelliot.zivplayer.core.player.SeekPrecision.KEYFRAME))
+        backend.emit(BackendEvent.SeekCompleted(generation, backend.seekRequests.single().seekGeneration,
+            Milliseconds(5_000)))
+        runCurrent()
+        dispatch(session, PlayerCommand.SeekTo(Milliseconds(5_000)))
+        assertEquals(2, backend.seekRequests.size)
+        assertEquals(io.github.joyelliot.zivplayer.core.player.SeekPrecision.EXACT,
+            backend.seekRequests.last().precision)
+        close(session)
+    }
+
+    @Test
     fun endedArrivingAfterPauseHonorsTheLatestPauseIntent() = runTest {
         val backend = FakeBackend()
         val session = newSession(backend)

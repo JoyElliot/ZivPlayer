@@ -22,6 +22,7 @@ import io.github.joyelliot.zivplayer.core.player.PlayerErrorKind
 import io.github.joyelliot.zivplayer.core.player.PlayerSession
 import io.github.joyelliot.zivplayer.core.player.PlayerStatus
 import io.github.joyelliot.zivplayer.core.player.RepeatMode
+import io.github.joyelliot.zivplayer.core.player.SeekPrecision
 import io.github.joyelliot.zivplayer.core.player.StateChangeCause
 import io.github.joyelliot.zivplayer.core.player.TrackSnapshot
 import kotlinx.coroutines.CompletableDeferred
@@ -102,7 +103,8 @@ class DefaultPlayerSession(
     private var nextEventSequence = 0L
     private var statusBeforeBuffering: PlayerStatus? = null
     private var inFlightSeek: BackendSeekRequest? = null
-    private var queuedSeekPosition: Milliseconds? = null
+    private var queuedSeek: PlayerCommand.SeekTo? = null
+    private var lastSeekPrecision = SeekPrecision.EXACT
     private var completedSeekGeneration: SeekGeneration? = null
     private var backendCapabilitiesKnown = false
     private var backendEventsFailed = false
@@ -408,7 +410,9 @@ class DefaultPlayerSession(
         if (current.timeline.duration?.let { command.position > it } == true) {
             return reject("Seek position must not exceed the known duration.")
         }
-        if (command.position == current.timeline.position) {
+        if (inFlightSeek == null && command.position == current.timeline.position &&
+            (command.precision == SeekPrecision.KEYFRAME || lastSeekPrecision == SeekPrecision.EXACT)
+        ) {
             return accepted(changed = false)
         }
 
@@ -425,7 +429,7 @@ class DefaultPlayerSession(
         }
 
         if (inFlightSeek != null) {
-            queuedSeekPosition = command.position
+            queuedSeek = command
             publish(
                 current.copy(timeline = current.timeline.copy(position = command.position)),
                 StateChangeCause.COMMAND,
@@ -433,7 +437,7 @@ class DefaultPlayerSession(
             return accepted(changed = true)
         }
 
-        val error = startSeek(command.position)
+        val error = startSeek(command)
         if (error != null) {
             enterError(error, StateChangeCause.COMMAND)
             return CommandResult.Failed(mutableSnapshot.value.revision, error)
@@ -828,11 +832,12 @@ class DefaultPlayerSession(
             return
         }
 
-        val queuedPosition = queuedSeekPosition
-        if (queuedPosition != null && queuedPosition != event.position) {
+        val queued = queuedSeek
+        // Even an identical timestamp must refine a keyframe preview on release.
+        if (queued != null && (queued.position != event.position || queued.precision != pending.precision)) {
             inFlightSeek = null
-            queuedSeekPosition = null
-            val error = startSeek(queuedPosition)
+            queuedSeek = null
+            val error = startSeek(queued)
             if (error != null) {
                 enterError(error)
             }
@@ -840,7 +845,7 @@ class DefaultPlayerSession(
         }
 
         inFlightSeek = null
-        queuedSeekPosition = null
+        queuedSeek = null
         completedSeekGeneration = event.seekGeneration
         val current = mutableSnapshot.value
         publish(
@@ -856,14 +861,16 @@ class DefaultPlayerSession(
         )
     }
 
-    private suspend fun startSeek(position: Milliseconds): PlayerError? {
+    private suspend fun startSeek(command: PlayerCommand.SeekTo): PlayerError? {
         val generation = activeGeneration ?: return backendOperationError("seek without active media")
         val request = BackendSeekRequest(
             generation = generation,
             seekGeneration = nextSeekGeneration(),
-            position = position,
+            position = command.position,
+            precision = command.precision,
         )
         inFlightSeek = request
+        lastSeekPrecision = command.precision
         val error = callBackend("seek") { seekTo(request) }
         if (error != null) {
             inFlightSeek = null
@@ -1352,7 +1359,8 @@ class DefaultPlayerSession(
 
     private fun resetSeekState() {
         inFlightSeek = null
-        queuedSeekPosition = null
+        queuedSeek = null
+        lastSeekPrecision = SeekPrecision.EXACT
         completedSeekGeneration = null
     }
 
