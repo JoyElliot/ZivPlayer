@@ -165,6 +165,7 @@ class PlaybackService : MediaSessionService() {
                     .add(SessionCommand(VideoSurfaceRequestContract.ACTION_RESIZE, Bundle.EMPTY))
                     .add(SessionCommand(PlaybackDiagnosticsContract.ACTION_READ, Bundle.EMPTY))
                     .add(SessionCommand(TemporarySpeedContract.ACTION, Bundle.EMPTY))
+                    .add(SessionCommand(ScrubSeekContract.ACTION, Bundle.EMPTY))
             }
             // Media3 1.11's deprecated default callback returns an empty command set.
             // This is the connection's static ceiling; the player's current capabilities
@@ -195,11 +196,18 @@ class PlaybackService : MediaSessionService() {
             if (customCommand.customAction != SubtitleRequestContract.ACTION_ADD &&
                 customCommand.customAction != VideoSurfaceRequestContract.ACTION_RESIZE &&
                 customCommand.customAction != TemporarySpeedContract.ACTION &&
+                customCommand.customAction != ScrubSeekContract.ACTION &&
                 customCommand.customAction != PlaybackDiagnosticsContract.ACTION_READ) {
                 return super.onCustomCommand(session, controller, customCommand, args)
             }
             if (controller.uid != Process.myUid()) {
                 return Futures.immediateFuture(SessionResult(SessionError.ERROR_PERMISSION_DENIED))
+            }
+            if (customCommand.customAction == ScrubSeekContract.ACTION) {
+                val owned = player ?: return Futures.immediateFuture(SessionResult(SessionError.ERROR_INVALID_STATE))
+                return commandReply(owned.scrubSeek(args.getString(ScrubSeekContract.MEDIA_ID),
+                    args.getLong(ScrubSeekContract.SEQUENCE), args.getInt(ScrubSeekContract.INDEX, -1),
+                    args.getLong(ScrubSeekContract.POSITION, -1L), args.getBoolean(ScrubSeekContract.EXACT, true)))
             }
             if (customCommand.customAction == TemporarySpeedContract.ACTION) {
                 val owned = player ?: return Futures.immediateFuture(SessionResult(SessionError.ERROR_INVALID_STATE))

@@ -168,6 +168,8 @@ class MainActivity : ComponentActivity() {
                     playbackController.stop()
                 },
                 onSeekTo = { position -> mediaSelection.cancelPendingPlayback(); playbackController.seekTo(position) },
+                onSeekPreviewTo = playbackController::previewSeekTo,
+                onSeekPreviewFinished = playbackController::finishSeekPreview,
                 onPlaybackSpeedChange = playbackController::setPlaybackSpeed,
                 onVolumeChange = playbackController::setVolume,
                 brightness = playbackBrightness ?: systemBrightness,

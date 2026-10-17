@@ -583,6 +583,18 @@ internal class MpvSessionPlayer(
         } }
     }
 
+    internal fun scrubSeek(mediaId: String?, sequence: Long, index: Int, positionMs: Long,
+        exact: Boolean): ListenableFuture<*> = enqueueQueueOperation { launchFuture {
+        require(positionMs >= 0 && sequence > 0 && !mediaId.isNullOrBlank()) { "Invalid scrub target." }
+        val current = engine.session.snapshot.value
+        if (current.queue.currentItem?.media?.id?.value != mediaId || current.queue.currentIndex != index ||
+            activeMediaItem?.mediaMetadata?.extras?.getLong(PlaybackRequestMetadata.SEQUENCE_EXTRA) != sequence) return@launchFuture
+        val target = current.timeline.duration?.value?.let { positionMs.coerceAtMost(it) } ?: positionMs
+        dispatchOrThrow(PlayerCommand.SeekTo(Milliseconds(target),
+            if (exact) io.github.joyelliot.zivplayer.core.player.SeekPrecision.EXACT
+            else io.github.joyelliot.zivplayer.core.player.SeekPrecision.KEYFRAME))
+    } }
+
     override fun handleSeek(
         mediaItemIndex: Int,
         positionMs: Long,

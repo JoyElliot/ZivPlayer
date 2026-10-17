@@ -8,6 +8,7 @@ import android.app.Application
 import android.content.ComponentName
 import android.os.Looper
 import android.os.Bundle
+import android.os.SystemClock
 import android.net.Uri
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
@@ -34,6 +35,7 @@ import io.github.joyelliot.zivplayer.platform.playback.SubtitleRequestContract
 import io.github.joyelliot.zivplayer.platform.playback.PlaybackService
 import io.github.joyelliot.zivplayer.platform.playback.PlaybackDiagnosticsContract
 import io.github.joyelliot.zivplayer.platform.playback.TemporarySpeedContract
+import io.github.joyelliot.zivplayer.platform.playback.ScrubSeekContract
 import io.github.joyelliot.zivplayer.core.model.PlaybackDiagnostics
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -67,6 +69,9 @@ class PlaybackControllerViewModel(
     private var reconnectJob: Job? = null
     private var reconnectAttempt = 0
     private var positionTickerJob: Job? = null
+    private val scrubQueue = ConflatedSeekQueue<SpeedPlaybackIdentity>()
+    private var scrubWakeup: Job? = null
+    private var lastScrubTarget: ScrubTarget<SpeedPlaybackIdentity>? = null
     private var cleared = false
     private val temporarySpeed = TemporaryPlaybackSpeed()
     private var lastCompletedMediaId: String? = null
@@ -151,10 +156,60 @@ class PlaybackControllerViewModel(
         }
     }
 
-    fun seekTo(positionMs: Long) =
-        withControllerCommand(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM) { active ->
-            active.seekTo(positionMs.coerceAtLeast(0L))
+    fun seekTo(positionMs: Long) { lastScrubTarget = null; requestSeek(positionMs, exact = true) }
+
+    fun previewSeekTo(positionMs: Long) { requestSeek(positionMs, exact = false) }
+
+    fun finishSeekPreview() {
+        val target = lastScrubTarget ?: return
+        lastScrubTarget = null
+        if (mutableController.value?.let(::speedIdentity) == target.identity) requestSeek(target.positionMs, exact = true)
+    }
+
+    private fun requestSeek(positionMs: Long, exact: Boolean) {
+        val active = mutableController.value ?: return
+        if (!active.isConnected || !active.isCommandAvailable(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)) return
+        val identity = speedIdentity(active) ?: return
+        val command = SessionCommand(ScrubSeekContract.ACTION, Bundle.EMPTY)
+        if (!active.isSessionCommandAvailable(command)) {
+            if (exact) active.seekTo(positionMs.coerceAtLeast(0L))
+            return
         }
+        val target = ScrubTarget(identity, positionMs.coerceAtLeast(0L), exact)
+        if (!exact) lastScrubTarget = target
+        scrubQueue.offer(target)
+        scheduleScrubSeek()
+    }
+
+    private fun scheduleScrubSeek() {
+        scrubWakeup?.cancel()
+        val wait = scrubQueue.delayUntilReady(SystemClock.uptimeMillis()) ?: return
+        scrubWakeup = viewModelScope.launch {
+            if (wait > 0) delay(wait)
+            val target = scrubQueue.take(SystemClock.uptimeMillis()) ?: return@launch
+            val active = mutableController.value
+            if (active == null || speedIdentity(active) != target.identity) {
+                scrubQueue.complete()
+                return@launch
+            }
+            val operation = active.sendCustomCommand(SessionCommand(ScrubSeekContract.ACTION, Bundle.EMPTY), Bundle().apply {
+                putString(ScrubSeekContract.MEDIA_ID, target.identity.mediaId)
+                putLong(ScrubSeekContract.SEQUENCE, target.identity.sequence)
+                putInt(ScrubSeekContract.INDEX, target.identity.index)
+                putLong(ScrubSeekContract.POSITION, target.positionMs)
+                putBoolean(ScrubSeekContract.EXACT, target.exact)
+            })
+            operation.addListener({
+                // A disconnected controller's late reply cannot complete a new connection's RPC.
+                if (mutableController.value !== active || connectionGeneration != target.identity.connection) return@addListener
+                val result = runCatching { operation.get() }.getOrNull()
+                if (result?.resultCode != SessionResult.RESULT_SUCCESS)
+                    android.util.Log.w("ZivSeek", "Scrub request was not accepted: ${result?.resultCode}")
+                scrubQueue.complete()
+                if (!cleared) scheduleScrubSeek()
+            }, mainExecutor)
+        }
+    }
 
     fun setPlaybackSpeed(speed: Float) =
         withControllerCommand(Player.COMMAND_SET_SPEED_AND_PITCH) { active ->
@@ -386,7 +441,13 @@ class PlaybackControllerViewModel(
                     handleDisconnected(connectedController, generation)
                     break
                 }
-                refreshState(connectedController)
+                // Position sampling must not rebuild every queue item and track on each tick.
+                val current = mutablePlayerState.value
+                val position = connectedController.currentPosition.coerceAtLeast(0L)
+                mutablePlayerState.value = current.copy(
+                    positionMs = current.durationMs?.let { position.coerceAtMost(it) } ?: position,
+                    bufferedPositionMs = connectedController.bufferedPosition.knownTime(),
+                )
                 delay(POSITION_REFRESH_INTERVAL_MS)
             }
         }
@@ -539,6 +600,9 @@ class PlaybackControllerViewModel(
         )
 
     private fun detachConnectedController(controller: MediaController) {
+        scrubWakeup?.cancel()
+        scrubQueue.reset()
+        lastScrubTarget = null
         positionTickerJob?.cancel()
         positionTickerJob = null
         controller.removeListener(playerListener)
@@ -554,6 +618,8 @@ class PlaybackControllerViewModel(
     }
 
     override fun onCleared() {
+        scrubWakeup?.cancel()
+        scrubQueue.clearPending()
         cancelTemporarySpeed()
         cleared = true
         diagnosticsJob?.cancel()

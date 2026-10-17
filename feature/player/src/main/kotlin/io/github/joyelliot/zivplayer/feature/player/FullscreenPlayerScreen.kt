@@ -51,6 +51,8 @@ fun FullscreenPlayerScreen(
     statusMessage: String? = null,
     exitDescription: String? = null,
     modifier: Modifier = Modifier,
+    onSeekPreviewTo: (Long) -> Unit = {},
+    onSeekPreviewFinished: () -> Unit = {},
 ) {
     var controlsVisible by remember(state.playbackIdentity) { mutableStateOf(true) }
     var menuPage by remember(state.playbackIdentity) { mutableStateOf<PlayerQuickPage?>(null) }
@@ -64,6 +66,17 @@ fun FullscreenPlayerScreen(
     var levelPreview by remember(state.playbackIdentity) { mutableStateOf<Pair<Boolean, Float>?>(null) }
     var doubleTapDelta by remember(state.playbackIdentity) { mutableStateOf<Long?>(null) }
     var doubleTapRevision by remember(state.playbackIdentity) { mutableIntStateOf(0) }
+    var showBuffering by remember { mutableStateOf(false) }
+    val finishPreview by rememberUpdatedState(onSeekPreviewFinished)
+    DisposableEffect(state.playbackIdentity) { onDispose { finishPreview() } }
+    LaunchedEffect(state.playbackStatus, gestureActive, sliderPosition != null) {
+        showBuffering = false
+        if (state.playbackStatus in listOf(PlayerPlaybackStatus.LOADING, PlayerPlaybackStatus.BUFFERING) &&
+            !gestureActive && sliderPosition == null) {
+            delay(350)
+            showBuffering = true
+        }
+    }
     fun reveal() { controlsVisible = true; interactionRevision++ }
     fun openMenu(page: PlayerQuickPage) { reveal(); menuPage = page }
 
@@ -102,7 +115,8 @@ fun FullscreenPlayerScreen(
                 onToggleControls = { controlsVisible = !controlsVisible; interactionRevision++ }, onPlayPause = onPlayPause,
                 onSeekTo = onSeekTo, onBeginTemporarySpeed = onBeginTemporarySpeed,
                 onTemporarySpeedChange = onTemporarySpeedChange, onEndTemporarySpeed = onEndTemporarySpeed,
-                onSeekPreview = { seekPreview = it }, onSpeedPreview = { speedPreview = it },
+                onSeekPreview = { seekPreview = it; if (it != null) onSeekPreviewTo(it) else onSeekPreviewFinished() },
+                onSpeedPreview = { speedPreview = it },
                 onGestureActive = { gestureActive = it; if (!it) interactionRevision++ },
                 brightness = brightness, onBrightnessChange = onBrightnessChange, onVolumeChange = onVolumeChange,
                 onLevelPreview = { left, value -> levelPreview = value?.let { left to it } },
@@ -142,7 +156,11 @@ fun FullscreenPlayerScreen(
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         ZivPlaybackText(elapsed, Modifier.widthIn(min = 42.dp), compact = true, maxLines = 1)
                         key(state.playbackIdentity) {
-                            ZivPlaybackSlider(fraction, { sliderPosition = it; reveal() }, {
+                            ZivPlaybackSlider(fraction, {
+                                sliderPosition = it
+                                if (duration != null) onSeekPreviewTo((it * duration).toLong().coerceIn(0L, duration))
+                                reveal()
+                            }, {
                                 val progress = sliderPosition
                                 sliderPosition = null
                                 if (progress != null && duration != null) onSeekTo((progress * duration).toLong().coerceIn(0L, duration))
@@ -150,7 +168,7 @@ fun FullscreenPlayerScreen(
                             }, Modifier.weight(1f).padding(horizontal = 8.dp), state.canSeek && duration != null,
                                 bufferedValue = if (duration != null) ((state.bufferedPositionMs ?: state.positionMs).toFloat() / duration).coerceIn(0f, 1f) else 0f,
                                 description = stringResource(R.string.player_timeline_description, elapsed, total),
-                                onCancel = { sliderPosition = null })
+                                onCancel = { sliderPosition = null; onSeekPreviewFinished() })
                         }
                         ZivPlaybackText(total, Modifier.widthIn(min = 42.dp), compact = true, maxLines = 1,
                             textAlign = androidx.compose.ui.text.style.TextAlign.End)
@@ -203,7 +221,7 @@ fun FullscreenPlayerScreen(
                     ZivPlaybackText(stringResource(if (delta < 0) R.string.player_rewind_five else R.string.player_forward_five))
                 }
             }
-            if (state.playbackStatus == PlayerPlaybackStatus.LOADING || state.playbackStatus == PlayerPlaybackStatus.BUFFERING) {
+            if (showBuffering) {
                 Box(Modifier.align(Alignment.Center)) { ZivLoadingIndicator() }
             }
             state.errorMessage?.let { ZivPlaybackText(it, Modifier.align(Alignment.Center).padding(32.dp)) }

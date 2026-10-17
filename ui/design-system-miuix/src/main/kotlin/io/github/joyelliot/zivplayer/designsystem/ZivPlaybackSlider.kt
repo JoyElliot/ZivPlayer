@@ -51,8 +51,10 @@ fun ZivPlaybackSlider(
         if (!enabled) return@pointerInput
         awaitEachGesture {
             var committed = false
+            var started = false
             try {
                 val down = awaitFirstDown()
+                started = true
                 down.consume()
                 dragging = true
                 val inset = 8.dp.toPx()
@@ -68,7 +70,7 @@ fun ZivPlaybackSlider(
                 }
             } finally {
                 dragging = false
-                if (!committed) cancel()
+                if (started && !committed) cancel()
             }
         }
     }) {
