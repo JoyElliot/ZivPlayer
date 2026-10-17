@@ -28,6 +28,8 @@ import io.github.joyelliot.zivplayer.data.media.toDiagnosticJson
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -51,6 +53,9 @@ class MainActivity : ComponentActivity() {
     private var systemBrightness by mutableFloatStateOf(0.5f)
     private var originalWindowBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
     private var pipEntryPending = false
+    private var pipTransitioning by mutableStateOf(false)
+    private var videoBounds: android.graphics.Rect? = null
+    private var stoppedPlaybackCheck: Job? = null
     private var started by mutableStateOf(false)
     private var windowFocused by mutableStateOf(false)
     private var diagnosticsPageVisible = false
@@ -119,9 +124,20 @@ class MainActivity : ComponentActivity() {
                 onEndTemporarySpeed = playbackController::endTemporarySpeed,
                 fullscreen = fullscreen,
                 pictureInPicture = inPictureInPicture,
+                pictureInPictureTransition = pipTransitioning,
+                onVideoBounds = { bounds ->
+                    if (!inPictureInPicture && videoBounds != bounds && bounds.width() > 0 && bounds.height() > 0) {
+                        videoBounds = android.graphics.Rect(bounds)
+                        updatePipParameters()
+                    }
+                },
                 onFullscreenChange = ::changeFullscreen,
                 onEnterPictureInPicture = { enterPip(showFailure = true) },
-                onPlayerVisibilityChange = { playerVisible = it },
+                onPlayerVisibilityChange = {
+                    playerVisible = it
+                    // Lock the current window only; the video and controls rotate inside it.
+                    requestedOrientation = if (it) ActivityInfo.SCREEN_ORIENTATION_LOCKED else ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                },
                 diagnostics = playbackController.diagnostics.value,
                 diagnosticsMessage = playbackController.diagnosticsMessage.value,
                 configurationMessage = playbackController.configurationMessage.value,
@@ -194,7 +210,6 @@ class MainActivity : ComponentActivity() {
     private fun changeFullscreen(value: Boolean) {
         playbackController.cancelTemporarySpeed()
         fullscreen = value
-        requestedOrientation = if (value) ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE else ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
     }
 
     private fun pipSupported() = packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
@@ -207,10 +222,9 @@ class MainActivity : ComponentActivity() {
             PendingIntent.getBroadcast(this, 1, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
         val ratio = state.videoAspectRatio.coerceIn(0.42f, 2.38f)
         return PictureInPictureParams.Builder().setAspectRatio(Rational((ratio * 10_000).roundToInt(), 10_000)).setActions(listOf(action)).apply {
-            if (Build.VERSION.SDK_INT >= 31) {
-                setAutoEnterEnabled(settings.loaded.value && settings.preferences.value.autoPictureInPicture && playerVisible && state.hasVideo && state.canRenderVideo && state.playWhenReady)
-                setSeamlessResizeEnabled(true)
-            }
+            videoBounds?.let(::setSourceRectHint)
+            setAutoEnterEnabled(settings.loaded.value && settings.preferences.value.autoPictureInPicture && playerVisible && state.hasVideo && state.canRenderVideo && state.playWhenReady)
+            setSeamlessResizeEnabled(true)
         }.build()
     }
 
@@ -220,22 +234,42 @@ class MainActivity : ComponentActivity() {
 
     private fun enterPip(showFailure: Boolean) {
         if (inPictureInPicture) return
+        pipEntryPending = true
+        pipTransitioning = true
         val accepted = pipSupported() && playbackController.playerState.value.hasVideo && playbackController.playerState.value.canRenderVideo &&
             runCatching { enterPictureInPictureMode(pipParameters()) }.getOrDefault(false)
         pipEntryPending = accepted
+        if (!accepted) pipTransitioning = false
         if (!accepted && showFailure) Toast.makeText(this, R.string.app_pip_unavailable, Toast.LENGTH_SHORT).show()
     }
 
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
-        if (Build.VERSION.SDK_INT < 31 && settings.loaded.value && settings.preferences.value.autoPictureInPicture &&
-            playerVisible && playbackController.playerState.value.playWhenReady) enterPip(showFailure = false)
+        if (settings.loaded.value && settings.preferences.value.autoPictureInPicture && playerVisible &&
+            playbackController.playerState.value.let { it.playWhenReady && it.hasVideo && it.canRenderVideo }) {
+            pipEntryPending = true
+            pipTransitioning = true
+            lifecycleScope.launch {
+                delay(1_200)
+                if (started && !inPictureInPicture) { pipEntryPending = false; pipTransitioning = false }
+            }
+        }
+    }
+
+    override fun onPictureInPictureUiStateChanged(pipState: android.app.PictureInPictureUiState) {
+        super.onPictureInPictureUiStateChanged(pipState)
+        if (Build.VERSION.SDK_INT >= 35 && pipState.isTransitioningToPip) {
+            pipEntryPending = true
+            pipTransitioning = true
+        }
     }
 
     override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
         inPictureInPicture = isInPictureInPictureMode
         pipEntryPending = false
+        pipTransitioning = false
+        if (!isInPictureInPictureMode && !started) checkStoppedPlayback()
     }
 
     override fun onStop() {
@@ -244,10 +278,21 @@ class MainActivity : ComponentActivity() {
         playbackController.cancelTemporarySpeed()
         started = false
         playbackController.setDiagnosticsVisible(false)
-        if (!isChangingConfigurations && !isInPictureInPictureMode && !pipEntryPending &&
-            (!settings.loaded.value || !settings.preferences.value.backgroundPlayback)) {
-            mediaSelection.cancelPendingPlayback()
-            playbackController.pause()
+        checkStoppedPlayback()
+    }
+
+    private fun checkStoppedPlayback() {
+        stoppedPlaybackCheck?.cancel()
+        if (isChangingConfigurations || isInPictureInPictureMode) return
+        stoppedPlaybackCheck = lifecycleScope.launch {
+            if (pipEntryPending) delay(1_200)
+            if (!started && !isInPictureInPictureMode && !isChangingConfigurations &&
+                (!settings.loaded.value || !settings.preferences.value.backgroundPlayback)) {
+                pipEntryPending = false
+                pipTransitioning = false
+                mediaSelection.cancelPendingPlayback()
+                playbackController.pause()
+            }
         }
     }
 
@@ -255,7 +300,9 @@ class MainActivity : ComponentActivity() {
         super.onStart()
         playbackController.setVolumeUiActive(true)
         started = true
+        stoppedPlaybackCheck?.cancel()
         pipEntryPending = false
+        pipTransitioning = false
         playbackController.setDiagnosticsVisible(diagnosticsPageVisible)
     }
 

@@ -7,6 +7,10 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -53,6 +57,8 @@ fun FullscreenPlayerScreen(
     modifier: Modifier = Modifier,
     onSeekPreviewTo: (Long) -> Unit = {},
     onSeekPreviewFinished: () -> Unit = {},
+    drawBackground: Boolean = true,
+    contentInsets: WindowInsets = WindowInsets.safeDrawing,
 ) {
     var controlsVisible by remember(state.playbackIdentity) { mutableStateOf(true) }
     var menuPage by remember(state.playbackIdentity) { mutableStateOf<PlayerQuickPage?>(null) }
@@ -79,6 +85,9 @@ fun FullscreenPlayerScreen(
     }
     fun reveal() { controlsVisible = true; interactionRevision++ }
     fun openMenu(page: PlayerQuickPage) { reveal(); menuPage = page }
+    LaunchedEffect(interactionEnabled) {
+        if (interactionEnabled) reveal() else { menuPage = null; locked = false }
+    }
 
     LaunchedEffect(state.playWhenReady, state.playbackStatus, state.errorMessage) {
         if (!state.playWhenReady || state.errorMessage != null || state.playbackStatus == PlayerPlaybackStatus.ENDED) controlsVisible = true
@@ -96,9 +105,9 @@ fun FullscreenPlayerScreen(
         if (locked && unlockVisible) { delay(3_000); unlockVisible = false }
     }
     LaunchedEffect(state.playbackIdentity, doubleTapRevision) { delay(800); doubleTapDelta = null }
-    ZivTheme(appearance = ZivAppearance.DARK) {
-        BoxWithConstraints(modifier.fillMaxSize().background(Color.Black)) {
-            val safeInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal).asPaddingValues()
+    ZivTheme(appearance = ZivAppearance.DARK, applySystemBars = drawBackground) {
+        BoxWithConstraints(modifier.fillMaxSize().then(if (drawBackground) Modifier.background(Color.Black) else Modifier)) {
+            val safeInsets = contentInsets.only(WindowInsetsSides.Horizontal).asPaddingValues()
             val direction = LocalLayoutDirection.current
             val controlsWidth = maxWidth - safeInsets.calculateLeftPadding(direction) - safeInsets.calculateRightPadding(direction) - 40.dp
             val compact = controlsWidth < 480.dp
@@ -122,10 +131,12 @@ fun FullscreenPlayerScreen(
                 onLevelPreview = { left, value -> levelPreview = value?.let { left to it } },
                 onDoubleTapSeek = { doubleTapDelta = it; doubleTapRevision++; interactionRevision++ },
                 modifier = Modifier.matchParentSize())
-            if (controlsVisible && !locked && !gestureActive && menuPage == null && !queueVisible) {
+            AnimatedVisibility(controlsVisible && !locked && !gestureActive && menuPage == null && !queueVisible,
+                Modifier.matchParentSize(), enter = fadeIn(tween(160)), exit = fadeOut(tween(120))) {
+              Box(Modifier.fillMaxSize()) {
                 Row(Modifier.align(Alignment.TopCenter).fillMaxWidth()
                     .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.6f), Color.Transparent)))
-                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
+                    .windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
                     .padding(start = 6.dp, end = 10.dp, top = 4.dp, bottom = 14.dp),
                     verticalAlignment = Alignment.CenterVertically) {
                     ZivPlaybackIconButton(ZivPlaybackIcon.BACK, exitDescription ?: stringResource(R.string.player_exit_fullscreen), onExit)
@@ -146,7 +157,7 @@ fun FullscreenPlayerScreen(
                 }
                 Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()
                     .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f))))
-                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))
+                    .windowInsetsPadding(contentInsets.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))
                     .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 4.dp)) {
                     val duration = state.durationMs?.takeIf { it > 0L }
                     val fraction = sliderPosition ?: state.timelineProgress
@@ -158,7 +169,6 @@ fun FullscreenPlayerScreen(
                         key(state.playbackIdentity) {
                             ZivPlaybackSlider(fraction, {
                                 sliderPosition = it
-                                if (duration != null) onSeekPreviewTo((it * duration).toLong().coerceIn(0L, duration))
                                 reveal()
                             }, {
                                 val progress = sliderPosition
@@ -168,7 +178,10 @@ fun FullscreenPlayerScreen(
                             }, Modifier.weight(1f).padding(horizontal = 8.dp), state.canSeek && duration != null,
                                 bufferedValue = if (duration != null) ((state.bufferedPositionMs ?: state.positionMs).toFloat() / duration).coerceIn(0f, 1f) else 0f,
                                 description = stringResource(R.string.player_timeline_description, elapsed, total),
-                                onCancel = { sliderPosition = null; onSeekPreviewFinished() })
+                                onCancel = { sliderPosition = null; onSeekPreviewFinished() },
+                                onDragValueChange = {
+                                    if (duration != null) onSeekPreviewTo((it * duration).toLong().coerceIn(0L, duration))
+                                })
                         }
                         ZivPlaybackText(total, Modifier.widthIn(min = 42.dp), compact = true, maxLines = 1,
                             textAlign = androidx.compose.ui.text.style.TextAlign.End)
@@ -197,10 +210,11 @@ fun FullscreenPlayerScreen(
                     }
                 }
             }
+              }
             if (locked) {
                 Box(Modifier.matchParentSize().pointerInput(Unit) { detectTapGestures { unlockVisible = true; interactionRevision++ } })
                 if (unlockVisible) Row(Modifier.align(Alignment.BottomStart)
-                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Start))
+                    .windowInsetsPadding(contentInsets.only(WindowInsetsSides.Bottom + WindowInsetsSides.Start))
                     .padding(start = 20.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     ZivPlaybackIconButton(ZivPlaybackIcon.LOCK, stringResource(R.string.player_unlock_controls), { locked = false; reveal() })
                 }
@@ -228,11 +242,14 @@ fun FullscreenPlayerScreen(
             if (controlsVisible && !locked) statusMessage?.let {
                 ZivPlaybackText(it, Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 68.dp, start = 24.dp, end = 24.dp))
             }
-            menuPage?.let { page ->
+            AnimatedVisibility(menuPage != null && interactionEnabled, Modifier.matchParentSize(),
+                enter = fadeIn(tween(160)), exit = fadeOut(tween(120))) {
+                val page = menuPage ?: PlayerQuickPage.MAIN
                 PlayerQuickMenu(state, { menuPage = null; reveal() }, onPlaybackSpeedChange, onVolumeChange,
                     onRepeatModeChange, onSelectTrack, onOpenSubtitle, videoOptions, onVideoOptionSelected,
                     initialPage = page, onQueue = { menuPage = null; onQueue() },
-                    onPictureInPicture = onPictureInPicture, onOpenMedia = onOpenMedia, onStop = onStop)
+                    onPictureInPicture = onPictureInPicture, onOpenMedia = onOpenMedia, onStop = onStop,
+                    contentInsets = contentInsets)
             }
         }
     }

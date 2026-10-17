@@ -9,11 +9,18 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateMapOf
@@ -23,6 +30,13 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -105,6 +119,8 @@ fun ZivPlayerApp(
     settings: SettingsViewModel? = null,
     fullscreen: Boolean = false,
     pictureInPicture: Boolean = false,
+    pictureInPictureTransition: Boolean = false,
+    onVideoBounds: (android.graphics.Rect) -> Unit = {},
     onFullscreenChange: (Boolean) -> Unit = {},
     onEnterPictureInPicture: () -> Unit = {},
     onPlayerVisibilityChange: (Boolean) -> Unit = {},
@@ -115,6 +131,11 @@ fun ZivPlayerApp(
     onExportDiagnostics: () -> Unit = {},
 ) {
     var playerOpen by rememberSaveable { mutableStateOf(false) }
+    val presentationScope = rememberCoroutineScope()
+    val presentation = remember { PlayerPresentationState(presentationScope, playerOpen) }
+    var miniFrame by remember { mutableStateOf<VideoFrame?>(null) }
+    val rotation by animateFloatAsState(if (fullscreen && !pictureInPicture && !pictureInPictureTransition) 90f else 0f,
+        spring(dampingRatio = 1f, stiffness = 360f), label = "player rotation")
     val homePages = rememberHomePagerState()
     val destination = if (playerOpen) AppDestination.PLAYER else homeDestinations[homePages.selectedPage]
     var playerReturnDestination by rememberSaveable { mutableStateOf(AppDestination.VIDEO) }
@@ -123,7 +144,7 @@ fun ZivPlayerApp(
     var showQueue by remember { mutableStateOf(false) }
     var importKind by rememberSaveable { mutableStateOf(PlaybackResourceKind.FONT) }
     val preferences = settings?.preferences?.value ?: PlayerPreferences()
-    val expanded = destination == AppDestination.PLAYER || fullscreen || pictureInPicture
+    val expanded = playerOpen || presentation.progress > 0f || pictureInPicture
     val pageState = rememberSaveableStateHolder()
     val libraryBackHandlers = remember { mutableStateMapOf<AppDestination, (() -> Unit)?>() }
     val libraryBack = libraryBackHandlers[destination]
@@ -135,6 +156,7 @@ fun ZivPlayerApp(
         if (!playerOpen) playerReturnDestination = page
         homePages.snapToPage(homeDestinations.indexOf(playerReturnDestination))
         playerOpen = true
+        presentation.animateTo(true)
     }
     fun openPlayer() = openPlayerFrom(homeDestinations[homePages.selectedPage])
     fun leavePlayer() {
@@ -142,6 +164,7 @@ fun ZivPlayerApp(
         showQueue = false
         homePages.snapToPage(homeDestinations.indexOf(playerReturnDestination))
         playerOpen = false
+        presentation.animateTo(false)
     }
     LaunchedEffect(expanded) {
         if (expanded) {
@@ -152,17 +175,6 @@ fun ZivPlayerApp(
     LaunchedEffect(homePages.selectedPage) {
         focusManager.clearFocus()
     }
-    val renderState = rememberUpdatedState(Triple(controller, playerState.canRenderVideo, expanded))
-    val renderAspectRatio = rememberUpdatedState(playerState.videoAspectRatio)
-    val renderFit = rememberUpdatedState(preferences.options.videoFit)
-    val videoContent = remember {
-        movableContentOf {
-            val (player, canRender, fill) = renderState.value
-            PlayerVideoSurface(player, canRender, if (fill) Modifier.fillMaxSize()
-                else Modifier.fillMaxWidth().aspectRatio(16f / 9f),
-                videoAspectRatio = renderAspectRatio.value, videoFit = renderFit.value)
-        }
-    }
     LaunchedEffect(destination, expanded) { onPlayerVisibilityChange(destination == AppDestination.PLAYER || expanded) }
     LaunchedEffect(destination, showDiagnostics, expanded, homePages.pager.isScrollInProgress, settingsPages.isTransitionRunning) {
         onDiagnosticsVisibilityChange(destination == AppDestination.SETTINGS && showDiagnostics && !expanded && !homePages.pager.isScrollInProgress && !settingsPages.isTransitionRunning)
@@ -170,7 +182,7 @@ fun ZivPlayerApp(
     DisposableEffect(Unit) { onDispose { onDiagnosticsVisibilityChange(false) } }
     BackHandler(enabled = (expanded || !settingsPages.canPop) && (fullscreen || destination != AppDestination.VIDEO || libraryBack != null)) {
         when {
-            fullscreen || destination == AppDestination.PLAYER -> leavePlayer()
+            expanded -> leavePlayer()
             destination in listOf(AppDestination.VIDEO, AppDestination.AUDIO) && libraryBack != null -> libraryBack?.invoke()
             destination != AppDestination.VIDEO -> selectHome(AppDestination.VIDEO)
         }
@@ -274,12 +286,22 @@ fun ZivPlayerApp(
     }
 
     ZivTheme(appearance = ZivAppearance.valueOf(preferences.appearance.name)) {
-        Box(Modifier.fillMaxSize()) {
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val window = IntSize(constraints.maxWidth, constraints.maxHeight)
+            val progress = if (pictureInPicture) 1f else presentation.progress
+            val travel = window.height * 0.65f
+            val anchor = miniFrame ?: VideoFrame(window.width * 0.15f, window.height * 0.85f, 56f, 36f)
+            val frame = presentationFrame(window.width.toFloat(), window.height.toFloat(), playerState.videoAspectRatio,
+                anchor, progress, if (pictureInPicture) 0f else rotation,
+                fill = preferences.options.videoFit == VideoFit.FILL && !pictureInPicture,
+                stretch = preferences.options.videoFit == VideoFit.STRETCH && !pictureInPicture)
+            fun settlePresentation(open: Boolean) {
+                if (open && !playerOpen) playerReturnDestination = homeDestinations[homePages.selectedPage]
+                playerOpen = open
+                if (!open) { onFullscreenChange(false); showQueue = false }
+            }
             Box(Modifier.fillMaxSize()
-                .layout { measurable, constraints ->
-                    val content = measurable.measure(constraints)
-                    layout(content.width, content.height) { if (!expanded) content.place(0, 0) }
-                }
+                .graphicsLayer { alpha = 1f - progress }
                 .then(if (expanded) Modifier.clearAndSetSemantics { } else Modifier)) {
                 ZivPageStack(settingsPages, root = {
                     ZivHomeScaffold(bottomBar = {
@@ -292,7 +314,16 @@ fun ZivPlayerApp(
                             ),
                             selectedIndex = homePages.selectedPage,
                             onSelect = { index -> selectHome(homeDestinations[index]) },
-                            nowPlaying = if (playerState.hasMedia) ({ MiniPlayer(playerState, ::openPlayer, onPlayPause) }) else null,
+                            nowPlaying = if (playerState.hasMedia) ({ MiniPlayer(playerState, ::openPlayer, onPlayPause,
+                                Modifier.playerExpansionDrag(presentation, travel, ::settlePresentation), videoAnchor = {
+                                    Box(Modifier.size(56.dp, 36.dp).onGloballyPositioned { coordinates ->
+                                        // Keep the destination current through window resize and inset changes.
+                                        // The dock reserves stable system-bar insets even while the player hides them.
+                                        val bounds = coordinates.boundsInRoot()
+                                        if (bounds.width > 0 && bounds.height > 0)
+                                            miniFrame = VideoFrame(bounds.center.x, bounds.center.y, bounds.width, bounds.height)
+                                    })
+                                }) }) else null,
                             nowPlayingProgress = playerState.durationMs?.takeIf { it > 0 }?.let { playerState.timelineProgress },
                         )
                     }) { bottomPadding ->
@@ -352,15 +383,32 @@ fun ZivPlayerApp(
                     )
                 })
             }
-            if (pictureInPicture) {
-                Box(Modifier.fillMaxSize().background(Color.Black)) {
-                    videoContent()
-                }
-            } else if (destination == AppDestination.PLAYER || fullscreen) {
-                FullscreenPlayerScreen(playerState, videoContent, ::leavePlayer, onPlayPause, onSeekTo,
+            Box(Modifier.matchParentSize().graphicsLayer { alpha = progress }.background(Color.Black)
+                .then(if (expanded) Modifier.pointerInput(Unit) {
+                    awaitPointerEventScope { while (true) awaitPointerEvent().changes.forEach { it.consume() } }
+                } else Modifier))
+            if (playerState.hasMedia) {
+                PersistentVideoStage(controller, playerState.canRenderVideo, playerState.videoAspectRatio,
+                    window, frame, progress, visible = playerState.hasVideo && (expanded || !settingsPages.canPop), onBounds = onVideoBounds)
+                if (!pictureInPicture && (expanded || !settingsPages.canPop) &&
+                    (progress < 0.999f || presentation.dragging) && playerState.hasVideo)
+                    VideoExpansionTouchTarget(frame, presentation, travel, ::openPlayer, ::settlePresentation)
+            }
+            RotatingPlayerViewport(rotation, Modifier
+                .then(if (progress < 0.999f || pictureInPicture || presentation.dragging) Modifier.clearAndSetSemantics { } else Modifier)
+                .graphicsLayer { alpha = ((progress - 0.65f) / 0.35f).coerceIn(0f, 1f) }
+                .layout { measurable, constraints ->
+                    val content = measurable.measure(constraints)
+                    layout(content.width, content.height) {
+                        if (progress > 0.999f && !presentation.dragging && !pictureInPicture && !pictureInPictureTransition) content.place(0, 0)
+                    }
+                }) {
+                FullscreenPlayerScreen(playerState, {}, ::leavePlayer, onPlayPause, onSeekTo,
                     onPlaybackSpeedChange, onVolumeChange, onRepeatModeChange, onSelectTrack, launchSubtitle,
                     onBeginTemporarySpeed, onTemporarySpeedChange, onEndTemporarySpeed, videoOptions, selectVideoFit,
-                    interactionEnabled = interactionEnabled,
+                    interactionEnabled = interactionEnabled && progress > 0.999f && !presentation.dragging,
+                    drawBackground = false,
+                    contentInsets = playerControlInsets(rotation),
                     onSeekPreviewTo = onSeekPreviewTo, onSeekPreviewFinished = onSeekPreviewFinished,
                     canPrevious = playerState.canPrevious, canNext = playerState.canNext, onPrevious = onPrevious, onNext = onNext,
                     onQueue = { showQueue = true }, queueVisible = showQueue,
@@ -372,9 +420,19 @@ fun ZivPlayerApp(
                     exitDescription = stringResource(if (playerReturnDestination in listOf(AppDestination.VIDEO, AppDestination.AUDIO))
                         io.github.joyelliot.zivplayer.feature.library.R.string.library_back_folders
                     else io.github.joyelliot.zivplayer.feature.player.R.string.player_back))
+                AnimatedVisibility(showQueue && progress > 0.999f && !presentation.dragging && !pictureInPicture && !pictureInPictureTransition,
+                    enter = fadeIn(tween(160)), exit = fadeOut(tween(120))) {
+                    PlayerQueuePanel(playerState, { showQueue = false }, onSelectQueueItem, playerControlInsets(rotation))
+                }
+            }
+            if ((progress > 0.999f && !presentation.dragging || presentation.dragging && presentation.dragSource == "handle") &&
+                !pictureInPicture && !pictureInPictureTransition) {
+                Box(Modifier.align(Alignment.TopCenter).size(72.dp, 22.dp)
+                    .playerExpansionDrag(presentation, travel, ::settlePresentation, source = "handle"), contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(32.dp, 3.dp).background(Color.White.copy(alpha = 0.4f), androidx.compose.foundation.shape.RoundedCornerShape(2.dp)))
+                }
             }
         }
-        if (showQueue && !pictureInPicture) PlayerQueuePanel(playerState, { showQueue = false }, onSelectQueueItem)
     }
 }
 

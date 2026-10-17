@@ -55,12 +55,13 @@ internal fun RecentMediaActions(item: RecentMediaUiItem?, onDismiss: () -> Unit,
 }
 
 @Composable
-fun MiniPlayer(state: PlayerUiState, onOpen: () -> Unit, onPlayPause: () -> Unit) {
+fun MiniPlayer(state: PlayerUiState, onOpen: () -> Unit, onPlayPause: () -> Unit,
+    modifier: Modifier = Modifier, videoAnchor: (@Composable () -> Unit)? = null) {
     if (!state.hasMedia) return
-    ZivMiniPlayerSurface(onClick = onOpen) {
+    ZivMiniPlayerSurface(onClick = onOpen, modifier = modifier) {
         Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("mini_player"),
             verticalAlignment = Alignment.CenterVertically) {
-            MiniPlayerArtwork(state)
+            if (state.hasVideo && videoAnchor != null) videoAnchor() else MiniPlayerArtwork(state)
             Column(Modifier.weight(1f).padding(start = 8.dp, end = 2.dp, top = 4.dp, bottom = 4.dp)) {
                 ZivLibraryText(state.title.orEmpty(), maxLines = 1)
                 ZivLibraryText("${formatPlaybackTime(state.positionMs)} / ${state.durationMs?.let(::formatPlaybackTime) ?: "--:--"}", secondary = true, maxLines = 1)
