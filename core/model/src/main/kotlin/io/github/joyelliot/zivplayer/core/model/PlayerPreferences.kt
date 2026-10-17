@@ -91,4 +91,8 @@ data class PlaybackDiagnostics(
     val audioBitrate: Long? = null,
     val engineVersion: String? = null,
     val ffmpegVersion: String? = null,
+    val videoOutput: String? = null,
+    val audioOutput: String? = null,
+    val hardwareInterop: String? = null,
+    val audioOffloaded: Boolean? = null,
 )

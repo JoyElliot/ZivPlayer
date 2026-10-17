@@ -20,6 +20,10 @@ object PlaybackDiagnosticsContract {
         value.pixelFormat?.let { putString("pixelFormat", it) }
         value.engineVersion?.let { putString("engineVersion", it) }
         value.ffmpegVersion?.let { putString("ffmpegVersion", it) }
+        value.videoOutput?.let { putString("videoOutput", it) }
+        value.audioOutput?.let { putString("audioOutput", it) }
+        value.hardwareInterop?.let { putString("hardwareInterop", it) }
+        value.audioOffloaded?.let { putBoolean("audioOffloaded", it) }
         value.videoWidth?.let { putInt("videoWidth", it) }
         value.videoHeight?.let { putInt("videoHeight", it) }
         value.droppedFrames?.let { putLong("droppedFrames", it) }
@@ -41,6 +45,10 @@ object PlaybackDiagnosticsContract {
         pixelFormat = if (bundle.containsKey("pixelFormat")) bundle.getString("pixelFormat") else null,
         engineVersion = if (bundle.containsKey("engineVersion")) bundle.getString("engineVersion") else null,
         ffmpegVersion = if (bundle.containsKey("ffmpegVersion")) bundle.getString("ffmpegVersion") else null,
+        videoOutput = bundle.getString("videoOutput"),
+        audioOutput = bundle.getString("audioOutput"),
+        hardwareInterop = bundle.getString("hardwareInterop"),
+        audioOffloaded = if (bundle.containsKey("audioOffloaded")) bundle.getBoolean("audioOffloaded") else null,
         videoWidth = if (bundle.containsKey("videoWidth")) bundle.getInt("videoWidth") else null,
         videoHeight = if (bundle.containsKey("videoHeight")) bundle.getInt("videoHeight") else null,
         droppedFrames = if (bundle.containsKey("droppedFrames")) bundle.getLong("droppedFrames") else null,

@@ -31,6 +31,30 @@ import org.junit.Test
 
 class LibmpvBackendTest {
     @Test
+    fun outputDiagnosticsSurviveMediaChangesAndClearWhenNativeOutputDisappears() {
+        val client = FakeMpvClient()
+        val observer = MpvDiagnosticsObserver()
+        observer.start(client)
+        fun update(name: String, value: MpvPropertyValue) {
+            observer.onProperty(MpvPropertyChange(name, MpvPropertyFormat.STRING.rawValue,
+                value, checkNotNull(client.observations[name])))
+        }
+        update("current-vo", MpvPropertyValue.StringValue("gpu-next"))
+        update("current-ao", MpvPropertyValue.StringValue("audiotrack"))
+        update("hwdec-interop", MpvPropertyValue.StringValue("aimagereader"))
+        update("video-codec", MpvPropertyValue.StringValue("h264"))
+        observer.clearMedia()
+        val nextFile = observer.snapshot(null, true)
+        assertEquals("gpu-next", nextFile.videoOutput)
+        assertEquals("audiotrack", nextFile.audioOutput)
+        assertEquals("aimagereader", nextFile.hardwareInterop)
+        assertEquals(null, nextFile.videoCodec)
+        update("current-vo", MpvPropertyValue.Unavailable)
+        assertEquals(null, observer.snapshot(null, true).videoOutput)
+        assertEquals(null, observer.snapshot(null, false).audioOutput)
+    }
+
+    @Test
     fun repeatedSurfaceRedrawPreservesPlaybackAndRejectsTheOldLease() = runBlocking {
         val client = FakeMpvClient()
         val backend = LibmpvBackend(TestContext, MpvClientFactory { client }, { "/test/mpv" })
@@ -45,6 +69,7 @@ class LibmpvBackendTest {
             .invoke(unsafe, Surface::class.java) as Surface
         val old = backend.attachSurface(surface())
         val current = backend.attachSurface(surface())
+        assertEquals("gpu-next", client.strings["vo"])
         client.commands.clear()
         client.stringWrites.clear()
         client.doubleWrites.clear()
@@ -308,6 +333,7 @@ class LibmpvBackendTest {
         var stringFailure: (String, String) -> Boolean = { _, _ -> false }
         var commandHandler: (Array<String>) -> Unit = {}
         val commands = mutableListOf<List<String>>()
+        val observations = mutableMapOf<String, Long>()
 
         override fun addObserver(observer: MpvClient.Observer) {
             check(this.observer == null)
@@ -348,7 +374,7 @@ class LibmpvBackendTest {
             name: String,
             format: MpvPropertyFormat,
             replyUserdata: Long,
-        ) = Unit
+        ) { observations[name] = replyUserdata }
 
         override fun unobserveProperty(replyUserdata: Long): Int = 0
 
