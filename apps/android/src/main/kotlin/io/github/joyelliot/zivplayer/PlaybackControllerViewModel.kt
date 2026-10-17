@@ -105,7 +105,15 @@ class PlaybackControllerViewModel(
 
     private val playerListener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) {
-            refreshState(player)
+            // Position/buffering events are frequent while scrubbing. Only rebuild lists
+            // when their source changes, not for every intermediate decoded frame.
+            refreshState(player,
+                rebuildQueue = events.containsAny(Player.EVENT_TIMELINE_CHANGED,
+                    Player.EVENT_MEDIA_ITEM_TRANSITION, Player.EVENT_MEDIA_METADATA_CHANGED,
+                    Player.EVENT_AVAILABLE_COMMANDS_CHANGED),
+                rebuildTracks = events.containsAny(Player.EVENT_TRACKS_CHANGED,
+                    Player.EVENT_TRACK_SELECTION_PARAMETERS_CHANGED, Player.EVENT_MEDIA_ITEM_TRANSITION,
+                    Player.EVENT_AVAILABLE_COMMANDS_CHANGED))
         }
     }
 
@@ -480,7 +488,7 @@ class PlaybackControllerViewModel(
         scheduleReconnect(generation)
     }
 
-    private fun refreshState(player: Player) {
+    private fun refreshState(player: Player, rebuildQueue: Boolean = true, rebuildTracks: Boolean = true) {
         if (cleared || mutableController.value !== player) return
         temporarySpeed.activeToken?.let { token ->
             if (!temporarySpeed.owns(token, speedIdentity(player))) temporarySpeed.invalidate()
@@ -523,7 +531,7 @@ class PlaybackControllerViewModel(
             mediaId = currentMediaId,
             sourceUri = (currentItem?.localConfiguration?.uri ?: currentItem?.requestMetadata?.mediaUri)?.toString(),
             playbackIdentity = speedIdentity(player)?.toString(),
-            queue = (0 until player.mediaItemCount).map { index ->
+            queue = if (!rebuildQueue) mutablePlayerState.value.queue else (0 until player.mediaItemCount).map { index ->
                 val item = player.getMediaItemAt(index)
                 PlayerQueueUiItem(index, item.mediaMetadata.title.cleanText() ?: item.mediaId,
                     index == player.currentMediaItemIndex)
@@ -561,7 +569,7 @@ class PlaybackControllerViewModel(
             canRenderVideo = player.isCommandAvailable(Player.COMMAND_SET_VIDEO_SURFACE),
             hasVideo = currentItem != null && player.currentTracks.groups.any { it.type == C.TRACK_TYPE_VIDEO && it.length > 0 },
             videoAspectRatio = player.currentTracks.videoDisplayAspectRatio(),
-            tracks = player.currentTracks.groups.mapNotNull { group ->
+            tracks = if (!rebuildTracks) mutablePlayerState.value.tracks else player.currentTracks.groups.mapNotNull { group ->
                 val kind = when (group.type) {
                     C.TRACK_TYPE_AUDIO -> PlayerTrackKind.AUDIO
                     C.TRACK_TYPE_TEXT -> PlayerTrackKind.SUBTITLE
@@ -591,7 +599,7 @@ class PlaybackControllerViewModel(
         val active = mutableController.value ?: return
         if (!active.isConnected || !active.isCommandAvailable(command)) return
         action(active)
-        refreshState(active)
+        refreshState(active, rebuildQueue = false, rebuildTracks = false)
     }
 
     private fun unavailableState(connectionStatus: PlayerConnectionStatus): PlayerUiState =

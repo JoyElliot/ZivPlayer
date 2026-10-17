@@ -6,6 +6,15 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ConflatedSeekQueueTest {
+    @Test fun disconnectedRpcCannotBlockTheNextConnectionAfterReset() {
+        val queue = ConflatedSeekQueue<String>()
+        queue.offer(ScrubTarget("old connection", 100, false))
+        queue.take(0)
+        queue.reset()
+        queue.offer(ScrubTarget("new connection", 200, true))
+        assertEquals(ScrubTarget("new connection", 200, true), queue.take(1))
+    }
+
     @Test fun stormHasOneInFlightAndReleaseWinsWithoutThrottleDelay() {
         val queue = ConflatedSeekQueue<String>()
         queue.offer(ScrubTarget("a", 100, false))
