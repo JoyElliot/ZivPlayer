@@ -21,7 +21,7 @@ import top.yukonga.miuix.kmp.theme.ThemePaletteStyle
 enum class ZivAppearance { SYSTEM, LIGHT, DARK }
 
 @Composable
-fun ZivTheme(appearance: ZivAppearance = ZivAppearance.SYSTEM, content: @Composable () -> Unit) {
+fun ZivTheme(appearance: ZivAppearance = ZivAppearance.SYSTEM, applySystemBars: Boolean = true, content: @Composable () -> Unit) {
     val controller = remember(appearance) { ThemeController(when (appearance) {
         ZivAppearance.SYSTEM -> ColorSchemeMode.MonetSystem
         ZivAppearance.LIGHT -> ColorSchemeMode.MonetLight
@@ -31,7 +31,7 @@ fun ZivTheme(appearance: ZivAppearance = ZivAppearance.SYSTEM, content: @Composa
     MiuixTheme(controller = controller) {
         val view = LocalView.current
         val lightBackground = MiuixTheme.colorScheme.background.luminance() > 0.5f
-        if (!view.isInEditMode) SideEffect {
+        if (applySystemBars && !view.isInEditMode) SideEffect {
             // App-selected appearance can differ from the device's system appearance.
             val mask = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
                 WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS

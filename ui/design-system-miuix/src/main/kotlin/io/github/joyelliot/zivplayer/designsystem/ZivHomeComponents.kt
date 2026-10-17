@@ -8,6 +8,12 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.border
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
@@ -42,11 +48,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.blur.LayerBackdrop
-import top.yukonga.miuix.kmp.blur.blur
-import top.yukonga.miuix.kmp.blur.drawBackdrop
-import io.github.joyelliot.zivplayer.designsystem.liquid.lens
-import io.github.joyelliot.zivplayer.designsystem.liquid.LiquidNavigationMotion
 
 /** Page chrome shared by the library, history and settings. */
 @Composable
@@ -102,78 +103,57 @@ fun ZivLibraryTile(icon: ZivPlaybackIcon, modifier: Modifier = Modifier, cornerR
 
 data class ZivNavigationItem(val label: String, val icon: ZivPlaybackIcon, val testTag: String)
 
-/** Uses the reference navigation's press, drag and refracted icon layers. */
+/** Flat navigation keeps playback and destinations together without sampling the video layer. */
 @Composable
 fun ZivNavigationBar(items: List<ZivNavigationItem>, selectedIndex: Int, onSelect: (Int) -> Unit,
     nowPlaying: (@Composable () -> Unit)? = null, nowPlayingProgress: Float? = null) {
     require(items.isNotEmpty() && selectedIndex in items.indices)
-    val backdrop = LocalHomeBackdrop.current
-    val motion = remember { LiquidNavigationMotion() }
-    val bottomClearance = if (WindowInsets.navigationBars.getBottom(LocalDensity.current) > 0) 10.dp else 26.dp
-    Box(Modifier.fillMaxWidth().testTag("app_playback_dock")) {
-        if (nowPlaying != null) {
-            // An open frame surrounds only the upper half of the original navigation.
-            // Share the navigation width and transform so both sides meet its center line without a gap.
-            Box(Modifier.matchParentSize(), contentAlignment = Alignment.Center) {
-                PlaybackCardBackground(
-                    backdrop, nowPlayingProgress,
-                    Modifier.padding(start = 32.dp, end = 32.dp, top = 8.dp, bottom = bottomClearance + 32.dp)
-                        .widthIn(max = 480.dp).fillMaxWidth().fillMaxHeight()
-                        .graphicsLayer {
-                            val frame = motion.source()
-                            transformOrigin = TransformOrigin(0.5f, 1f)
-                            translationX = frame.offsetPx
-                            scaleX = frame.panelScale
-                            scaleY = frame.panelScale
-                        },
-                )
-            }
-        }
-        // Cancel only the navigation's outer 8 dp top margin, never overlap its hit targets.
-        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy((-8).dp)) {
+    val colors = MiuixTheme.colorScheme
+    Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)
+        .testTag("app_playback_dock"), contentAlignment = Alignment.Center) {
+        Column(Modifier.widthIn(max = 520.dp).fillMaxWidth().clip(RoundedCornerShape(24.dp))
+            .background(colors.surfaceContainer)
+            .border(1.dp, colors.onBackground.copy(alpha = 0.06f), RoundedCornerShape(24.dp))) {
             nowPlaying?.let { content ->
-                Box(Modifier.fillMaxWidth().padding(top = 8.dp), contentAlignment = Alignment.Center) {
-                    Box(Modifier.padding(horizontal = 40.dp).widthIn(max = 464.dp).fillMaxWidth()
-                        .graphicsLayer {
-                            val frame = motion.source()
-                            // Share the navigation's center as the scale pivot, including the 32 dp below this row.
-                            transformOrigin = TransformOrigin(0.5f, 1f + 32.dp.toPx() / size.height.coerceAtLeast(1f))
-                            translationX = frame.offsetPx
-                            scaleX = frame.panelScale
-                            scaleY = frame.panelScale
-                        }) { content() }
+                Box(Modifier.fillMaxWidth().padding(start = 12.dp, end = 8.dp, top = 8.dp, bottom = 4.dp)
+                    .testTag("app_playback_card")) { content() }
+                Canvas(Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(2.dp)) {
+                    drawLine(colors.onBackground.copy(alpha = 0.06f), Offset.Zero,
+                        Offset(size.width, 0f), size.height, StrokeCap.Round)
+                    nowPlayingProgress?.let { progress ->
+                        drawLine(colors.primary, Offset.Zero, Offset(size.width * progress.coerceIn(0f, 1f), 0f),
+                            size.height, StrokeCap.Round)
+                    }
                 }
             }
-            io.github.joyelliot.zivplayer.designsystem.liquid.LiquidGlassNavigationBar(
-                items, selectedIndex, onSelect, backdrop, isBlurActive = backdrop != null, motion = motion,
-            )
+            Row(Modifier.fillMaxWidth().selectableGroup().padding(horizontal = 6.dp, vertical = 6.dp)) {
+                items.forEachIndexed { index, item ->
+                    val selected = index == selectedIndex
+                    val emphasis by animateFloatAsState(if (selected) 1f else 0f,
+                        spring(dampingRatio = 0.85f, stiffness = 500f), label = "navigation emphasis")
+                    Column(Modifier.weight(1f).heightIn(min = 54.dp).clip(RoundedCornerShape(18.dp))
+                        .background(colors.primary.copy(alpha = 0.10f * emphasis))
+                        .selectable(selected, role = Role.Tab, onClick = { onSelect(index) })
+                        .testTag(item.testTag).padding(vertical = 5.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        ZivPlaybackGlyph(item.icon, Modifier.size(23.dp).graphicsLayer {
+                            scaleX = 0.94f + emphasis * 0.06f; scaleY = scaleX
+                        }, color = lerp(colors.onSurfaceVariantSummary, colors.primary, emphasis.coerceIn(0f, 1f)))
+                        Text(item.label, color = if (selected) colors.primary else colors.onSurfaceVariantSummary,
+                            fontSize = 11.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun PlaybackCardBackground(backdrop: LayerBackdrop?, progress: Float?, modifier: Modifier) {
-    val colors = MiuixTheme.colorScheme
-    val dark = colors.background.luminance() < 0.5f
-    val shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
-    Box(modifier.testTag("app_playback_card")
-        .then(if (backdrop != null) Modifier.drawBackdrop(
-            backdrop, shape = { shape },
-            effects = {
-                padding = maxOf(padding, 20.dp.toPx())
-                blur(4.dp.toPx())
-                lens(20.dp.toPx(), 20.dp.toPx())
-            },
-            onDrawSurface = { drawRect(colors.surfaceContainer.copy(alpha = 0.20f)) },
-        ) else Modifier.background(colors.surfaceContainer, shape))) {
-        PlaybackCardRim(progress, dark, Modifier.matchParentSize())
-    }
-}
-
-@Composable
-fun ZivMiniPlayerSurface(onClick: () -> Unit, content: @Composable () -> Unit) {
+fun ZivMiniPlayerSurface(onClick: () -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     val shape = RoundedCornerShape(12.dp)
-    Box(Modifier.fillMaxWidth().clip(shape).clickable(role = Role.Button, onClick = onClick)) {
+    Box(modifier.fillMaxWidth().clip(shape).clickable(role = Role.Button, onClick = onClick)) {
         content()
     }
 }
@@ -199,34 +179,3 @@ fun ZivMiniPlayerButton(icon: ZivPlaybackIcon, description: String, onClick: () 
 }
 
 /** The open rim stops at the navigation center; playback progress occupies its upper edge. */
-@Composable
-private fun PlaybackCardRim(progress: Float?, dark: Boolean, modifier: Modifier) {
-    val color = MiuixTheme.colorScheme.primary
-    Canvas(modifier) {
-        val stroke = 2.dp.toPx()
-        val inset = stroke / 2f
-        val radius = minOf(20.dp.toPx(), size.height / 2f, size.width / 2f)
-        val upperEdge = Path().apply {
-            arcTo(Rect(inset, inset, radius * 2 - inset, radius * 2 - inset), 180f, 90f, true)
-            lineTo(size.width - radius, inset)
-            arcTo(Rect(size.width - radius * 2 + inset, inset, size.width - inset, radius * 2 - inset), 270f, 90f, false)
-        }
-        val openFrame = Path().apply {
-            moveTo(inset, size.height)
-            lineTo(inset, radius)
-            addPath(upperEdge)
-            moveTo(size.width - inset, radius)
-            lineTo(size.width - inset, size.height)
-        }
-        drawPath(openFrame,
-            Brush.verticalGradient(listOf(Color.White.copy(alpha = if (dark) 0.30f else 0.90f),
-                Color.White.copy(alpha = if (dark) 0.08f else 0.30f))),
-            style = Stroke(1.dp.toPx(), cap = StrokeCap.Round))
-        progress?.let {
-            val measure = PathMeasure().apply { setPath(upperEdge, false) }
-            val segment = Path()
-            measure.getSegment(0f, measure.length * it.coerceIn(0f, 1f), segment)
-            drawPath(segment, color, style = Stroke(stroke, cap = StrokeCap.Round))
-        }
-    }
-}

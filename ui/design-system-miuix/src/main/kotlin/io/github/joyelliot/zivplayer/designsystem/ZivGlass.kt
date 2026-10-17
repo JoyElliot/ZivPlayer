@@ -18,18 +18,18 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 internal val LocalHomeBackdrop = staticCompositionLocalOf<LayerBackdrop?> { null }
 
-/** Capture only page content, never the glass that samples it. */
+/** Stable dock insets avoid a jump when fullscreen system bars hide and reappear. */
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 fun ZivHomeScaffold(bottomBar: @Composable ColumnScope.() -> Unit, content: @Composable (Dp) -> Unit) {
     val background = MiuixTheme.colorScheme.background
-    val backdrop = rememberLayerBackdrop { drawRect(background); drawContent() }
     var bottomHeight by remember { mutableIntStateOf(0) }
     val bottomPadding = with(LocalDensity.current) { bottomHeight.toDp() }
     Box(Modifier.fillMaxSize().background(background)
-        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
+        .windowInsetsPadding(WindowInsets.systemBarsIgnoringVisibility.union(WindowInsets.displayCutout).only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
         .imePadding()) {
-        Box(Modifier.fillMaxSize().layerBackdrop(backdrop)) { content(bottomPadding) }
-        CompositionLocalProvider(LocalHomeBackdrop provides backdrop) {
+        Box(Modifier.fillMaxSize()) { content(bottomPadding) }
+        CompositionLocalProvider(LocalHomeBackdrop provides null) {
             Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().onSizeChanged { bottomHeight = it.height }, content = bottomBar)
         }
     }

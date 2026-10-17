@@ -11,16 +11,24 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -44,9 +52,15 @@ fun ZivPlaybackIconButton(
     prominent: Boolean = false,
     color: Color = Color.White,
 ) {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val focused by interaction.collectIsFocusedAsState()
+    val scale by animateFloatAsState(if (pressed) 0.9f else 1f,
+        spring(dampingRatio = 0.7f, stiffness = 700f), label = "playback press")
     Box(
-        modifier.size(if (prominent) 56.dp else 48.dp).clip(CircleShape)
-            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+        modifier.size(if (prominent) 56.dp else 48.dp).graphicsLayer { scaleX = scale; scaleY = scale }.clip(CircleShape)
+            .background(color.copy(alpha = when { focused -> 0.28f; prominent -> 0.13f; else -> 0f }))
+            .clickable(interactionSource = interaction, indication = null, enabled = enabled, role = Role.Button, onClick = onClick)
             .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {
@@ -56,6 +70,10 @@ fun ZivPlaybackIconButton(
 
 @Composable
 fun ZivPlaybackGlyph(icon: ZivPlaybackIcon, modifier: Modifier = Modifier.size(24.dp), enabled: Boolean = true, color: Color = Color.White) {
+    if (icon == ZivPlaybackIcon.PLAY || icon == ZivPlaybackIcon.PAUSE) {
+        AnimatedPlayPauseGlyph(icon == ZivPlaybackIcon.PAUSE, modifier, enabled, color)
+        return
+    }
     Canvas(modifier) {
         val ink = color.copy(alpha = if (enabled) color.alpha else color.alpha * 0.35f)
         val unit = size.minDimension / 24f
@@ -155,9 +173,33 @@ fun ZivPlaybackText(text: String, modifier: Modifier = Modifier, secondary: Bool
         fontSize = if (title) { if (compact) 16.sp else 18.sp } else { if (compact) 12.sp else 14.sp },
         fontWeight = if (title) FontWeight.SemiBold else FontWeight.Normal,
         textAlign = textAlign ?: TextAlign.Unspecified,
-        shadow = Shadow(Color.Black.copy(alpha = 0.4f), Offset(0f, 1f), 2f),
         fontFeatureSettings = "tnum",
     ), maxLines = maxLines, overflow = TextOverflow.Ellipsis)
+}
+
+/** Two polygons morph through a half turn; reversing playback state reverses the same spring. */
+@Composable
+private fun AnimatedPlayPauseGlyph(pausedIcon: Boolean, modifier: Modifier, enabled: Boolean, color: Color) {
+    val progress by animateFloatAsState(if (pausedIcon) 1f else 0f,
+        spring(dampingRatio = 1f, stiffness = 500f), label = "play pause morph")
+    Canvas(modifier) {
+        val t = progress.coerceIn(0f, 1f)
+        val unit = size.minDimension / 24f
+        val ink = color.copy(alpha = color.alpha * if (enabled) 1f else 0.35f)
+        fun polygon(from: List<Offset>, to: List<Offset>) = Path().apply {
+            from.indices.forEach { index ->
+                val point = (from[index] + (to[index] - from[index]) * t) * unit
+                if (index == 0) moveTo(point.x, point.y) else lineTo(point.x, point.y)
+            }
+            close()
+        }
+        rotate(180f * t) {
+            drawPath(polygon(listOf(Offset(7f, 4f), Offset(12f, 7.08f), Offset(12f, 16.92f), Offset(7f, 20f)),
+                listOf(Offset(6f, 5f), Offset(10f, 5f), Offset(10f, 19f), Offset(6f, 19f))), ink)
+            drawPath(polygon(listOf(Offset(12f, 7.08f), Offset(20f, 12f), Offset(20f, 12f), Offset(12f, 16.92f)),
+                listOf(Offset(14f, 5f), Offset(18f, 5f), Offset(18f, 19f), Offset(14f, 19f))), ink)
+        }
+    }
 }
 
 @Composable

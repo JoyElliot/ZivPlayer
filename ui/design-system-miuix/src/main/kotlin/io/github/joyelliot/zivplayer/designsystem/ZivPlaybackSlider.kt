@@ -8,6 +8,9 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.*
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -28,12 +31,18 @@ fun ZivPlaybackSlider(
     bufferedValue: Float = value,
     description: String,
     onCancel: () -> Unit = {},
+    trackColor: Color = Color.White,
+    activeColor: Color = MiuixTheme.colorScheme.primary,
+    onDragValueChange: (Float) -> Unit = {},
 ) {
     val position by rememberUpdatedState(value.coerceIn(0f, 1f))
     val change by rememberUpdatedState(onValueChange)
     val finish by rememberUpdatedState(onValueChangeFinished)
     val cancel by rememberUpdatedState(onCancel)
+    val preview by rememberUpdatedState(onDragValueChange)
     var dragging by remember { mutableStateOf(false) }
+    val emphasis by animateFloatAsState(if (dragging) 1f else 0f,
+        spring(dampingRatio = 1f, stiffness = 600f), label = "timeline emphasis")
     Canvas(modifier.height(48.dp).semantics {
         contentDescription = description
         progressBarRangeInfo = ProgressBarRangeInfo(value.coerceIn(0f, 1f), 0f..1f)
@@ -52,6 +61,7 @@ fun ZivPlaybackSlider(
         awaitEachGesture {
             var committed = false
             var started = false
+            var dragStarted = false
             try {
                 val down = awaitFirstDown()
                 started = true
@@ -65,6 +75,8 @@ fun ZivPlaybackSlider(
                     val pointer = event.changes.firstOrNull { it.id == down.id } ?: break
                     if (pointer.isConsumed || event.changes.count { it.pressed } > 1) break
                     change(fraction(pointer.position.x))
+                    if ((pointer.position - down.position).getDistance() > viewConfiguration.touchSlop) dragStarted = true
+                    if (pointer.pressed && dragStarted) preview(fraction(pointer.position.x))
                     pointer.consume()
                     if (!pointer.pressed) { finish(); committed = true; break }
                 }
@@ -79,12 +91,12 @@ fun ZivPlaybackSlider(
         val end = Offset((size.width - inset).coerceAtLeast(inset), start.y)
         val width = (end.x - start.x).coerceAtLeast(0f)
         val alpha = if (enabled) 1f else 0.35f
-        val thickness = if (dragging) 4.dp.toPx() else 3.dp.toPx()
-        drawLine(Color.White.copy(alpha = 0.25f * alpha), start, end, thickness, StrokeCap.Round)
-        drawLine(Color.White.copy(alpha = 0.5f * alpha), start,
+        val thickness = (3 + emphasis * 2).dp.toPx()
+        drawLine(trackColor.copy(alpha = 0.18f * alpha), start, end, thickness, StrokeCap.Round)
+        drawLine(trackColor.copy(alpha = 0.35f * alpha), start,
             Offset(start.x + bufferedValue.coerceIn(0f, 1f) * width, start.y), thickness, StrokeCap.Round)
         val thumb = Offset(start.x + position * width, start.y)
-        drawLine(Color(0xFF52B9FF).copy(alpha = alpha), start, thumb, thickness, StrokeCap.Round)
-        drawCircle(Color(0xFF52B9FF).copy(alpha = alpha), if (dragging) 7.dp.toPx() else 5.dp.toPx(), thumb)
+        drawLine(activeColor.copy(alpha = alpha), start, thumb, thickness, StrokeCap.Round)
+        drawCircle(activeColor.copy(alpha = alpha), (5 + emphasis * 2).dp.toPx(), thumb)
     }
 }
