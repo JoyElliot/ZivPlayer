@@ -89,6 +89,19 @@ class PlaybackControllerViewModel(
     private var diagnosticsGeneration = 0L
     private var diagnosticsRequest: ListenableFuture<SessionResult>? = null
     private var diagnosticsController: MediaController? = null
+    private val systemVolume: SystemMediaVolume = SystemMediaVolume(applicationContext, applyGain = { gain ->
+        mutableController.value?.takeIf { it.isConnected && it.isCommandAvailable(Player.COMMAND_SET_VOLUME) }
+            ?.let { it.volume = gain }
+    }, onChanged = {
+        mutablePlayerState.value = mutablePlayerState.value.copy(volume = systemVolumeLevel(),
+            canSetVolume = systemVolumeAvailable())
+    })
+    private fun systemVolumeLevel(): Float = systemVolume.level
+    private fun systemVolumeAvailable(): Boolean = systemVolume.canAdjust && mutableController.value?.let {
+        it.isConnected && it.isCommandAvailable(Player.COMMAND_SET_VOLUME)
+    } == true
+    fun setVolumeUiActive(active: Boolean) = systemVolume.setActive(active)
+    fun refreshSystemVolume(hardwareKey: Boolean = false) = systemVolume.refresh(hardwareKey = hardwareKey)
 
     private val playerListener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) {
@@ -264,9 +277,7 @@ class PlaybackControllerViewModel(
     }
 
     fun setVolume(volume: Float) = withControllerCommand(Player.COMMAND_SET_VOLUME) { active ->
-        if (volume.isFinite()) {
-            active.volume = volume.coerceIn(0f, 1f)
-        }
+        systemVolume.changeLevel(volume)
     }
 
     fun setRepeatMode(mode: PlayerRepeatMode) =
@@ -397,6 +408,7 @@ class PlaybackControllerViewModel(
                             return@onSuccess
                         }
                         mutableController.value = connectedController
+                        systemVolume.applyCurrentGain()
                         reconnectAttempt = 0
                         connectedController.addListener(playerListener)
                         refreshState(connectedController)
@@ -530,7 +542,7 @@ class PlaybackControllerViewModel(
             playWhenReady = player.playWhenReady,
             playbackSpeed = player.playbackParameters.speed.finiteOrDefault(1f)
                 .coerceIn(MIN_PLAYBACK_SPEED, MAX_PLAYBACK_SPEED),
-            volume = player.volume.finiteOrDefault(1f).coerceIn(0f, 1f),
+            volume = systemVolume.level,
             repeatMode = when (player.repeatMode) {
                 Player.REPEAT_MODE_ONE -> PlayerRepeatMode.ONE
                 Player.REPEAT_MODE_ALL -> PlayerRepeatMode.ALL
@@ -543,7 +555,7 @@ class PlaybackControllerViewModel(
                 player.isCommandAvailable(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM),
             canSetSpeed = currentItem != null &&
                 player.isCommandAvailable(Player.COMMAND_SET_SPEED_AND_PITCH),
-            canSetVolume = player.isCommandAvailable(Player.COMMAND_SET_VOLUME),
+            canSetVolume = systemVolume.canAdjust && player.isCommandAvailable(Player.COMMAND_SET_VOLUME),
             canSetRepeat = currentItem != null &&
                 player.isCommandAvailable(Player.COMMAND_SET_REPEAT_MODE),
             canRenderVideo = player.isCommandAvailable(Player.COMMAND_SET_VIDEO_SURFACE),
@@ -618,6 +630,7 @@ class PlaybackControllerViewModel(
     }
 
     override fun onCleared() {
+        systemVolume.close()
         scrubWakeup?.cancel()
         scrubQueue.clearPending()
         cancelTemporarySpeed()

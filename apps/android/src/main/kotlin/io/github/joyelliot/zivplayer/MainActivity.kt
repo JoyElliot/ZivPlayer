@@ -76,6 +76,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        volumeControlStream = android.media.AudioManager.STREAM_MUSIC
         originalWindowBrightness = window.attributes.screenBrightness
         systemBrightness = (android.provider.Settings.System.getInt(contentResolver,
             android.provider.Settings.System.SCREEN_BRIGHTNESS, 128) / 255f).coerceIn(0f, 1f)
@@ -239,6 +240,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         super.onStop()
+        playbackController.setVolumeUiActive(false)
         playbackController.cancelTemporarySpeed()
         started = false
         playbackController.setDiagnosticsVisible(false)
@@ -251,6 +253,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
+        playbackController.setVolumeUiActive(true)
         started = true
         pipEntryPending = false
         playbackController.setDiagnosticsVisible(diagnosticsPageVisible)
@@ -258,6 +261,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) playbackController.refreshSystemVolume()
         windowFocused = hasFocus
         if (hasFocus && playbackBrightness == null) systemBrightness =
             (android.provider.Settings.System.getInt(contentResolver,
@@ -270,6 +274,16 @@ class MainActivity : ComponentActivity() {
         playbackBrightness?.let { outState.putFloat("playback-brightness", it) }
         outState.putString("pending-diagnostics-export", pendingDiagnosticJson)
         super.onSaveInstanceState(outState)
+    }
+
+    override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+        val handled = super.dispatchKeyEvent(event)
+        if (event.action == android.view.KeyEvent.ACTION_UP && event.keyCode in listOf(
+                android.view.KeyEvent.KEYCODE_VOLUME_UP, android.view.KeyEvent.KEYCODE_VOLUME_DOWN,
+                android.view.KeyEvent.KEYCODE_VOLUME_MUTE)) {
+            window.decorView.post { playbackController.refreshSystemVolume(hardwareKey = true) }
+        }
+        return handled
     }
 
     override fun onDestroy() {
