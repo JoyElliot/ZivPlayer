@@ -5,6 +5,8 @@
 - 基线：远端 `main` 的 `***`
 - 范围：Android 媒体库、队列和播放历史、设置及迷你播放条
 
+> 2026-10-18：播放器连续展示和全局控件视觉由 [ADR 0021](0021-continuous-player-presentation.md) 更新；本记录保留当时的导航与信息架构决定。
+
 ## 背景
 
 用户要求参考 `fang-feishu-app-class2-group1` 的 Android 界面重构首页和底栏，并明确开发阶段暂不考虑旧 Android 系统兼容性。

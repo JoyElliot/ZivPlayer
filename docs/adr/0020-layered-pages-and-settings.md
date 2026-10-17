@@ -4,6 +4,8 @@
 - 日期：2026-09-27
 - 范围：设计系统的页面栈、系统预测性返回、设置界面
 
+> 2026-10-18：播放器连续展示和全局控件视觉由 [ADR 0021](0021-continuous-player-presentation.md) 更新；本记录保留当时的导航与信息架构决定。
+
 ## 背景
 
 用户要求沿用 FangFeishu 的页面层叠体验，将层级动画、预测性返回、设置页重写分别提交。参考固定为 `8676095d` 的正式 Android 实现：`FfPageStack.kt`、`StackNavTransitions.kt`、`StackDetailContainer.kt` 和 `DisplayUtils.kt`。
