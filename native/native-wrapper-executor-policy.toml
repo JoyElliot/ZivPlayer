@@ -9,7 +9,7 @@ kind = "ziv-native-wrapper-executor-policy-v1"
 
 [binding]
 profileName = "ziv-libmpv-stack-wrapper-api26-v1"
-profileSha256 = "d6cf2a360b4c8f159e49fc9a9872faf4a21e3dc5e8a225905d3b3ccaf4fe42ce"
+profileSha256 = "d5c1e01b07f52dbf147a7eff771fc3baa61664822aa32426c4df2c8e53b9937c"
 preparationReceiptKind = "ziv-native-build-preparation-wrapper-v1"
 hostPlatform = "linux/amd64"
 toolchainMount = "/opt/zivplayer/toolchain"

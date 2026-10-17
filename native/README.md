@@ -4,8 +4,11 @@ The native tree owns the source-built libmpv supply-chain inputs used by
 ZivPlayer. The Maven bootstrap AAR has been retired; source-built inspection
 artifacts still do not constitute accepted release inputs.
 
+2026-10-17 更新采用 mpv-android `2026-09-17` 所选播放核心及其后 `687c7fd` 的依赖更新，继续使用独立按字节锁定的 NDK 29。新版源码、APT/SDK 投影、composition、preparation 和执行凭据均使用新工作区；旧工作区及历史凭据保留。当前结果见[本轮记录](../docs/validation/2026-10-17-dependency-upgrade.md)。
+
 `source-manifest.toml` is the canonical byte-level lock for the selected
-mpv-android 2026-08-11 source closure. It records 23 inputs (22 source archives
+mpv-android 2026-09-17 source closure with upstream 687c7fd's dependency updates.
+ZivPlayer independently retains the byte-locked NDK 29 builder. It records 23 inputs (22 source archives
 and one build-helper script): the wrapper,
 mpv, FFmpeg, their direct native dependencies, required build helpers, and the
 upstream submodules that must be accounted for even when a selected feature is

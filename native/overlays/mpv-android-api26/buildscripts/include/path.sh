@@ -13,6 +13,9 @@ ZIV_TOOLCHAIN_ROOT=/opt/zivplayer/toolchain
 export ANDROID_HOME="$ZIV_TOOLCHAIN_ROOT/android-sdk"
 export ANDROID_SDK_ROOT="$ANDROID_HOME"
 export ANDROID_NDK_ROOT="$ANDROID_HOME/ndk/29.0.14206865"
+# Retain the independently byte-locked builder while upgrading upstream sources.
+v_ndk=r29
+v_ndk_n=29.0.14206865
 export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 export HOME=/build/home
 export TMPDIR=/build/tmp
