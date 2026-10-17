@@ -276,9 +276,9 @@ class MainActivity : ComponentActivity() {
         super.onSaveInstanceState(outState)
     }
 
-    override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
-        val handled = super.dispatchKeyEvent(event)
-        if (event.action == android.view.KeyEvent.ACTION_UP && event.keyCode in listOf(
+    override fun onKeyUp(keyCode: Int, event: android.view.KeyEvent): Boolean {
+        val handled = super.onKeyUp(keyCode, event)
+        if (keyCode in listOf(
                 android.view.KeyEvent.KEYCODE_VOLUME_UP, android.view.KeyEvent.KEYCODE_VOLUME_DOWN,
                 android.view.KeyEvent.KEYCODE_VOLUME_MUTE)) {
             window.decorView.post { playbackController.refreshSystemVolume(hardwareKey = true) }

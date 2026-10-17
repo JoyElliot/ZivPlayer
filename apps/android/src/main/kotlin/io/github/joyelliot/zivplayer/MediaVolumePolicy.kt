@@ -28,5 +28,8 @@ internal fun mediaVolumeStep(level: Float, minimum: Int, maximum: Int,
         // Keep the system's monotonic steps instead of inventing a device attenuation curve.
         else -> 1f
     }
-    return MediaVolumeStep(upper, gain.coerceIn(0f, 1f))
+    // The backend accepts integer percentages. Round upward so crossing a system
+    // step cannot become quieter through downstream rounding of the attenuation.
+    val percent = ceil(gain.coerceIn(0f, 1f) * 100.0 - 0.00001).toInt().coerceIn(0, 100)
+    return MediaVolumeStep(upper, percent / 100f)
 }
