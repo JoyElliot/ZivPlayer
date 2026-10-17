@@ -37,6 +37,10 @@ kotlin {
 
 dependencies {
     implementation(project(":ui:design-system-miuix"))
+    implementation(libs.androidx.activity.compose)
+    constraints {
+        implementation(libs.androidx.core.ktx) { because("Use the application's shared AndroidX Core baseline.") }
+    }
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.runtime)

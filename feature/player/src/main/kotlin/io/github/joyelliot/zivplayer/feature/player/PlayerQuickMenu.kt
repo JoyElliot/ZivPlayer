@@ -9,6 +9,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,6 +42,7 @@ fun PlayerQuickMenu(
     onPictureInPicture: (() -> Unit)? = null,
     onOpenMedia: (() -> Unit)? = null,
     onStop: (() -> Unit)? = null,
+    contentInsets: WindowInsets = WindowInsets.safeDrawing,
 ) {
     var page by rememberSaveable(initialPage) { mutableStateOf(initialPage) }
     val title = stringResource(when (page) {
@@ -50,11 +53,11 @@ fun PlayerQuickMenu(
         PlayerQuickPage.VIDEO -> R.string.player_video_fit
     })
     PlayerSidePanel(title, stringResource(R.string.player_close_menu), onDismiss,
-        onBack = if (page != PlayerQuickPage.MAIN) ({ page = PlayerQuickPage.MAIN }) else null) {
-        key(page) {
-            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(top = 8.dp),
+        onBack = if (page != PlayerQuickPage.MAIN) ({ page = PlayerQuickPage.MAIN }) else null, insets = contentInsets) {
+        Crossfade(page, Modifier.weight(1f), animationSpec = tween(160), label = "quick menu page") { displayedPage ->
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                when (page) {
+                when (displayedPage) {
                     PlayerQuickPage.MAIN -> {
                         Row(Modifier.fillMaxWidth()) {
                             QuickTile(ZivPlaybackIcon.SPEED, stringResource(R.string.player_speed_title), Modifier.weight(1f), state.canSetSpeed) { page = PlayerQuickPage.SPEED }
@@ -79,7 +82,7 @@ fun PlayerQuickMenu(
                             ZivPlaybackText("${(state.volume * 100).toInt()}%", secondary = true, compact = true)
                         }
                         var volume by remember(state.volume) { mutableFloatStateOf(state.volume.coerceIn(0f, 1f)) }
-                        ZivPlaybackSlider(volume, { volume = it }, { onVolumeChange(volume) }, Modifier.fillMaxWidth(),
+                        ZivPlaybackSlider(volume, { volume = it; onVolumeChange(it) }, { onVolumeChange(volume) }, Modifier.fillMaxWidth(),
                             state.canSetVolume, description = stringResource(R.string.player_volume), onCancel = { volume = state.volume })
                         onPictureInPicture?.let { action -> ChoiceRow(stringResource(R.string.player_pip), false, state.canRenderVideo && state.hasVideo) { onDismiss(); action() } }
                         onOpenMedia?.let { action -> ChoiceRow(stringResource(R.string.player_open_media), false) { onDismiss(); action() } }
@@ -100,7 +103,7 @@ fun PlayerQuickMenu(
                         ZivPlaybackText(stringResource(R.string.player_speed_temporary_hint), Modifier.padding(top = 12.dp), secondary = true, compact = true, maxLines = 3)
                     }
                     PlayerQuickPage.AUDIO, PlayerQuickPage.SUBTITLE -> {
-                        val kind = if (page == PlayerQuickPage.AUDIO) PlayerTrackKind.AUDIO else PlayerTrackKind.SUBTITLE
+                        val kind = if (displayedPage == PlayerQuickPage.AUDIO) PlayerTrackKind.AUDIO else PlayerTrackKind.SUBTITLE
                         val tracks = state.tracks.filter { it.kind == kind }
                         if (tracks.isEmpty()) ZivPlaybackText(stringResource(R.string.player_no_tracks), Modifier.padding(12.dp), secondary = true)
                         if (kind == PlayerTrackKind.SUBTITLE) ChoiceRow(stringResource(R.string.player_subtitles_off), tracks.none { it.selected }, state.canSelectTracks) { onSelectTrack(kind, null) }

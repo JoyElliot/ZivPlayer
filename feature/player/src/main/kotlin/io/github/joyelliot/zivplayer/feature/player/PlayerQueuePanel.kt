@@ -22,9 +22,10 @@ import androidx.compose.ui.unit.dp
 import io.github.joyelliot.zivplayer.designsystem.*
 
 @Composable
-fun PlayerQueuePanel(state: PlayerUiState, onDismiss: () -> Unit, onSelect: (Int) -> Unit) {
+fun PlayerQueuePanel(state: PlayerUiState, onDismiss: () -> Unit, onSelect: (Int) -> Unit,
+    contentInsets: WindowInsets = WindowInsets.safeDrawing) {
     PlayerSidePanel(stringResource(R.string.player_queue_count, state.queue.size),
-        stringResource(R.string.player_close_queue), onDismiss) {
+        stringResource(R.string.player_close_queue), onDismiss, insets = contentInsets) {
         if (state.queue.isEmpty()) ZivPlaybackText(stringResource(R.string.player_queue_empty), Modifier.padding(12.dp), secondary = true)
         val selected = state.queue.indexOfFirst { it.selected }.coerceAtLeast(0)
         val scroll = rememberLazyListState(selected)
