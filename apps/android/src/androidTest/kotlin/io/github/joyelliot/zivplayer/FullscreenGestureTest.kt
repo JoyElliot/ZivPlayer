@@ -40,7 +40,8 @@ class FullscreenGestureTest {
     @Test fun singleTapTogglesControlsAndDoubleTapOnlyTogglesPlayback() {
         showPlayer()
         video().performTouchInput { click(Offset(width * 0.5f, height * 0.35f)) }
-        compose.mainClock.advanceTimeBy(400)
+        // Allow double-tap recognition plus the controls' 120 ms exit fade.
+        compose.mainClock.advanceTimeBy(600)
         compose.onNodeWithText("Gesture video").assertDoesNotExist()
         video().performTouchInput { doubleClick(Offset(width * 0.5f, height * 0.35f)) }
         compose.mainClock.advanceTimeBy(400)
