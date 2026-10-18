@@ -17,19 +17,27 @@ import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 internal val LocalHomeBackdrop = staticCompositionLocalOf<LayerBackdrop?> { null }
+internal val LocalNavigationStyle = staticCompositionLocalOf { ZivNavigationStyle.LIQUID_GLASS }
+
+enum class ZivNavigationStyle { LIQUID_GLASS, SIMPLE }
 
 /** Stable dock insets avoid a jump when fullscreen system bars hide and reappear. */
 @Composable
 @OptIn(ExperimentalLayoutApi::class)
-fun ZivHomeScaffold(bottomBar: @Composable ColumnScope.() -> Unit, content: @Composable (Dp) -> Unit) {
+fun ZivHomeScaffold(style: ZivNavigationStyle = ZivNavigationStyle.LIQUID_GLASS,
+    bottomBar: @Composable ColumnScope.() -> Unit, content: @Composable (Dp) -> Unit) {
     val background = MiuixTheme.colorScheme.background
+    val backdrop = rememberLayerBackdrop { drawRect(background); drawContent() }
+    val glass = style == ZivNavigationStyle.LIQUID_GLASS
     var bottomHeight by remember { mutableIntStateOf(0) }
     val bottomPadding = with(LocalDensity.current) { bottomHeight.toDp() }
     Box(Modifier.fillMaxSize().background(background)
         .windowInsetsPadding(WindowInsets.systemBarsIgnoringVisibility.union(WindowInsets.displayCutout).only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
         .imePadding()) {
-        Box(Modifier.fillMaxSize()) { content(bottomPadding) }
-        CompositionLocalProvider(LocalHomeBackdrop provides null) {
+        // Capture only page content. Glass and the persistent video layer never sample themselves.
+        Box(Modifier.fillMaxSize().then(if (glass) Modifier.layerBackdrop(backdrop) else Modifier)) { content(bottomPadding) }
+        CompositionLocalProvider(LocalHomeBackdrop provides if (glass) backdrop else null,
+            LocalNavigationStyle provides style) {
             Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().onSizeChanged { bottomHeight = it.height }, content = bottomBar)
         }
     }

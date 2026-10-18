@@ -103,11 +103,20 @@ fun ZivLibraryTile(icon: ZivPlaybackIcon, modifier: Modifier = Modifier, cornerR
 
 data class ZivNavigationItem(val label: String, val icon: ZivPlaybackIcon, val testTag: String)
 
-/** Flat navigation keeps playback and destinations together without sampling the video layer. */
 @Composable
 fun ZivNavigationBar(items: List<ZivNavigationItem>, selectedIndex: Int, onSelect: (Int) -> Unit,
     nowPlaying: (@Composable () -> Unit)? = null, nowPlayingProgress: Float? = null) {
     require(items.isNotEmpty() && selectedIndex in items.indices)
+    when (LocalNavigationStyle.current) {
+        ZivNavigationStyle.LIQUID_GLASS -> ZivGlassNavigationBar(items, selectedIndex, onSelect, nowPlaying, nowPlayingProgress)
+        ZivNavigationStyle.SIMPLE -> SimpleNavigationBar(items, selectedIndex, onSelect, nowPlaying, nowPlayingProgress)
+    }
+}
+
+/** Flat navigation keeps playback and destinations together without background capture. */
+@Composable
+private fun SimpleNavigationBar(items: List<ZivNavigationItem>, selectedIndex: Int, onSelect: (Int) -> Unit,
+    nowPlaying: (@Composable () -> Unit)?, nowPlayingProgress: Float?) {
     val colors = MiuixTheme.colorScheme
     Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)
         .testTag("app_playback_dock"), contentAlignment = Alignment.Center) {
@@ -177,5 +186,3 @@ fun ZivMiniPlayerButton(icon: ZivPlaybackIcon, description: String, onClick: () 
         }
     }
 }
-
-/** The open rim stops at the navigation center; playback progress occupies its upper edge. */

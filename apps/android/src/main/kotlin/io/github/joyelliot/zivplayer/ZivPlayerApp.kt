@@ -32,8 +32,6 @@ import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.input.pointer.pointerInput
@@ -144,6 +142,7 @@ fun ZivPlayerApp(
     var showQueue by remember { mutableStateOf(false) }
     var importKind by rememberSaveable { mutableStateOf(PlaybackResourceKind.FONT) }
     val preferences = settings?.preferences?.value ?: PlayerPreferences()
+    val navigationStyle = ZivNavigationStyle.valueOf(preferences.navigationStyle.name)
     val expanded = playerOpen || presentation.progress > 0f || pictureInPicture
     val pageState = rememberSaveableStateHolder()
     val libraryBackHandlers = remember { mutableStateMapOf<AppDestination, (() -> Unit)?>() }
@@ -304,7 +303,7 @@ fun ZivPlayerApp(
                 .graphicsLayer { alpha = 1f - progress }
                 .then(if (expanded) Modifier.clearAndSetSemantics { } else Modifier)) {
                 ZivPageStack(settingsPages, root = {
-                    ZivHomeScaffold(bottomBar = {
+                    ZivHomeScaffold(style = navigationStyle, bottomBar = {
                         ZivNavigationBar(
                             items = listOf(
                                 ZivNavigationItem(stringResource(io.github.joyelliot.zivplayer.feature.library.R.string.library_video), ZivPlaybackIcon.PLAY, "app_video"),
@@ -316,13 +315,7 @@ fun ZivPlayerApp(
                             onSelect = { index -> selectHome(homeDestinations[index]) },
                             nowPlaying = if (playerState.hasMedia) ({ MiniPlayer(playerState, ::openPlayer, onPlayPause,
                                 Modifier.playerExpansionDrag(presentation, travel, ::settlePresentation), videoAnchor = {
-                                    Box(Modifier.size(56.dp, 36.dp).onGloballyPositioned { coordinates ->
-                                        // Keep the destination current through window resize and inset changes.
-                                        // The dock reserves stable system-bar insets even while the player hides them.
-                                        val bounds = coordinates.boundsInRoot()
-                                        if (bounds.width > 0 && bounds.height > 0)
-                                            miniFrame = VideoFrame(bounds.center.x, bounds.center.y, bounds.width, bounds.height)
-                                    })
+                                    MiniVideoAnchor(navigationStyle) { miniFrame = it }
                                 }) }) else null,
                             nowPlayingProgress = playerState.durationMs?.takeIf { it > 0 }?.let { playerState.timelineProgress },
                         )
@@ -389,7 +382,9 @@ fun ZivPlayerApp(
                 } else Modifier))
             if (playerState.hasMedia) {
                 PersistentVideoStage(controller, playerState.canRenderVideo, playerState.videoAspectRatio,
-                    window, frame, progress, visible = playerState.hasVideo && (expanded || !settingsPages.canPop), onBounds = onVideoBounds)
+                    window, frame, progress, visible = playerState.hasVideo && (expanded || !settingsPages.canPop),
+                    miniCornerRadius = if (navigationStyle == ZivNavigationStyle.LIQUID_GLASS) 12.dp else 8.dp,
+                    onBounds = onVideoBounds)
                 if (!pictureInPicture && (expanded || !settingsPages.canPop) &&
                     (progress < 0.999f || presentation.dragging) && playerState.hasVideo)
                     VideoExpansionTouchTarget(frame, presentation, travel, ::openPlayer, ::settlePresentation)

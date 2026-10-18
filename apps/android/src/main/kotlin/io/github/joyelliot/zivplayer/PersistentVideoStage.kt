@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.media3.session.MediaController
 import kotlin.math.max
@@ -38,7 +39,8 @@ import kotlin.math.roundToInt
 /** One AndroidView call site for mini, expanded, rotation and the system PiP window. */
 @Composable
 internal fun PersistentVideoStage(controller: MediaController?, canRender: Boolean, aspect: Float,
-    window: IntSize, frame: VideoFrame, progress: Float, visible: Boolean = true, onBounds: (Rect) -> Unit) {
+    window: IntSize, frame: VideoFrame, progress: Float, visible: Boolean = true,
+    miniCornerRadius: Dp = 8.dp, onBounds: (Rect) -> Unit) {
     val density = LocalDensity.current
     val edge = remember { max(window.width, window.height).coerceIn(256, 4096) }
     val ratio = aspect.takeIf { it.isFinite() && it > 0 } ?: (16f / 9)
@@ -67,7 +69,7 @@ internal fun PersistentVideoStage(controller: MediaController?, canRender: Boole
                 rotationZ = frame.rotation
                 translationX = frame.centerX - constraints.maxWidth / 2f
                 translationY = frame.centerY - constraints.maxHeight / 2f
-                val radius = with(density) { (8.dp.toPx() * (1 - progress) / scaleX.coerceAtLeast(0.001f)).toDp() }
+                val radius = with(density) { (miniCornerRadius.toPx() * (1 - progress) / scaleX.coerceAtLeast(0.001f)).toDp() }
                 shape = RoundedCornerShape(radius)
                 clip = true
             }

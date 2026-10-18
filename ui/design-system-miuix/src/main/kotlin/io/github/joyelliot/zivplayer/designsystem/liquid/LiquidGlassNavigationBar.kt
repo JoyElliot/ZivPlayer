@@ -14,6 +14,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -52,7 +53,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsIgnoringVisibility
 import androidx.compose.foundation.layout.widthIn
 import io.github.joyelliot.zivplayer.designsystem.ZivNavigationItem
 import io.github.joyelliot.zivplayer.designsystem.ZivPlaybackGlyph
@@ -156,6 +157,7 @@ private fun gravityRotatedHighlight(
     return base.copy(style = baseStyle.copy(primaryLight = rotatedPrimary))
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun LiquidGlassNavigationBar(
     items: List<ZivNavigationItem>,
@@ -440,7 +442,7 @@ internal fun LiquidGlassNavigationBar(
 
     // Host has consumed the system inset. Preserve the reference's extra clearance
     // so the velocity-stretched capsule can expand past the track without clipping.
-    val bottomClearance = if (WindowInsets.navigationBars.getBottom(density) > 0) 10.dp else 26.dp
+    val bottomClearance = if (WindowInsets.navigationBarsIgnoringVisibility.getBottom(density) > 0) 10.dp else 26.dp
     Box(modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         Box(
             modifier = Modifier
