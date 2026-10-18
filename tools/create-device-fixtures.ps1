@@ -65,6 +65,16 @@ Invoke-FixtureFfmpeg -Arguments @(
     '-metadata:s:a:0', 'title=440 Hz', '-movflags', '+faststart', $mp4Path
 )
 
+# Long enough to exercise presentation handoffs without an end-of-file repeat boundary.
+$continuousPath = Join-Path $fixtureRoot 'continuous-av.mp4'
+Invoke-FixtureFfmpeg -Arguments @(
+    '-f', 'lavfi', '-i', 'testsrc2=size=640x360:rate=24:duration=45',
+    '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=48000:duration=45',
+    '-map', '0:v:0', '-map', '1:a:0', '-c:v', 'libx264', '-threads:v', '1',
+    '-preset', 'veryfast', '-crf', '24', '-g', '250', '-pix_fmt', 'yuv420p',
+    '-c:a', 'aac', '-b:a', '96k', '-ac', '2', '-movflags', '+faststart', $continuousPath
+)
+
 $mkvPath = Join-Path $fixtureRoot 'tracks-subtitles.mkv'
 Invoke-FixtureFfmpeg -Arguments @(
     '-i', $mp4Path,
@@ -81,7 +91,7 @@ Invoke-FixtureFfmpeg -Arguments @(
     '-disposition:s:0', 'default', '-disposition:s:1', '0', $mkvPath
 )
 
-$entries = foreach ($fixturePath in @($mp4Path, $mkvPath, $assPath, $srtPath)) {
+$entries = foreach ($fixturePath in @($mp4Path, $mkvPath, $assPath, $srtPath, $continuousPath)) {
     $item = Get-Item -LiteralPath $fixturePath
     [ordered]@{
         file = $item.Name
