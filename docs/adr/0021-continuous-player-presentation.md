@@ -1,6 +1,6 @@
 # ADR 0021：连续视频展示、实时拖动与系统媒体音量
 
-- 状态：已接受；实现与主机验证见 [验证记录](../validation/2026-10-18-continuous-player.md)，设备体验待验收
+- 状态：已接受；实现与主机验证见 [验证记录](../validation/2026-10-18-continuous-player.md)，基础设备验收见 [真机记录](../validation/2026-10-18-continuous-player-device.md)，其他设备和性能边界仍需分别验证
 - 日期：2026-10-18
 - 范围：`home-feishu-style` 测试分支的 app、feature/player、设计系统、播放器命令和 libmpv 适配
 - 边界：实验分支和整夜功耗手机不参与本轮修改、安装或测试
