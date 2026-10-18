@@ -23,7 +23,8 @@ import org.junit.Test
 
 /** Compile on the host; run later on a dedicated emulator/device, never during a power experiment. */
 class PlayerPresentationContinuityTest {
-    @get:Rule val compose = createComposeRule()
+    @get:Rule(order = 0) val foreground = DeviceForegroundRule()
+    @get:Rule(order = 1) val compose = createComposeRule()
 
     @Test fun miniExpandedRotatedAndPipSizedLayoutsRetainTheTextureView() {
         val progress = mutableFloatStateOf(0f)
