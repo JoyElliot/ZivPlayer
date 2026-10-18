@@ -3,6 +3,10 @@
     <string name="settings_title">Settings</string>
     <string name="settings_general">Playback &amp; appearance</string>
     <string name="settings_appearance">Appearance</string>
+    <string name="settings_navigation_style">Bottom bar style</string>
+    <string name="option_navigation_glass">Liquid glass</string>
+    <string name="option_navigation_simple">Simple</string>
+    <string name="settings_navigation_style_hint">Liquid glass pairs a floating navigation bar with a layered playback card. Simple brings them together in one clean panel.</string>
     <string name="settings_resume">Resume saved playback position</string>
     <string name="settings_background">Continue playback in background</string>
     <string name="settings_screen_on">Keep screen on while playing</string>

@@ -3,6 +3,10 @@
     <string name="settings_title">设置</string>
     <string name="settings_general">播放与外观</string>
     <string name="settings_appearance">外观</string>
+    <string name="settings_navigation_style">底栏样式</string>
+    <string name="option_navigation_glass">液态玻璃</string>
+    <string name="option_navigation_simple">简洁</string>
+    <string name="settings_navigation_style_hint">液态玻璃搭配悬浮导航与层叠播放卡片；简洁将播放条与导航收在同一面板中。</string>
     <string name="settings_resume">恢复上次播放进度</string>
     <string name="settings_background">后台继续播放</string>
     <string name="settings_screen_on">播放时保持屏幕常亮</string>

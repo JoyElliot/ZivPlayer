@@ -69,6 +69,11 @@ fun SettingsDetailScreen(
                     AppearanceMode.LIGHT -> R.string.option_light
                     AppearanceMode.DARK -> R.string.option_dark
                 })) { onUpdate { it.copy(appearance = next(it.appearance)) } }
+                Choice(stringResource(R.string.settings_navigation_style), stringResource(when (value.navigationStyle) {
+                    NavigationStyle.LIQUID_GLASS -> R.string.option_navigation_glass
+                    NavigationStyle.SIMPLE -> R.string.option_navigation_simple
+                })) { onUpdate { it.copy(navigationStyle = next(it.navigationStyle)) } }
+                ZivText(stringResource(R.string.settings_navigation_style_hint))
                 ZivToggleRow(stringResource(R.string.settings_resume), value.resumePlayback, { selected -> onUpdate { it.copy(resumePlayback = selected) } })
                 ZivToggleRow(stringResource(R.string.settings_background), value.backgroundPlayback, { selected -> onUpdate { it.copy(backgroundPlayback = selected) } })
                 ZivToggleRow(stringResource(R.string.settings_screen_on), value.keepScreenOn, { selected -> onUpdate { it.copy(keepScreenOn = selected) } })

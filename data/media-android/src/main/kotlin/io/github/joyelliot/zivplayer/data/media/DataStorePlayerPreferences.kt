@@ -43,6 +43,7 @@ internal object PlayerPreferencesCodec {
         }.distinct().take(8)
         return PlayerPreferences(
             appearance = enum(p, "appearance", AppearanceMode.SYSTEM),
+            navigationStyle = enum(p, "navigation-style", NavigationStyle.LIQUID_GLASS),
             resumePlayback = boolean("resume", true),
             backgroundPlayback = boolean("background", true),
             keepScreenOn = boolean("screen-on", true),
@@ -83,6 +84,7 @@ internal object PlayerPreferencesCodec {
             if (v == null) p.remove(stringPreferencesKey(key)) else p[stringPreferencesKey(key)] = v
         }
         string("appearance", value.appearance.name)
+        string("navigation-style", value.navigationStyle.name)
         boolean("resume", value.resumePlayback)
         boolean("background", value.backgroundPlayback)
         boolean("screen-on", value.keepScreenOn)

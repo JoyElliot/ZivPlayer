@@ -3,6 +3,7 @@
 package io.github.joyelliot.zivplayer.core.model
 
 enum class AppearanceMode { SYSTEM, LIGHT, DARK }
+enum class NavigationStyle { LIQUID_GLASS, SIMPLE }
 enum class DecoderMode { AUTOMATIC, SOFTWARE }
 enum class RenderQuality { EFFICIENT, BALANCED, HIGH }
 enum class VideoFit { FIT, FILL, STRETCH }
@@ -66,6 +67,7 @@ data class PlayerPreferences(
     val defaultPlaybackRate: PlaybackRatePermille = PlaybackRatePermille.NORMAL,
     val seekStepSeconds: Int = 10,
     val options: PlaybackOptions = PlaybackOptions(),
+    val navigationStyle: NavigationStyle = NavigationStyle.LIQUID_GLASS,
 ) {
     init { require(seekStepSeconds in 5..60) }
 }
