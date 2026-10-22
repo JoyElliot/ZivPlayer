@@ -9,8 +9,6 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -18,6 +16,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -116,8 +115,15 @@ fun ZivPlayerApp(
     library: LibraryViewModel? = null,
     settings: SettingsViewModel? = null,
     fullscreen: Boolean = false,
+    rotationBasis: PlayerRotationBasis? = null,
+    rotationUnavailable: Boolean = false,
+    rotationActive: Boolean = true,
+    onRotationAnimationFinished: (Boolean, Boolean) -> Unit = { _, _ -> },
+    onWindowRotation: (Int) -> Unit = {},
+    onRotationAlignmentChange: (Boolean) -> Unit = {},
     pictureInPicture: Boolean = false,
     pictureInPictureTransition: Boolean = false,
+    pictureInPictureImmediateTransition: Boolean = false,
     onVideoBounds: (android.graphics.Rect) -> Unit = {},
     onFullscreenChange: (Boolean) -> Unit = {},
     onEnterPictureInPicture: () -> Unit = {},
@@ -129,11 +135,11 @@ fun ZivPlayerApp(
     onExportDiagnostics: () -> Unit = {},
 ) {
     var playerOpen by rememberSaveable { mutableStateOf(false) }
+    var collapseRequested by remember { mutableStateOf(false) }
+    var windowNeedsRestoring by remember { mutableStateOf(false) }
     val presentationScope = rememberCoroutineScope()
     val presentation = remember { PlayerPresentationState(presentationScope, playerOpen) }
     var miniFrame by remember { mutableStateOf<VideoFrame?>(null) }
-    val rotation by animateFloatAsState(if (fullscreen && !pictureInPicture && !pictureInPictureTransition) 90f else 0f,
-        spring(dampingRatio = 1f, stiffness = 360f), label = "player rotation")
     val homePages = rememberHomePagerState()
     val destination = if (playerOpen) AppDestination.PLAYER else homeDestinations[homePages.selectedPage]
     var playerReturnDestination by rememberSaveable { mutableStateOf(AppDestination.VIDEO) }
@@ -152,6 +158,7 @@ fun ZivPlayerApp(
         homePages.navigate(homeDestinations.indexOf(page))
     }
     fun openPlayerFrom(page: AppDestination) {
+        collapseRequested = false
         if (!playerOpen) playerReturnDestination = page
         homePages.snapToPage(homeDestinations.indexOf(playerReturnDestination))
         playerOpen = true
@@ -162,8 +169,11 @@ fun ZivPlayerApp(
         onFullscreenChange(false)
         showQueue = false
         homePages.snapToPage(homeDestinations.indexOf(playerReturnDestination))
-        playerOpen = false
-        presentation.animateTo(false)
+        // Restore the window while the opaque player still covers the reflowing home page.
+        collapseRequested = true
+    }
+    fun interceptCollapse(): Boolean = (fullscreen || windowNeedsRestoring).also { restore ->
+        if (restore) leavePlayer()
     }
     LaunchedEffect(expanded) {
         if (expanded) {
@@ -289,12 +299,8 @@ fun ZivPlayerApp(
             val window = IntSize(constraints.maxWidth, constraints.maxHeight)
             val progress = if (pictureInPicture) 1f else presentation.progress
             val travel = window.height * 0.65f
-            val anchor = miniFrame ?: VideoFrame(window.width * 0.15f, window.height * 0.85f, 56f, 36f)
-            val frame = presentationFrame(window.width.toFloat(), window.height.toFloat(), playerState.videoAspectRatio,
-                anchor, progress, if (pictureInPicture) 0f else rotation,
-                fill = preferences.options.videoFit == VideoFit.FILL && !pictureInPicture,
-                stretch = preferences.options.videoFit == VideoFit.STRETCH && !pictureInPicture)
             fun settlePresentation(open: Boolean) {
+                collapseRequested = false
                 if (open && !playerOpen) playerReturnDestination = homeDestinations[homePages.selectedPage]
                 playerOpen = open
                 if (!open) { onFullscreenChange(false); showQueue = false }
@@ -380,50 +386,77 @@ fun ZivPlayerApp(
                 .then(if (expanded) Modifier.pointerInput(Unit) {
                     awaitPointerEventScope { while (true) awaitPointerEvent().changes.forEach { it.consume() } }
                 } else Modifier))
-            if (playerState.hasMedia) {
-                PersistentVideoStage(controller, playerState.canRenderVideo, playerState.videoAspectRatio,
-                    window, frame, progress, visible = playerState.hasVideo && (expanded || !settingsPages.canPop),
-                    miniCornerRadius = if (navigationStyle == ZivNavigationStyle.LIQUID_GLASS) 12.dp else 8.dp,
-                    onBounds = onVideoBounds)
-                if (!pictureInPicture && (expanded || !settingsPages.canPop) &&
-                    (progress < 0.999f || presentation.dragging) && playerState.hasVideo)
-                    VideoExpansionTouchTarget(frame, presentation, travel, ::openPlayer, ::settlePresentation)
-            }
-            RotatingPlayerViewport(rotation, Modifier
-                .then(if (progress < 0.999f || pictureInPicture || presentation.dragging) Modifier.clearAndSetSemantics { } else Modifier)
-                .graphicsLayer { alpha = ((progress - 0.65f) / 0.35f).coerceIn(0f, 1f) }
-                .layout { measurable, constraints ->
-                    val content = measurable.measure(constraints)
-                    layout(content.width, content.height) {
-                        if (progress > 0.999f && !presentation.dragging && !pictureInPicture && !pictureInPictureTransition) content.place(0, 0)
+            PlayerWindowCanvas(rotationBasis, pictureInPicture, onWindowRotation) { canvas ->
+                Box(Modifier.fillMaxSize()) {
+                    val rotation = rememberPlayerRotation(fullscreen, rotationBasis, canvas, pictureInPicture,
+                        pictureInPictureTransition, rotationActive, pictureInPictureImmediateTransition, onRotationAnimationFinished)
+                    val logicalWindow = IntSize(canvas.width, canvas.height)
+                    val anchor = canvas.windowToCanvas(miniFrame ?: VideoFrame(window.width * 0.15f, window.height * 0.85f, 56f, 36f))
+                    val frame = presentationFrame(canvas.width.toFloat(), canvas.height.toFloat(), playerState.videoAspectRatio,
+                        anchor, progress, rotation,
+                        fill = preferences.options.videoFit == VideoFit.FILL && !pictureInPicture,
+                        stretch = preferences.options.videoFit == VideoFit.STRETCH && !pictureInPicture,
+                        miniRotation = -canvas.compensation)
+                    val controlInsets = playerControlInsets(rotation + canvas.compensation)
+                    SideEffect {
+                        windowNeedsRestoring = canvas.turns != 0 || rotation != 0f
+                        onRotationAlignmentChange(rotation == (if (fullscreen) 90f else 0f) &&
+                            isVideoAlignedWithWindow(rotation, canvas.compensation))
                     }
-                }) {
-                FullscreenPlayerScreen(playerState, {}, ::leavePlayer, onPlayPause, onSeekTo,
-                    onPlaybackSpeedChange, onVolumeChange, onRepeatModeChange, onSelectTrack, launchSubtitle,
-                    onBeginTemporarySpeed, onTemporarySpeedChange, onEndTemporarySpeed, videoOptions, selectVideoFit,
-                    interactionEnabled = interactionEnabled && progress > 0.999f && !presentation.dragging,
-                    drawBackground = false,
-                    contentInsets = playerControlInsets(rotation),
-                    onSeekPreviewTo = onSeekPreviewTo, onSeekPreviewFinished = onSeekPreviewFinished,
-                    canPrevious = playerState.canPrevious, canNext = playerState.canNext, onPrevious = onPrevious, onNext = onNext,
-                    onQueue = { showQueue = true }, queueVisible = showQueue,
-                    brightness = brightness, onBrightnessChange = onBrightnessChange,
-                    onRotate = { onFullscreenChange(!fullscreen) },
-                    onPictureInPicture = onEnterPictureInPicture,
-                    onOpenMedia = { openMedia.launch(arrayOf("video/*", "audio/*")) }, onStop = onStop,
-                    statusMessage = selectionNotice?.toUserMessage(),
-                    exitDescription = stringResource(if (playerReturnDestination in listOf(AppDestination.VIDEO, AppDestination.AUDIO))
-                        io.github.joyelliot.zivplayer.feature.library.R.string.library_back_folders
-                    else io.github.joyelliot.zivplayer.feature.player.R.string.player_back))
-                AnimatedVisibility(showQueue && progress > 0.999f && !presentation.dragging && !pictureInPicture && !pictureInPictureTransition,
-                    enter = fadeIn(tween(160)), exit = fadeOut(tween(120))) {
-                    PlayerQueuePanel(playerState, { showQueue = false }, onSelectQueueItem, playerControlInsets(rotation))
+                    LaunchedEffect(collapseRequested, rotation, canvas.turns, rotationUnavailable, pictureInPictureTransition) {
+                        if (collapseRequested && rotation == 0f && (canvas.turns == 0 || rotationUnavailable) && !pictureInPictureTransition) {
+                            collapseRequested = false
+                            playerOpen = false
+                            presentation.animateTo(false)
+                        }
+                    }
+                    if (playerState.hasMedia) {
+                        PersistentVideoStage(controller, playerState.canRenderVideo, playerState.videoAspectRatio,
+                            logicalWindow, frame, progress, visible = playerState.hasVideo && (expanded || !settingsPages.canPop),
+                            miniCornerRadius = if (navigationStyle == ZivNavigationStyle.LIQUID_GLASS) 12.dp else 8.dp,
+                            onBounds = onVideoBounds)
+                        if (!pictureInPicture && (expanded || !settingsPages.canPop) &&
+                            (progress < 0.999f || presentation.dragging) && playerState.hasVideo)
+                            VideoExpansionTouchTarget(frame, presentation, travel, ::openPlayer, ::settlePresentation, ::interceptCollapse)
+                    }
+                    RotatingPlayerViewport(rotation, Modifier
+                        .then(if (progress < 0.999f || pictureInPicture || presentation.dragging) Modifier.clearAndSetSemantics { } else Modifier)
+                        .graphicsLayer { alpha = ((progress - 0.65f) / 0.35f).coerceIn(0f, 1f) }
+                        .layout { measurable, constraints ->
+                            val content = measurable.measure(constraints)
+                            layout(content.width, content.height) {
+                                if (progress > 0.999f && !presentation.dragging && !pictureInPicture && !pictureInPictureTransition) content.place(0, 0)
+                            }
+                        }) {
+                        FullscreenPlayerScreen(playerState, {}, ::leavePlayer, onPlayPause, onSeekTo,
+                            onPlaybackSpeedChange, onVolumeChange, onRepeatModeChange, onSelectTrack, launchSubtitle,
+                            onBeginTemporarySpeed, onTemporarySpeedChange, onEndTemporarySpeed, videoOptions, selectVideoFit,
+                            interactionEnabled = interactionEnabled && progress > 0.999f && !presentation.dragging,
+                            drawBackground = false,
+                            contentInsets = controlInsets,
+                            onSeekPreviewTo = onSeekPreviewTo, onSeekPreviewFinished = onSeekPreviewFinished,
+                            canPrevious = playerState.canPrevious, canNext = playerState.canNext, onPrevious = onPrevious, onNext = onNext,
+                            onQueue = { showQueue = true }, queueVisible = showQueue,
+                            brightness = brightness, onBrightnessChange = onBrightnessChange,
+                            onRotate = { onFullscreenChange(!fullscreen) },
+                            onPictureInPicture = onEnterPictureInPicture,
+                            onOpenMedia = { openMedia.launch(arrayOf("video/*", "audio/*")) }, onStop = onStop,
+                            statusMessage = selectionNotice?.toUserMessage(),
+                            exitDescription = stringResource(if (playerReturnDestination in listOf(AppDestination.VIDEO, AppDestination.AUDIO))
+                                io.github.joyelliot.zivplayer.feature.library.R.string.library_back_folders
+                            else io.github.joyelliot.zivplayer.feature.player.R.string.player_back))
+                        AnimatedVisibility(showQueue && progress > 0.999f && !presentation.dragging && !pictureInPicture && !pictureInPictureTransition,
+                            enter = fadeIn(tween(160)), exit = fadeOut(tween(120))) {
+                            PlayerQueuePanel(playerState, { showQueue = false }, onSelectQueueItem, controlInsets)
+                        }
+                    }
                 }
             }
             if ((progress > 0.999f && !presentation.dragging || presentation.dragging && presentation.dragSource == "handle") &&
                 !pictureInPicture && !pictureInPictureTransition) {
                 Box(Modifier.align(Alignment.TopCenter).size(72.dp, 22.dp)
-                    .playerExpansionDrag(presentation, travel, ::settlePresentation, source = "handle"), contentAlignment = Alignment.Center) {
+                    .playerExpansionDrag(presentation, travel, ::settlePresentation, source = "handle",
+                        interceptDownwardDrag = ::interceptCollapse), contentAlignment = Alignment.Center) {
                     Box(Modifier.size(32.dp, 3.dp).background(Color.White.copy(alpha = 0.4f), androidx.compose.foundation.shape.RoundedCornerShape(2.dp)))
                 }
             }

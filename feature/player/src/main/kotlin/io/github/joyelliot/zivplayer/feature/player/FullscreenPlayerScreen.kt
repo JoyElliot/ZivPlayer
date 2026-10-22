@@ -114,7 +114,7 @@ fun FullscreenPlayerScreen(
             videoContent()
             val audioReady = state.hasMedia && !state.hasVideo && state.playbackStatus in
                 listOf(PlayerPlaybackStatus.PLAYING, PlayerPlaybackStatus.PAUSED, PlayerPlaybackStatus.ENDED)
-            if (audioReady) Column(Modifier.align(Alignment.TopCenter).statusBarsPadding()
+            if (audioReady) Column(Modifier.align(Alignment.TopCenter).windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top))
                 .padding(top = if (compact) 120.dp else 72.dp, start = 32.dp, end = 32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(20.dp)) {
                 ZivPlaybackGlyph(ZivPlaybackIcon.AUDIO, Modifier.size(72.dp))
@@ -240,7 +240,7 @@ fun FullscreenPlayerScreen(
             }
             state.errorMessage?.let { ZivPlaybackText(it, Modifier.align(Alignment.Center).padding(32.dp)) }
             if (controlsVisible && !locked) statusMessage?.let {
-                ZivPlaybackText(it, Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 68.dp, start = 24.dp, end = 24.dp))
+                ZivPlaybackText(it, Modifier.align(Alignment.TopCenter).windowInsetsPadding(contentInsets.only(WindowInsetsSides.Top)).padding(top = 68.dp, start = 24.dp, end = 24.dp))
             }
             AnimatedVisibility(menuPage != null && interactionEnabled, Modifier.matchParentSize(),
                 enter = fadeIn(tween(160)), exit = fadeOut(tween(120))) {

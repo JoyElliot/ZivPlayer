@@ -47,6 +47,14 @@ class MainActivity : ComponentActivity() {
     private val library by viewModels<LibraryViewModel>()
     private val settings by viewModels<SettingsViewModel>()
     private var fullscreen by mutableStateOf(false)
+    private var rotationBasis by mutableStateOf<PlayerRotationBasis?>(null)
+    private var measuredWindowRotation: Int? = null
+    private var rotationAnimationSettled = true
+    private var rotationUnavailable by mutableStateOf(false)
+    private var orientationCheck: Job? = null
+    private var manualPipRequested = false
+    private var immediatePipAlignment by mutableStateOf(false)
+    private var videoAlignedWithWindow = true
     private var inPictureInPicture by mutableStateOf(false)
     private var playerVisible by mutableStateOf(false)
     private var playbackBrightness by mutableStateOf<Float?>(null)
@@ -88,6 +96,12 @@ class MainActivity : ComponentActivity() {
         playbackBrightness = savedInstanceState?.takeIf { it.containsKey("playback-brightness") }?.getFloat("playback-brightness")
         fullscreen = savedInstanceState?.getBoolean("fullscreen") ?: false
         inPictureInPicture = isInPictureInPictureMode
+        rotationBasis = savedInstanceState?.takeIf { it.containsKey("rotation-basis") }?.let {
+            PlayerRotationBasis(it.getInt("rotation-basis"), it.getBoolean("rotation-basis-landscape"))
+        }
+        window.attributes = window.attributes.apply {
+            rotationAnimation = WindowManager.LayoutParams.ROTATION_ANIMATION_SEAMLESS
+        }
         pendingDiagnosticJson = savedInstanceState?.getString("pending-diagnostics-export")
         if (!inPictureInPicture) changeFullscreen(fullscreen)
         ContextCompat.registerReceiver(this, pipReceiver, IntentFilter(PIP_TOGGLE_ACTION), ContextCompat.RECEIVER_NOT_EXPORTED)
@@ -102,11 +116,17 @@ class MainActivity : ComponentActivity() {
                 if (playing && preferences.keepScreenOn) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                 else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             }
-            LaunchedEffect(fullscreen, playerVisible, inPictureInPicture) {
+            LaunchedEffect(fullscreen, playerVisible, rotationBasis, inPictureInPicture) {
                 val bars = WindowCompat.getInsetsController(window, window.decorView)
                 bars.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-                if ((fullscreen || playerVisible) && !inPictureInPicture) bars.hide(WindowInsetsCompat.Type.systemBars())
-                else bars.show(WindowInsetsCompat.Type.systemBars())
+                if ((fullscreen || playerVisible || rotationBasis != null) && !inPictureInPicture) {
+                    // WM's seamless eligibility checks the fullscreen window flag as well as bars.
+                    window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
+                    bars.hide(WindowInsetsCompat.Type.systemBars())
+                } else {
+                    window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
+                    bars.show(WindowInsetsCompat.Type.systemBars())
+                }
             }
             LaunchedEffect(playerVisible, inPictureInPicture, playbackBrightness) {
                 window.attributes = window.attributes.apply {
@@ -123,11 +143,25 @@ class MainActivity : ComponentActivity() {
                 onTemporarySpeedChange = playbackController::updateTemporarySpeed,
                 onEndTemporarySpeed = playbackController::endTemporarySpeed,
                 fullscreen = fullscreen,
+                rotationBasis = rotationBasis,
+                rotationUnavailable = rotationUnavailable,
+                rotationActive = started,
+                onRotationAnimationFinished = ::onRotationAnimationFinished,
+                onWindowRotation = { measuredWindowRotation = it; releaseRotationIfIdle() },
+                onRotationAlignmentChange = {
+                    if (videoAlignedWithWindow != it) {
+                        videoAlignedWithWindow = it
+                        updatePipParameters()
+                    }
+                },
                 pictureInPicture = inPictureInPicture,
                 pictureInPictureTransition = pipTransitioning,
+                pictureInPictureImmediateTransition = immediatePipAlignment,
                 onVideoBounds = { bounds ->
-                    if (!inPictureInPicture && videoBounds != bounds && bounds.width() > 0 && bounds.height() > 0) {
-                        videoBounds = android.graphics.Rect(bounds)
+                    val visibleBounds = android.graphics.Rect(bounds)
+                    val visible = visibleBounds.intersect(0, 0, window.decorView.width, window.decorView.height)
+                    if (!inPictureInPicture && visible && videoBounds != visibleBounds) {
+                        videoBounds = visibleBounds
                         updatePipParameters()
                     }
                 },
@@ -135,8 +169,13 @@ class MainActivity : ComponentActivity() {
                 onEnterPictureInPicture = { enterPip(showFailure = true) },
                 onPlayerVisibilityChange = {
                     playerVisible = it
-                    // Lock the current window only; the video and controls rotate inside it.
-                    requestedOrientation = if (it) ActivityInfo.SCREEN_ORIENTATION_LOCKED else ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                    if (it && rotationBasis == null && !inPictureInPicture) {
+                        rotationBasis = PlayerRotationBasis(display?.rotation ?: 0,
+                            resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE)
+                        measuredWindowRotation = rotationBasis?.rotation
+                        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LOCKED
+                    }
+                    releaseRotationIfIdle()
                 },
                 diagnostics = playbackController.diagnostics.value,
                 diagnosticsMessage = playbackController.diagnosticsMessage.value,
@@ -209,7 +248,62 @@ class MainActivity : ComponentActivity() {
 
     private fun changeFullscreen(value: Boolean) {
         playbackController.cancelTemporarySpeed()
+        if (manualPipRequested) {
+            manualPipRequested = false
+            immediatePipAlignment = false
+            pipEntryPending = false
+            pipTransitioning = false
+        }
+        if (fullscreen != value) {
+            videoAlignedWithWindow = false
+            updatePipParameters()
+            rotationAnimationSettled = false
+            rotationUnavailable = false
+            orientationCheck?.cancel()
+        }
         fullscreen = value
+    }
+
+    private fun onRotationAnimationFinished(turned: Boolean, pipTransition: Boolean) {
+        // Compose cancels superseded animation jobs; also reject callbacks after lifecycle/PiP changes.
+        if (inPictureInPicture || turned != fullscreen || pipTransition != pipTransitioning) return
+        if (pipTransition) {
+            if (manualPipRequested && started) completePipEntry()
+            return
+        }
+        rotationAnimationSettled = true
+        val basis = rotationBasis ?: return
+        if (!started) return
+        val target = basis.targetRotation(turned)
+        val naturalLandscape = basis.landscape != (basis.rotation % 2 != 0)
+        val reverseDefault = runCatching {
+            val id = resources.getIdentifier("config_reverseDefaultRotation", "bool", "android")
+            id != 0 && resources.getBoolean(id)
+        }.getOrDefault(false)
+        // Fixed orientations avoid sensor changes choosing the opposite 90-degree endpoint.
+        requestedOrientation = fixedOrientationForRotation(target, naturalLandscape, reverseDefault)
+        orientationCheck?.cancel()
+        orientationCheck = lifecycleScope.launch {
+            // Recovery only: this timer never schedules or completes a visual handoff.
+            delay(1_500)
+            if (rotationBasis == basis && fullscreen == turned && !inPictureInPicture && !pipTransitioning &&
+                measuredWindowRotation != target) {
+                rotationUnavailable = true
+                releaseRotationIfIdle()
+            }
+        }
+        releaseRotationIfIdle()
+    }
+
+    private fun releaseRotationIfIdle() {
+        val basis = rotationBasis ?: return
+        if (!playerVisible && !fullscreen && rotationAnimationSettled && !pipTransitioning &&
+            !inPictureInPicture && (measuredWindowRotation == basis.rotation || rotationUnavailable)) {
+            orientationCheck?.cancel()
+            rotationBasis = null
+            measuredWindowRotation = null
+            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        }
     }
 
     private fun pipSupported() = packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
@@ -223,7 +317,8 @@ class MainActivity : ComponentActivity() {
         val ratio = state.videoAspectRatio.coerceIn(0.42f, 2.38f)
         return PictureInPictureParams.Builder().setAspectRatio(Rational((ratio * 10_000).roundToInt(), 10_000)).setActions(listOf(action)).apply {
             videoBounds?.let(::setSourceRectHint)
-            setAutoEnterEnabled(settings.loaded.value && settings.preferences.value.autoPictureInPicture && playerVisible && state.hasVideo && state.canRenderVideo && state.playWhenReady)
+            setAutoEnterEnabled(settings.loaded.value && settings.preferences.value.autoPictureInPicture &&
+                videoAlignedWithWindow && playerVisible && state.hasVideo && state.canRenderVideo && state.playWhenReady)
             setSeamlessResizeEnabled(true)
         }.build()
     }
@@ -234,12 +329,24 @@ class MainActivity : ComponentActivity() {
 
     private fun enterPip(showFailure: Boolean) {
         if (inPictureInPicture) return
+        if (!pipSupported() || !playbackController.playerState.value.let { it.hasVideo && it.canRenderVideo }) {
+            if (showFailure) Toast.makeText(this, R.string.app_pip_unavailable, Toast.LENGTH_SHORT).show()
+            return
+        }
+        manualPipRequested = true
+        immediatePipAlignment = false
+        orientationCheck?.cancel()
         pipEntryPending = true
         pipTransitioning = true
+        // The callback enters PiP after the live video has aligned with the current window.
+    }
+
+    private fun completePipEntry(showFailure: Boolean = true) {
+        manualPipRequested = false
         val accepted = pipSupported() && playbackController.playerState.value.hasVideo && playbackController.playerState.value.canRenderVideo &&
             runCatching { enterPictureInPictureMode(pipParameters()) }.getOrDefault(false)
         pipEntryPending = accepted
-        if (!accepted) pipTransitioning = false
+        if (!accepted) { pipTransitioning = false; immediatePipAlignment = false }
         if (!accepted && showFailure) Toast.makeText(this, R.string.app_pip_unavailable, Toast.LENGTH_SHORT).show()
     }
 
@@ -247,6 +354,16 @@ class MainActivity : ComponentActivity() {
         super.onUserLeaveHint()
         if (settings.loaded.value && settings.preferences.value.autoPictureInPicture && playerVisible &&
             playbackController.playerState.value.let { it.playWhenReady && it.hasVideo && it.canRenderVideo }) {
+            if (!videoAlignedWithWindow) {
+                // Home can stop the Compose frame clock before a spring completes. Submit PiP
+                // while foreground, and align its live window immediately instead of waiting.
+                orientationCheck?.cancel()
+                pipEntryPending = true
+                pipTransitioning = true
+                immediatePipAlignment = true
+                completePipEntry(showFailure = false)
+                return
+            }
             pipEntryPending = true
             pipTransitioning = true
             lifecycleScope.launch {
@@ -267,6 +384,9 @@ class MainActivity : ComponentActivity() {
     override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
         inPictureInPicture = isInPictureInPictureMode
+        immediatePipAlignment = false
+        orientationCheck?.cancel()
+        manualPipRequested = false
         pipEntryPending = false
         pipTransitioning = false
         if (!isInPictureInPictureMode && !started) checkStoppedPlayback()
@@ -301,6 +421,8 @@ class MainActivity : ComponentActivity() {
         playbackController.setVolumeUiActive(true)
         started = true
         stoppedPlaybackCheck?.cancel()
+        manualPipRequested = false
+        immediatePipAlignment = false
         pipEntryPending = false
         pipTransitioning = false
         playbackController.setDiagnosticsVisible(diagnosticsPageVisible)
@@ -318,6 +440,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putBoolean("fullscreen", fullscreen)
+        rotationBasis?.let {
+            outState.putInt("rotation-basis", it.rotation)
+            outState.putBoolean("rotation-basis-landscape", it.landscape)
+        }
         playbackBrightness?.let { outState.putFloat("playback-brightness", it) }
         outState.putString("pending-diagnostics-export", pendingDiagnosticJson)
         super.onSaveInstanceState(outState)

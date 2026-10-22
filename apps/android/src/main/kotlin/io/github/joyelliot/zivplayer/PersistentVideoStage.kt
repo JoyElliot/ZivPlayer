@@ -22,8 +22,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.layout.onLayoutRectChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
@@ -46,19 +46,13 @@ internal fun PersistentVideoStage(controller: MediaController?, canRender: Boole
     val ratio = aspect.takeIf { it.isFinite() && it > 0 } ?: (16f / 9)
     val width = (if (ratio >= 1) edge.toFloat() else edge * ratio).roundToInt().coerceAtLeast(2)
     val height = (if (ratio >= 1) edge / ratio else edge.toFloat()).roundToInt().coerceAtLeast(2)
-    var windowOrigin by remember { mutableStateOf(Offset.Zero) }
     val currentBounds by rememberUpdatedState(onBounds)
-    SideEffect {
-        val bounds = Rect((windowOrigin.x + frame.centerX - frame.boundingWidth / 2).roundToInt(),
-            (windowOrigin.y + frame.centerY - frame.boundingHeight / 2).roundToInt(),
-            (windowOrigin.x + frame.centerX + frame.boundingWidth / 2).roundToInt(),
-            (windowOrigin.y + frame.centerY + frame.boundingHeight / 2).roundToInt())
-        if (bounds.intersect(windowOrigin.x.roundToInt(), windowOrigin.y.roundToInt(),
-                (windowOrigin.x + window.width).roundToInt(), (windowOrigin.y + window.height).roundToInt())) currentBounds(bounds)
-    }
-    Layout(modifier = Modifier.fillMaxSize().graphicsLayer { clip = true; alpha = if (visible) 1f else 0f }
-        .onGloballyPositioned { windowOrigin = it.positionInWindow() }, content = {
-        PlayerVideoSurface(controller, canRender, Modifier, ratio)
+    Layout(modifier = Modifier.fillMaxSize().graphicsLayer { clip = true; alpha = if (visible) 1f else 0f }, content = {
+        PlayerVideoSurface(controller, canRender, Modifier.onLayoutRectChanged(0, 0) { coordinates ->
+            // Includes both the animated video layer and the system-direction compensation.
+            val bounds = coordinates.boundsInWindow
+            if (bounds.width > 0 && bounds.height > 0) currentBounds(Rect(bounds.left, bounds.top, bounds.right, bounds.bottom))
+        }, ratio)
     }) { measurables, constraints ->
         val video = measurables.single().measure(Constraints.fixed(width, height))
         layout(constraints.maxWidth, constraints.maxHeight) {
@@ -81,7 +75,7 @@ internal fun PersistentVideoStage(controller: MediaController?, canRender: Boole
 @Composable
 internal fun RotatingPlayerViewport(rotation: Float, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     Layout(modifier = modifier.fillMaxSize(), content = content) { measurables, constraints ->
-        val turn = (kotlin.math.abs(rotation) / 90f).coerceIn(0f, 1f)
+        val turn = rotationAxisSwap(rotation)
         val width = (constraints.maxWidth + (constraints.maxHeight - constraints.maxWidth) * turn).roundToInt()
         val height = (constraints.maxHeight + (constraints.maxWidth - constraints.maxHeight) * turn).roundToInt()
         val children = measurables.map { it.measure(Constraints.fixed(width, height)) }
@@ -95,29 +89,45 @@ internal fun RotatingPlayerViewport(rotation: Float, modifier: Modifier = Modifi
 /** Only the current video rectangle takes input; the rest of the home page stays interactive. */
 @Composable
 internal fun VideoExpansionTouchTarget(frame: VideoFrame, state: PlayerPresentationState, travel: Float,
-    onOpen: () -> Unit, onSettled: (Boolean) -> Unit) {
+    onOpen: () -> Unit, onSettled: (Boolean) -> Unit, interceptDownwardDrag: () -> Boolean = { false }) {
     val density = LocalDensity.current
     Box(Modifier.offset { IntOffset((frame.centerX - frame.boundingWidth / 2).roundToInt(),
         (frame.centerY - frame.boundingHeight / 2).roundToInt()) }
         .size(with(density) { frame.boundingWidth.toDp() }, with(density) { frame.boundingHeight.toDp() })
-        .playerExpansionDrag(state, travel, onSettled, source = "video").clickable(onClick = onOpen))
+        .playerExpansionDrag(state, travel, onSettled, source = "video",
+            interceptDownwardDrag = interceptDownwardDrag).clickable(onClick = onOpen))
 }
 
 internal fun Modifier.playerExpansionDrag(state: PlayerPresentationState, travel: Float,
-    onSettled: (Boolean) -> Unit, source: String = "mini"): Modifier = composed {
+    onSettled: (Boolean) -> Unit, source: String = "mini",
+    interceptDownwardDrag: () -> Boolean = { false }): Modifier = composed {
     val settled by rememberUpdatedState(onSettled)
+    val intercept by rememberUpdatedState(interceptDownwardDrag)
     val distance by rememberUpdatedState(travel)
     var origin by remember { mutableStateOf(Offset.Zero) }
     onGloballyPositioned { origin = it.positionInRoot() }.pointerInput(state) {
         val velocity = VelocityTracker()
+        var started = false
+        var intercepted = false
         detectVerticalDragGestures(
-            onDragStart = { velocity.resetTracking(); state.beginDrag(source) },
-            onDragEnd = { settled(state.settle(-velocity.calculateVelocity().y, distance)) },
-            onDragCancel = { settled(state.settle(0f, distance)) },
+            onDragStart = { velocity.resetTracking(); started = false; intercepted = false },
+            onDragEnd = { if (started) settled(state.settle(-velocity.calculateVelocity().y, distance)) },
+            onDragCancel = { if (started) settled(state.settle(0f, distance)) },
             onVerticalDrag = { change, dy ->
-                velocity.addPosition(change.uptimeMillis, change.position + origin)
                 change.consume()
-                state.dragBy(-dy, distance)
+                if (!intercepted && dy > 0f && intercept()) {
+                    intercepted = true
+                    if (started) state.animateTo(true)
+                    started = false
+                }
+                if (!started && !intercepted) {
+                    state.beginDrag(source)
+                    started = true
+                }
+                if (started) {
+                    velocity.addPosition(change.uptimeMillis, change.position + origin)
+                    state.dragBy(-dy, distance)
+                }
             },
         )
     }
@@ -126,17 +136,17 @@ internal fun Modifier.playerExpansionDrag(state: PlayerPresentationState, travel
 @Composable
 internal fun playerControlInsets(rotation: Float): WindowInsets {
     val source = WindowInsets.safeDrawing
-    return remember(source, rotation >= 45f) {
+    val turn = ((rotation / 90f).roundToInt() % 4 + 4) % 4
+    return remember(source, turn) {
         object : WindowInsets {
-            private val rotated = rotation >= 45f
+            private fun sides(density: Density) = intArrayOf(source.getLeft(density, LayoutDirection.Ltr),
+                source.getTop(density), source.getRight(density, LayoutDirection.Ltr), source.getBottom(density))
             override fun getLeft(density: Density, layoutDirection: LayoutDirection) =
-                if (rotated) source.getTop(density) else source.getLeft(density, layoutDirection)
-            override fun getTop(density: Density) =
-                if (rotated) source.getRight(density, LayoutDirection.Ltr) else source.getTop(density)
+                sides(density)[turn]
+            override fun getTop(density: Density) = sides(density)[(turn + 1) % 4]
             override fun getRight(density: Density, layoutDirection: LayoutDirection) =
-                if (rotated) source.getBottom(density) else source.getRight(density, layoutDirection)
-            override fun getBottom(density: Density) =
-                if (rotated) source.getLeft(density, LayoutDirection.Ltr) else source.getBottom(density)
+                sides(density)[(turn + 2) % 4]
+            override fun getBottom(density: Density) = sides(density)[(turn + 3) % 4]
         }
     }
 }

@@ -125,8 +125,9 @@ class ContinuousPlaybackDeviceTest {
             val density = app.resources.displayMetrics.density
             val orientation = onMain { activity.activity.resources.configuration.orientation }
             button(PlayerR.string.player_rotate).performTouchInput { click() }
-            SystemClock.sleep(750)
-            assertEquals("rotation stays inside Activity", orientation, onMain { activity.activity.resources.configuration.orientation })
+            await("custom rotation hands off to system orientation") {
+                activity.activity.resources.configuration.orientation != orientation
+            }
             assertSurface("rotated")
             revealControls()
             button(PlayerR.string.player_quick_menu).performTouchInput { click() }
@@ -134,7 +135,9 @@ class ContinuousPlaybackDeviceTest {
             capture("rotated-menu-closed")
             revealControls()
             button(PlayerR.string.player_rotate).performClick()
-            SystemClock.sleep(650)
+            await("system orientation returns to its entry direction") {
+                activity.activity.resources.configuration.orientation == orientation
+            }
 
             // Real pointer stream: collapse, reverse a short expansion, then drag fully open.
             activity.onRoot().performTouchInput {
