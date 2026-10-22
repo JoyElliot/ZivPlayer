@@ -397,7 +397,7 @@ fun ZivPlayerApp(
                         fill = preferences.options.videoFit == VideoFit.FILL && !pictureInPicture,
                         stretch = preferences.options.videoFit == VideoFit.STRETCH && !pictureInPicture,
                         miniRotation = -canvas.compensation)
-                    val controlInsets = playerControlInsets(rotation + canvas.compensation)
+                    val controlInsets = playerControlInsets(rotation, rotationBasis, canvas)
                     SideEffect {
                         windowNeedsRestoring = canvas.turns != 0 || rotation != 0f
                         onRotationAlignmentChange(rotation == (if (fullscreen) 90f else 0f) &&
@@ -450,14 +450,18 @@ fun ZivPlayerApp(
                             PlayerQueuePanel(playerState, { showQueue = false }, onSelectQueueItem, controlInsets)
                         }
                     }
-                }
-            }
-            if ((progress > 0.999f && !presentation.dragging || presentation.dragging && presentation.dragSource == "handle") &&
-                !pictureInPicture && !pictureInPictureTransition) {
-                Box(Modifier.align(Alignment.TopCenter).size(72.dp, 22.dp)
-                    .playerExpansionDrag(presentation, travel, ::settlePresentation, source = "handle",
-                        interceptDownwardDrag = ::interceptCollapse), contentAlignment = Alignment.Center) {
-                    Box(Modifier.size(32.dp, 3.dp).background(Color.White.copy(alpha = 0.4f), androidx.compose.foundation.shape.RoundedCornerShape(2.dp)))
+                    if ((progress > 0.999f && !presentation.dragging || presentation.dragging && presentation.dragSource == "handle") &&
+                        !pictureInPicture && !pictureInPictureTransition) {
+                        RotatingPlayerViewport(rotation) {
+                            Box(Modifier.fillMaxSize()) {
+                                Box(Modifier.align(Alignment.TopCenter).size(72.dp, 22.dp)
+                                    .playerExpansionDrag(presentation, travel, ::settlePresentation, source = "handle",
+                                        interceptDownwardDrag = ::interceptCollapse), contentAlignment = Alignment.Center) {
+                                    Box(Modifier.size(32.dp, 3.dp).background(Color.White.copy(alpha = 0.4f), androidx.compose.foundation.shape.RoundedCornerShape(2.dp)))
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

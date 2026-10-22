@@ -3,6 +3,8 @@
 package io.github.joyelliot.zivplayer
 
 import android.graphics.Rect
+import android.os.Build
+import android.view.WindowInsets.Type
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
@@ -25,6 +27,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.layout.onLayoutRectChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
@@ -134,19 +137,32 @@ internal fun Modifier.playerExpansionDrag(state: PlayerPresentationState, travel
 }
 
 @Composable
-internal fun playerControlInsets(rotation: Float): WindowInsets {
+internal fun playerControlInsets(rotation: Float, basis: PlayerRotationBasis?, canvas: PlayerCanvasGeometry): WindowInsets {
     val source = WindowInsets.safeDrawing
-    val turn = ((rotation / 90f).roundToInt() % 4 + 4) % 4
-    return remember(source, turn) {
+    val density = LocalDensity.current
+    val view = LocalView.current
+    val latch = remember(basis, canvas.width, canvas.height, density) { PlayerControlInsetsLatch() }
+    return remember(source, rotation, canvas, latch, view) {
         object : WindowInsets {
-            private fun sides(density: Density) = intArrayOf(source.getLeft(density, LayoutDirection.Ltr),
-                source.getTop(density), source.getRight(density, LayoutDirection.Ltr), source.getBottom(density))
+            private fun area(density: Density): PlayerSafeArea {
+                // Observe Compose insets so a first dispatch schedules another measurement.
+                val observed = PlayerSafeArea(source.getLeft(density, LayoutDirection.Ltr), source.getTop(density),
+                    source.getRight(density, LayoutDirection.Ltr), source.getBottom(density))
+                // Compose starts at zero; seed from the window's dispatched snapshot instead.
+                val snapshot = view.rootWindowInsets
+                val frame = if (Build.VERSION.SDK_INT >= 35) snapshot?.frame else null
+                val ready = snapshot != null && (frame == null ||
+                    (frame.width == canvas.windowWidth && frame.height == canvas.windowHeight))
+                val native = snapshot?.getInsets(Type.systemBars() or Type.displayCutout() or Type.ime())
+                return latch.resolve({ native?.let { PlayerSafeArea(it.left, it.top, it.right, it.bottom) } ?: observed },
+                    canvas.turns, rotation, sourceReady = ready)
+            }
             override fun getLeft(density: Density, layoutDirection: LayoutDirection) =
-                sides(density)[turn]
-            override fun getTop(density: Density) = sides(density)[(turn + 1) % 4]
+                area(density).left
+            override fun getTop(density: Density) = area(density).top
             override fun getRight(density: Density, layoutDirection: LayoutDirection) =
-                sides(density)[(turn + 2) % 4]
-            override fun getBottom(density: Density) = sides(density)[(turn + 3) % 4]
+                area(density).right
+            override fun getBottom(density: Density) = area(density).bottom
         }
     }
 }
