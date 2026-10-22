@@ -100,7 +100,9 @@ class MainActivity : ComponentActivity() {
             PlayerRotationBasis(it.getInt("rotation-basis"), it.getBoolean("rotation-basis-landscape"))
         }
         window.attributes = window.attributes.apply {
-            rotationAnimation = WindowManager.LayoutParams.ROTATION_ANIMATION_SEAMLESS
+            // The player already animates the turn. SEAMLESS may fall back to a second WM
+            // rotation (for example when the navigation bar changes sides on Xiaomi).
+            rotationAnimation = WindowManager.LayoutParams.ROTATION_ANIMATION_JUMPCUT
         }
         pendingDiagnosticJson = savedInstanceState?.getString("pending-diagnostics-export")
         if (!inPictureInPicture) changeFullscreen(fullscreen)
@@ -120,7 +122,7 @@ class MainActivity : ComponentActivity() {
                 val bars = WindowCompat.getInsetsController(window, window.decorView)
                 bars.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
                 if ((fullscreen || playerVisible || rotationBasis != null) && !inPictureInPicture) {
-                    // WM's seamless eligibility checks the fullscreen window flag as well as bars.
+                    // The rotation-animation hint requires an opaque fullscreen window.
                     window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
                     bars.hide(WindowInsetsCompat.Type.systemBars())
                 } else {
