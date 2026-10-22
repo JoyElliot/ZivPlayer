@@ -16,9 +16,10 @@ import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
 
-/** Host compilation only this round. These clock-driven tests do not request device orientation. */
+/** Clock-driven animation contracts; real window rotation is covered by the device playback test. */
 class PlayerRotationHandoffTest {
-    @get:Rule val compose = createComposeRule()
+    @get:Rule(order = 0) val foreground = DeviceForegroundRule()
+    @get:Rule(order = 1) val compose = createComposeRule()
 
     @Test fun reversingAnAnimationCannotSubmitTheOldOrientation() {
         var turned by mutableStateOf(false)
