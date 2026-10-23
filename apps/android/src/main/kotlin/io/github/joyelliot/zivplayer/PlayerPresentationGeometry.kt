@@ -25,7 +25,11 @@ internal fun presentationFrame(windowWidth: Float, windowHeight: Float, aspect: 
     fun lerp(a: Float, b: Float, t: Float) = a + (b - a) * t
     val width = lerp(windowWidth, windowHeight, turn).coerceAtLeast(1f)
     val height = lerp(windowHeight, windowWidth, turn).coerceAtLeast(1f)
-    val scale = if (fill) max(width / ratio, height) else min(width / ratio, height)
+    fun fittedHeight(w: Float, h: Float) = if (fill) max(w / ratio, h) else min(w / ratio, h)
+    // Fit the two endpoints first. Fitting an interpolated viewport makes the limiting axis
+    // change mid-turn: a landscape video briefly grows before shrinking toward portrait.
+    val scale = lerp(fittedHeight(windowWidth.coerceAtLeast(1f), windowHeight.coerceAtLeast(1f)),
+        fittedHeight(windowHeight.coerceAtLeast(1f), windowWidth.coerceAtLeast(1f)), turn)
     val miniSwapsAxes = (abs(miniRotation).toInt() / 90) % 2 != 0
     val miniHeight = if (miniSwapsAxes) min(mini.height / ratio, mini.width) else min(mini.width / ratio, mini.height)
     return VideoFrame(lerp(mini.centerX, windowWidth / 2f, progress),
