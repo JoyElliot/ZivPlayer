@@ -155,6 +155,9 @@ fun ZivPlayerApp(
     val preferences = settings?.preferences?.value ?: PlayerPreferences()
     val navigationStyle = ZivNavigationStyle.valueOf(preferences.navigationStyle.name)
     val expanded = playerOpen || collapseRequested || pictureInPicture || presentation.hasVisibleFrame
+    // The visible home is usable before WM acknowledges the return direction. Keep that
+    // acknowledgement in expanded/collapseRequested solely for the window handoff lifecycle.
+    val homeInteractive = !playerOpen && !pictureInPicture && !pictureInPictureTransition && presentation.homeExposed
     val pageState = rememberSaveableStateHolder()
     val libraryBackHandlers = remember { mutableStateMapOf<AppDestination, (() -> Unit)?>() }
     val libraryBack = libraryBackHandlers[destination]
@@ -215,14 +218,14 @@ fun ZivPlayerApp(
         onDiagnosticsVisibilityChange(destination == AppDestination.SETTINGS && showDiagnostics && !expanded && !homePages.pager.isScrollInProgress && !settingsPages.isTransitionRunning)
     }
     DisposableEffect(Unit) { onDispose { onDiagnosticsVisibilityChange(false) } }
-    BackHandler(enabled = (expanded || !settingsPages.canPop) && (fullscreen || destination != AppDestination.VIDEO || libraryBack != null)) {
+    BackHandler(enabled = (!homeInteractive || !settingsPages.canPop) && (!homeInteractive || destination != AppDestination.VIDEO || libraryBack != null)) {
         when {
-            expanded -> leavePlayer()
+            !homeInteractive -> leavePlayer()
             destination in listOf(AppDestination.VIDEO, AppDestination.AUDIO) && libraryBack != null -> libraryBack.invoke()
             destination != AppDestination.VIDEO -> selectHome(AppDestination.VIDEO)
         }
     }
-    ZivPredictiveBackHandler(settingsPages, enabled = !expanded)
+    ZivPredictiveBackHandler(settingsPages, enabled = homeInteractive)
     val openFolder = rememberLauncherForActivityResult(OpenMediaFolder()) { selection ->
         selection?.let { library?.addFolder(it) }
     }
@@ -348,7 +351,7 @@ fun ZivPlayerApp(
                         if (!open) showQueue = false
                     }
                     Box(Modifier.fillMaxSize()
-                        .then(if (expanded) Modifier.clearAndSetSemantics { } else Modifier)) {
+                        .then(if (!homeInteractive) Modifier.clearAndSetSemantics { } else Modifier)) {
                         ZivPageStack(settingsPages, root = {
                             ZivHomeScaffold(style = navigationStyle, bottomBar = {
                                 ZivNavigationBar(
@@ -387,13 +390,13 @@ fun ZivPlayerApp(
                                                     foldersLoaded = library?.foldersLoaded?.value ?: true,
                                                     bottomPadding = bottomPadding,
                                                     mediaKind = if (pageDestination == AppDestination.AUDIO) LibraryMediaKind.AUDIO else LibraryMediaKind.VIDEO,
-                                                    active = !expanded && !settingsPages.canPop && page == homePages.selectedPage,
+                                                    active = homeInteractive && !settingsPages.canPop && page == homePages.selectedPage,
                                                 )
                                             }
                                             AppDestination.QUEUE -> PlaybackQueueScreen(playerState, recentMedia, onSelectQueueItem,
                                                 { openPlayerFrom(pageDestination, mediaId = it); onOpenRecent(it) }, onForgetRecent,
                                                 selectionNotice?.toUserMessage() ?: if (historyUnavailable) stringResource(R.string.media_history_unavailable) else null,
-                                                bottomPadding = bottomPadding, active = !expanded && !settingsPages.canPop && page == homePages.selectedPage)
+                                                bottomPadding = bottomPadding, active = homeInteractive && !settingsPages.canPop && page == homePages.selectedPage)
                                             AppDestination.SETTINGS -> SettingsScreen(
                                                 message = configurationMessage ?: settings?.message?.value,
                                                 onOpenPage = {
@@ -427,7 +430,7 @@ fun ZivPlayerApp(
                         alpha = progress()
                         compositingStrategy = CompositingStrategy.ModulateAlpha
                     }.background(Color.Black)
-                        .then(if (expanded) Modifier.pointerInput(Unit) {
+                        .then(if (!homeInteractive) Modifier.pointerInput(Unit) {
                             awaitPointerEventScope { while (true) awaitPointerEvent().changes.forEach { it.consume() } }
                         } else Modifier))
                     Box(Modifier.fillMaxSize()) {

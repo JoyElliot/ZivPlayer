@@ -24,6 +24,7 @@ internal class PlayerPresentationState(private val scope: CoroutineScope, initia
     val atMini by derivedStateOf { progress == 0f }
     val atExpanded by derivedStateOf { progress == 1f }
     val showsControls by derivedStateOf { progress > 0.999f }
+    val homeExposed by derivedStateOf { progress <= 0.5f }
     private var animation: Job? = null
     private var velocity = 0f
 
