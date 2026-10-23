@@ -501,9 +501,7 @@ fun ZivPlayerApp(
                             RotatingPlayerViewport(rotation) {
                                 Box(Modifier.fillMaxSize()) {
                                     Box(Modifier.align(Alignment.TopCenter).size(72.dp, 22.dp)
-                                        .playerExpansionDrag(presentation, travel, ::settlePresentation, source = "handle"), contentAlignment = Alignment.Center) {
-                                        Box(Modifier.size(32.dp, 3.dp).background(Color.White.copy(alpha = 0.4f), androidx.compose.foundation.shape.RoundedCornerShape(2.dp)))
-                                    }
+                                        .playerExpansionDrag(presentation, travel, ::settlePresentation, source = "handle"))
                                 }
                             }
                         }
