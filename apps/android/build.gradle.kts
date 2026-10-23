@@ -18,8 +18,8 @@ android {
         applicationId = "io.github.joyelliot.zivplayer"
         minSdk = 33
         targetSdk = 37
-        versionCode = 8
-        versionName = "0.1.0-dev.rotation7"
+        versionCode = 9
+        versionName = "0.1.0-dev.rotation8"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -31,6 +31,20 @@ android {
     buildFeatures {
         buildConfig = true
         compose = true
+    }
+
+    // Same install identity for local performance validation, with production-like optimization.
+    // Debug signing does not replace the native provenance/compliance release gates.
+    buildTypes {
+        create("preview") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            isDebuggable = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            matchingFallbacks += "release"
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
     }
 
     compileOptions {
