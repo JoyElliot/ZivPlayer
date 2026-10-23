@@ -148,13 +148,6 @@ fun FullscreenPlayerScreen(
                     }
                     ZivPlaybackIconButton(ZivPlaybackIcon.MORE, stringResource(R.string.player_quick_menu), { openMenu(PlayerQuickPage.MAIN) })
                 }
-                if (compact) Row(Modifier.align(Alignment.Center), horizontalArrangement = Arrangement.spacedBy(36.dp), verticalAlignment = Alignment.CenterVertically) {
-                    ZivPlaybackIconButton(ZivPlaybackIcon.PREVIOUS, stringResource(R.string.player_previous), { reveal(); onPrevious() }, enabled = canPrevious)
-                    ZivPlaybackIconButton(if (state.playWhenReady) ZivPlaybackIcon.PAUSE else ZivPlaybackIcon.PLAY,
-                        stringResource(if (state.playWhenReady) R.string.player_pause else R.string.player_play),
-                        { reveal(); onPlayPause() }, enabled = state.canPlayPause, prominent = true)
-                    ZivPlaybackIconButton(ZivPlaybackIcon.NEXT, stringResource(R.string.player_next), { reveal(); onNext() }, enabled = canNext)
-                }
                 Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()
                     .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f))))
                     .windowInsetsPadding(contentInsets.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))
@@ -194,19 +187,27 @@ fun FullscreenPlayerScreen(
                                 })
                                 ZivPlaybackTextButton(formatPlaybackSpeed(state.playbackSpeed), { openMenu(PlayerQuickPage.SPEED) }, enabled = state.canSetSpeed)
                             }
-                            if (!compact) Row(Modifier.align(Alignment.Center), horizontalArrangement = Arrangement.spacedBy(24.dp), verticalAlignment = Alignment.CenterVertically) {
-                                ZivPlaybackIconButton(ZivPlaybackIcon.PREVIOUS, stringResource(R.string.player_previous), { reveal(); onPrevious() }, enabled = canPrevious)
-                                ZivPlaybackIconButton(if (state.playWhenReady) ZivPlaybackIcon.PAUSE else ZivPlaybackIcon.PLAY,
-                                    stringResource(if (state.playWhenReady) R.string.player_pause else R.string.player_play),
-                                    { reveal(); onPlayPause() }, enabled = state.canPlayPause, prominent = true)
-                                ZivPlaybackIconButton(ZivPlaybackIcon.NEXT, stringResource(R.string.player_next), { reveal(); onNext() }, enabled = canNext)
-                            }
                             Row(Modifier.align(Alignment.CenterEnd)) {
                                 if (videoOptions.isNotEmpty()) ZivPlaybackIconButton(ZivPlaybackIcon.FIT, stringResource(R.string.player_video_fit), { openMenu(PlayerQuickPage.VIDEO) })
                                 ZivPlaybackIconButton(ZivPlaybackIcon.LIST, stringResource(R.string.player_queue), { reveal(); onQueue() })
                                 onRotate?.let { ZivPlaybackIconButton(ZivPlaybackIcon.FULLSCREEN, stringResource(R.string.player_rotate), it) }
                             }
                         }
+                    }
+                }
+                // One transport group changes placement across orientations. Recreating it in
+                // two responsive branches discarded its layers, focus and glyph animation state.
+                Box(Modifier.align(if (compact) Alignment.Center else Alignment.BottomCenter).fillMaxWidth()
+                    .then(if (compact) Modifier else Modifier
+                        .windowInsetsPadding(contentInsets.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))
+                        .padding(start = 20.dp, end = 20.dp, bottom = 4.dp))) {
+                    Row(Modifier.align(Alignment.Center), horizontalArrangement = Arrangement.spacedBy(if (compact) 36.dp else 24.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        ZivPlaybackIconButton(ZivPlaybackIcon.PREVIOUS, stringResource(R.string.player_previous), { reveal(); onPrevious() }, enabled = canPrevious)
+                        ZivPlaybackIconButton(if (state.playWhenReady) ZivPlaybackIcon.PAUSE else ZivPlaybackIcon.PLAY,
+                            stringResource(if (state.playWhenReady) R.string.player_pause else R.string.player_play),
+                            { reveal(); onPlayPause() }, enabled = state.canPlayPause, prominent = true)
+                        ZivPlaybackIconButton(ZivPlaybackIcon.NEXT, stringResource(R.string.player_next), { reveal(); onNext() }, enabled = canNext)
                     }
                 }
             }

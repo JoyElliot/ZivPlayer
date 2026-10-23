@@ -93,11 +93,13 @@ class PlayerOpeningInteractionTest {
     @Test fun manualPortraitSurvivesAMiniRoundTripForTheSamePlayback() {
         lateinit var host: ComponentActivity
         lateinit var rotate: String
+        lateinit var play: String
         var turned by mutableStateOf(false)
         val requests = mutableListOf<Boolean>()
         compose.setContent {
             host = LocalActivity.current as ComponentActivity
             rotate = stringResource(io.github.joyelliot.zivplayer.feature.player.R.string.player_rotate)
+            play = stringResource(io.github.joyelliot.zivplayer.feature.player.R.string.player_play)
             ZivPlayerApp(playerState = fixture(), fullscreen = turned,
                 rotationBasis = PlayerRotationBasis(0, false), onFullscreenChange = { turned = it },
                 onRotationAnimationFinished = { turn, _ -> requests += turn })
@@ -105,8 +107,11 @@ class PlayerOpeningInteractionTest {
         compose.onNodeWithTag("mini_player", true).performClick()
         compose.waitForIdle()
         compose.runOnIdle { assertTrue(turned) }
+        val playNode = compose.onNodeWithContentDescription(play).fetchSemanticsNode().id
         compose.onNodeWithContentDescription(rotate).performClick()
         compose.waitForIdle()
+        assertEquals("Transport controls retain their nodes when the viewport changes axes",
+            playNode, compose.onNodeWithContentDescription(play).fetchSemanticsNode().id)
         compose.runOnIdle { assertFalse(turned); host.onBackPressedDispatcher.onBackPressed() }
         compose.waitForIdle()
         compose.runOnIdle { requests.clear() }
