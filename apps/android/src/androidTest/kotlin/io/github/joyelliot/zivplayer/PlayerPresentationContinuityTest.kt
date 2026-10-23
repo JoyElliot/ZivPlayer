@@ -79,6 +79,38 @@ class PlayerPresentationContinuityTest {
         compose.runOnIdle { assertEquals((interrupted - 0.1f).coerceAtLeast(0f), presentation.progress, 0.001f) }
     }
 
+    @Test fun rotatingMiniTripsTakeLongerAndStillAllowFingerTakeover() {
+        lateinit var normal: PlayerPresentationState
+        lateinit var rotating: PlayerPresentationState
+        compose.setContent {
+            val scope = rememberCoroutineScope()
+            normal = remember { PlayerPresentationState(scope, false) }
+            rotating = remember { PlayerPresentationState(scope, false) }
+        }
+        compose.mainClock.autoAdvance = false
+        compose.runOnIdle { normal.animateTo(true); rotating.animateTo(true, rotating = true) }
+        compose.mainClock.advanceTimeBy(160)
+        compose.runOnIdle {
+            assertTrue(rotating.progress > 0f)
+            assertTrue(rotating.progress < normal.progress)
+        }
+        compose.mainClock.advanceTimeBy(2_000)
+        compose.runOnIdle {
+            assertEquals(1f, rotating.progress, 0f)
+            normal.animateTo(false); rotating.animateTo(false, rotating = true)
+        }
+        compose.mainClock.advanceTimeBy(160)
+        var interrupted = 0f
+        compose.runOnIdle {
+            assertTrue(rotating.progress > normal.progress)
+            interrupted = rotating.progress
+            rotating.beginDrag("mini")
+            rotating.dragBy(100f, 1_000f)
+        }
+        compose.mainClock.advanceTimeBy(500)
+        compose.runOnIdle { assertEquals((interrupted + 0.1f).coerceAtMost(1f), rotating.progress, 0.001f) }
+    }
+
     @Test fun videoMotionUpdatesLayersWithoutRecomposingOrMeasuringTheHost() {
         var progress by mutableFloatStateOf(1f)
         var compositions = 0

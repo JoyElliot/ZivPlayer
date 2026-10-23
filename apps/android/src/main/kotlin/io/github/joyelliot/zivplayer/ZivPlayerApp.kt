@@ -459,6 +459,7 @@ fun ZivPlayerApp(
                         }
                         val controlInsets = playerControlInsets(layoutRotation, rotationBasis, canvas)
                         SideEffect {
+                            presentation.turnsDuringExpansion = !rotationAtZero
                             onRotationAlignmentChange(playerOpen && atExpanded && rotationAtTarget &&
                                 isVideoAlignedWithWindow(layoutRotation, canvas.compensation))
                         }

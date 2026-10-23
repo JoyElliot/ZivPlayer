@@ -27,13 +27,15 @@ internal class PlayerPresentationState(private val scope: CoroutineScope, initia
     val homeExposed by derivedStateOf { progress <= 0.5f }
     private var animation: Job? = null
     private var velocity = 0f
+    // This is a motion policy, not observable UI state. The stage updates it at angle endpoints.
+    var turnsDuringExpansion = false
 
-    fun animateTo(expanded: Boolean, initialVelocity: Float = velocity) {
+    fun animateTo(expanded: Boolean, initialVelocity: Float = velocity, rotating: Boolean = turnsDuringExpansion) {
         animation?.cancel()
         dragging = false
         animation = scope.launch {
             AnimationState(progress, initialVelocity.coerceIn(-4f, 4f)).animateTo(if (expanded) 1f else 0f,
-                spring(dampingRatio = 1f, stiffness = 420f, visibilityThreshold = 0.001f)) {
+                spring(dampingRatio = 1f, stiffness = if (rotating) 260f else 420f, visibilityThreshold = 0.001f)) {
                 progress = value.coerceIn(0f, 1f)
                 this@PlayerPresentationState.velocity = this.velocity
             }
