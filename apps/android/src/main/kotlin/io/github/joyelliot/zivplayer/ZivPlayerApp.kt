@@ -80,6 +80,8 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeout
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import kotlin.math.cos
+import kotlin.math.roundToInt
 
 @Composable
 fun ZivPlayerApp(
@@ -441,10 +443,15 @@ fun ZivPlayerApp(
                             allowWindowRequest = !presentation.dragging && (atMini || playerOpen && atExpanded),
                             onFinished = onRotationAnimationFinished)
                         val rotation = remember(rotationState) { { rotationState.value } }
-                        val layoutRotation = if (pictureInPicture) 0f else if (pictureInPictureTransition) -canvas.compensation
+                        val targetRotation = if (pictureInPicture) 0f else if (pictureInPictureTransition) -canvas.compensation
                             else if (fullscreen) 90f else 0f
-                        val rotationAtTarget by remember(rotationState, layoutRotation) {
-                            derivedStateOf { rotationState.value == layoutRotation }
+                        // Keep the starting control layout through the early frames. Switch its
+                        // responsive structure only halfway through the turn, while faded out.
+                        val layoutRotation by remember(rotationState) {
+                            derivedStateOf { (rotationState.value / 90f).roundToInt() * 90f }
+                        }
+                        val rotationAtTarget by remember(rotationState, targetRotation) {
+                            derivedStateOf { rotationState.value == targetRotation }
                         }
                         val rotationAtZero by remember(rotationState) { derivedStateOf { rotationState.value == 0f } }
                         val logicalWindow = IntSize(canvas.width, canvas.height)
@@ -461,7 +468,7 @@ fun ZivPlayerApp(
                         SideEffect {
                             presentation.turnsDuringExpansion = !rotationAtZero
                             onRotationAlignmentChange(playerOpen && atExpanded && rotationAtTarget &&
-                                isVideoAlignedWithWindow(layoutRotation, canvas.compensation))
+                                isVideoAlignedWithWindow(targetRotation, canvas.compensation))
                         }
                         LaunchedEffect(collapseRequested, atMini, fullscreen, rotationAtZero, canvas.turns, rotationUnavailable,
                             pictureInPicture, pictureInPictureTransition) {
@@ -481,7 +488,10 @@ fun ZivPlayerApp(
                         }
                         RotatingPlayerViewport(rotation, layoutRotation, Modifier
                             .then(if (!showsControls || presentation.dragging) Modifier.clearAndSetSemantics { } else Modifier)
-                            .graphicsLayer { alpha = ((progress() - 0.65f) / 0.35f).coerceIn(0f, 1f) },
+                            .graphicsLayer {
+                                val controlFade = cos((rotation() - layoutRotation) * Math.PI / 90).toFloat().coerceIn(0f, 1f)
+                                alpha = ((progress() - 0.65f) / 0.35f).coerceIn(0f, 1f) * controlFade
+                            },
                             visible = showsControls && !presentation.dragging) {
                             FullscreenPlayerScreen(playerState, {}, ::leavePlayer, onPlayPause, onSeekTo,
                                 onPlaybackSpeedChange, onVolumeChange, onRepeatModeChange, onSelectTrack, launchSubtitle,
