@@ -32,15 +32,16 @@ internal class PlayerOpeningOrientation {
     }
 
     fun resolve(identity: String?, source: String?, mediaId: String?, aspect: Float?, entryLandscape: Boolean): Boolean? {
-        if (identity == null || aspect == null || !aspect.isFinite() || aspect <= 0f) return null
+        if (identity == null) return null
         if (identity == previousIdentity) return null
         if (expectedSource != null && source != expectedSource || expectedMedia != null && mediaId != expectedMedia) return null
         expectedSource = null
         expectedMedia = null
         previousIdentity = null
         if (handledIdentity == identity) return null
+        if (manualWhileOpening) { handledIdentity = identity; manualWhileOpening = false; return null }
+        if (aspect == null || !aspect.isFinite() || aspect <= 0f) return null
         handledIdentity = identity
-        if (manualWhileOpening) { manualWhileOpening = false; return null }
         // A square video keeps the entry orientation; audio/unknown geometry never requests a turn.
         return if (aspect == 1f) false else (aspect > 1f) != entryLandscape
     }

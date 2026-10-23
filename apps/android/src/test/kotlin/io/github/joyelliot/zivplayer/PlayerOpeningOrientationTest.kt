@@ -51,4 +51,20 @@ class PlayerOpeningOrientationTest {
     @Test fun squareVideosKeepTheEntryOrientation() {
         assertEquals(false, PlayerOpeningOrientation().resolve("a", null, "a", 1f, true))
     }
+
+    @Test fun queueCanAdvanceBeforeTheOpenedItemHasDimensions() {
+        val policy = PlayerOpeningOrientation()
+        policy.open("uri:a", null, "old")
+        assertNull(policy.resolve("a", "uri:a", "a", null, false))
+        assertEquals(true, policy.resolve("b", "uri:b", "b", 16f / 9, false))
+    }
+
+    @Test fun manualChoiceBindsToTheLoadingItemRatherThanTheNextQueueItem() {
+        val policy = PlayerOpeningOrientation()
+        policy.open("uri:a", null, "old")
+        policy.manual("old")
+        assertNull(policy.resolve("a", "uri:a", "a", null, false))
+        assertNull(policy.resolve("a", "uri:a", "a", 16f / 9, false))
+        assertEquals(true, policy.resolve("b", "uri:b", "b", 16f / 9, false))
+    }
 }
