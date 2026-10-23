@@ -442,7 +442,7 @@ internal fun LiquidGlassNavigationBar(
 
     // Host has consumed the system inset. Preserve the reference's extra clearance
     // so the velocity-stretched capsule can expand past the track without clipping.
-    val bottomClearance = if (WindowInsets.navigationBarsIgnoringVisibility.getBottom(density) > 0) 10.dp else 26.dp
+    val bottomClearance = if (io.github.joyelliot.zivplayer.designsystem.ZivInsets.navigationBars.getBottom(density) > 0) 10.dp else 26.dp
     Box(modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         Box(
             modifier = Modifier

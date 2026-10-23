@@ -32,8 +32,8 @@ fun ZivHomeScaffold(style: ZivNavigationStyle = ZivNavigationStyle.LIQUID_GLASS,
     var bottomHeight by remember { mutableIntStateOf(0) }
     val bottomPadding = with(LocalDensity.current) { bottomHeight.toDp() }
     Box(Modifier.fillMaxSize().background(background)
-        .windowInsetsPadding(WindowInsets.systemBarsIgnoringVisibility.union(WindowInsets.displayCutout).only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
-        .imePadding()) {
+        .windowInsetsPadding(ZivInsets.barsAndCutout.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
+        .windowInsetsPadding(ZivInsets.ime)) {
         // Capture only page content. Glass and the persistent video layer never sample themselves.
         Box(Modifier.fillMaxSize().then(if (glass) Modifier.layerBackdrop(backdrop) else Modifier)) { content(bottomPadding) }
         CompositionLocalProvider(LocalHomeBackdrop provides if (glass) backdrop else null,

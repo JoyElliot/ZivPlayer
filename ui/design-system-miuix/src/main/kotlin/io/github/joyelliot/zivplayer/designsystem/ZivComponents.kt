@@ -68,7 +68,7 @@ fun ZivScreen(
     leading: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    ZivLibrarySurface(modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
+    ZivLibrarySurface(modifier.fillMaxSize().windowInsetsPadding(ZivInsets.safeDrawing)) {
         ZivPageHeader(title, leading = leading)
         Column(
             modifier = Modifier

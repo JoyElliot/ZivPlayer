@@ -31,7 +31,7 @@ internal fun ZivGlassNavigationBar(items: List<ZivNavigationItem>, selectedIndex
     require(items.isNotEmpty() && selectedIndex in items.indices)
     val backdrop = LocalHomeBackdrop.current
     val motion = remember { LiquidNavigationMotion() }
-    val bottomClearance = if (WindowInsets.navigationBarsIgnoringVisibility.getBottom(LocalDensity.current) > 0) 10.dp else 26.dp
+    val bottomClearance = if (ZivInsets.navigationBars.getBottom(LocalDensity.current) > 0) 10.dp else 26.dp
     Box(Modifier.fillMaxWidth().testTag("app_playback_dock")) {
         if (nowPlaying != null) {
             // An open frame surrounds only the upper half of the original navigation.

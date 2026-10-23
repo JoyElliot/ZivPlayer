@@ -30,7 +30,7 @@ fun PlaybackQueueScreen(
 ) {
     var actionItem by remember { mutableStateOf<RecentMediaUiItem?>(null) }
     LaunchedEffect(active) { if (!active) actionItem = null }
-    ZivLibrarySurface(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
+    ZivLibrarySurface(Modifier.fillMaxSize().windowInsetsPadding(ZivInsets.safeDrawing)) {
         ZivPageHeader(stringResource(R.string.player_queue_title))
         LazyColumn(Modifier.fillMaxSize().testTag("playback_queue_list"),
             contentPadding = PaddingValues(bottom = bottomPadding + 16.dp)) {

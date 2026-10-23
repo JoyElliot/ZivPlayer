@@ -20,7 +20,7 @@ fun RecentMediaScreen(items: List<RecentMediaUiItem>, onBack: () -> Unit,
     onOpen: (String) -> Unit, onForget: (String) -> Unit, message: String? = null, showBack: Boolean = true,
     bottomPadding: Dp = 0.dp) {
     var actionItem by remember { mutableStateOf<RecentMediaUiItem?>(null) }
-    ZivLibrarySurface(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
+    ZivLibrarySurface(Modifier.fillMaxSize().windowInsetsPadding(ZivInsets.safeDrawing)) {
         ZivPageHeader(stringResource(R.string.player_recent_title), leading = if (showBack) ({
             ZivLibraryIconButton(ZivPlaybackIcon.BACK, stringResource(R.string.player_back), onBack)
         }) else null)

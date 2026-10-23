@@ -129,7 +129,7 @@ fun LibraryScreen(
             filter == Filter.FOLDERS -> R.string.library_title
             else -> filter.label()
         })
-    ZivLibrarySurface(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
+    ZivLibrarySurface(Modifier.fillMaxSize().windowInsetsPadding(ZivInsets.safeDrawing)) {
         ZivPageHeader(pageTitle, leading = if (selectedFolderId != null) ({
             ZivLibraryIconButton(ZivPlaybackIcon.BACK, stringResource(R.string.library_back_folders), ::browseBack)
         }) else null) {
