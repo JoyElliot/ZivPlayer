@@ -12,7 +12,6 @@ import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Density
@@ -34,7 +33,6 @@ data class ZivWindowCorners(val topLeft: Float, val topRight: Float, val bottomR
 @Composable
 fun rememberZivWindowCorners(): ZivWindowCorners {
     val view = LocalView.current
-    val configuration = LocalConfiguration.current
     val fallback = with(LocalDensity.current) { 28.dp.toPx() }
     fun read(): ZivWindowCorners {
         val insets = view.rootWindowInsets
@@ -51,8 +49,8 @@ fun rememberZivWindowCorners(): ZivWindowCorners {
             radius(RoundedCorner.POSITION_BOTTOM_LEFT, "rounded_corner_radius_bottom"),
         )
     }
-    var corners by remember(view, configuration, fallback) { mutableStateOf(read()) }
-    DisposableEffect(view, configuration, fallback) {
+    var corners by remember(view, fallback) { mutableStateOf(read()) }
+    DisposableEffect(view, fallback) {
         val observer = view.viewTreeObserver
         val listener = ViewTreeObserver.OnGlobalLayoutListener { corners = read() }
         var previousInsets = view.rootWindowInsets

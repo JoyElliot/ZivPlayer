@@ -125,10 +125,11 @@ class MainActivity : ComponentActivity() {
                 if (playing && preferences.keepScreenOn) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                 else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             }
-            LaunchedEffect(fullscreen, playerVisible, rotationBasis, inPictureInPicture) {
+            val hideSystemBars = (fullscreen || playerVisible || rotationBasis != null) && !inPictureInPicture
+            LaunchedEffect(hideSystemBars) {
                 val bars = WindowCompat.getInsetsController(window, window.decorView)
                 bars.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-                if ((fullscreen || playerVisible || rotationBasis != null) && !inPictureInPicture) {
+                if (hideSystemBars) {
                     // The rotation-animation hint requires an opaque fullscreen window.
                     window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
                     bars.hide(WindowInsetsCompat.Type.systemBars())
@@ -137,10 +138,11 @@ class MainActivity : ComponentActivity() {
                     bars.show(WindowInsetsCompat.Type.systemBars())
                 }
             }
-            LaunchedEffect(playerVisible, inPictureInPicture, playbackBrightness) {
+            val desiredBrightness = if (playerVisible && !inPictureInPicture)
+                playbackBrightness?.coerceIn(0.01f, 1f) ?: originalWindowBrightness else originalWindowBrightness
+            LaunchedEffect(desiredBrightness) {
                 window.attributes = window.attributes.apply {
-                    screenBrightness = if (playerVisible && !inPictureInPicture) playbackBrightness?.coerceIn(0.01f, 1f)
-                        ?: originalWindowBrightness else originalWindowBrightness
+                    screenBrightness = desiredBrightness
                 }
             }
             LaunchedEffect(playing, hasVideo, canRenderVideo, aspectRatio, preferences.autoPictureInPicture, settings.loaded.value, playerVisible) { updatePipParameters() }
