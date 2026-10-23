@@ -63,6 +63,7 @@ class MainActivity : ComponentActivity() {
     private var pipEntryPending = false
     private var pipTransitioning by mutableStateOf(false)
     private var videoBounds: android.graphics.Rect? = null
+    private var publishedPipParameters: PictureInPictureParams? = null
     private val hasPipSupport by lazy { packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE) }
     private val pipToggleIntent by lazy {
         PendingIntent.getBroadcast(this, 1, Intent(PIP_TOGGLE_ACTION).setPackage(packageName),
@@ -342,7 +343,13 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun updatePipParameters() {
-        if (pipSupported()) runCatching { setPictureInPictureParams(pipParameters()) }
+        if (!pipSupported()) return
+        val parameters = pipParameters()
+        // Alignment changes need not change auto-enter (for example when disabled).
+        // Avoid a synchronous WM call in the resize frame for an identical snapshot.
+        if (parameters == publishedPipParameters) return
+        runCatching { setPictureInPictureParams(parameters) }
+            .onSuccess { publishedPipParameters = parameters }
     }
 
     private fun enterPip(showFailure: Boolean) {
@@ -361,6 +368,9 @@ class MainActivity : ComponentActivity() {
 
     private fun completePipEntry(showFailure: Boolean = true) {
         manualPipRequested = false
+        // Explicit entry supplies its own parameters, bypassing the normal publisher.
+        // Invalidate even on failure so a later update can retry the current snapshot.
+        publishedPipParameters = null
         val accepted = pipSupported() && playbackController.playerState.value.hasVideo && playbackController.playerState.value.canRenderVideo &&
             runCatching { enterPictureInPictureMode(pipParameters()) }.getOrDefault(false)
         pipEntryPending = accepted
