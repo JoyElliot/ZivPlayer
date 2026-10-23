@@ -532,6 +532,9 @@ fun ZivPlayerApp(
                         RotatingPlayerViewport(rotation, layoutRotation, Modifier
                             .then(if (!showsControls || presentation.dragging) Modifier.clearAndSetSemantics { } else Modifier)
                             .graphicsLayer {
+                                // Fade the overlay's drawing commands without a full-window
+                                // intermediate texture on every rotation frame.
+                                compositingStrategy = CompositingStrategy.ModulateAlpha
                                 val controlFade = cos((rotation() - layoutRotation) * Math.PI / 90).toFloat().coerceIn(0f, 1f)
                                 alpha = ((progress() - 0.65f) / 0.35f).coerceIn(0f, 1f) * controlFade
                             },
