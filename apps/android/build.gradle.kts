@@ -18,8 +18,8 @@ android {
         applicationId = "io.github.joyelliot.zivplayer"
         minSdk = 33
         targetSdk = 37
-        versionCode = 10
-        versionName = "0.1.0-dev.rotation9"
+        versionCode = 11
+        versionName = "0.1.0-dev.rotation10"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
