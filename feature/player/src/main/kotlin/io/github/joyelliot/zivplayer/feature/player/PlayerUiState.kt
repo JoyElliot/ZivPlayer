@@ -67,6 +67,8 @@ data class PlayerUiState(
     val canRenderVideo: Boolean = false,
     val hasVideo: Boolean = false,
     val videoAspectRatio: Float = 16f / 9f,
+    /** Null until the current prepared item's display dimensions are available. */
+    val orientationAspectRatio: Float? = null,
     val tracks: List<PlayerTrackUiItem> = emptyList(),
     val canSelectTracks: Boolean = false,
     val canAddSubtitle: Boolean = false,

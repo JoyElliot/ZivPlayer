@@ -569,6 +569,9 @@ class PlaybackControllerViewModel(
             canRenderVideo = player.isCommandAvailable(Player.COMMAND_SET_VIDEO_SURFACE),
             hasVideo = currentItem != null && player.currentTracks.groups.any { it.type == C.TRACK_TYPE_VIDEO && it.length > 0 },
             videoAspectRatio = player.currentTracks.videoDisplayAspectRatio(),
+            orientationAspectRatio = if (currentItem != null &&
+                player.playbackState in listOf(Player.STATE_READY, Player.STATE_ENDED))
+                player.currentTracks.knownVideoDisplayAspectRatio() else null,
             tracks = if (!rebuildTracks) mutablePlayerState.value.tracks else player.currentTracks.groups.mapNotNull { group ->
                 val kind = when (group.type) {
                     C.TRACK_TYPE_AUDIO -> PlayerTrackKind.AUDIO

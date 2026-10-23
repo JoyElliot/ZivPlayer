@@ -135,6 +135,7 @@ fun ZivPlayerApp(
     onExportDiagnostics: () -> Unit = {},
 ) {
     var playerOpen by rememberSaveable { mutableStateOf(false) }
+    val openingOrientation = rememberSaveable(saver = PlayerOpeningOrientation.Saver) { PlayerOpeningOrientation() }
     var collapseRequested by remember { mutableStateOf(false) }
     var windowNeedsRestoring by remember { mutableStateOf(false) }
     val presentationScope = rememberCoroutineScope()
@@ -157,14 +158,15 @@ fun ZivPlayerApp(
     fun selectHome(page: AppDestination) {
         homePages.navigate(homeDestinations.indexOf(page))
     }
-    fun openPlayerFrom(page: AppDestination) {
+    fun openPlayerFrom(page: AppDestination, sourceUri: String? = null, mediaId: String? = null, newSelection: Boolean = true) {
+        openingOrientation.open(sourceUri, mediaId, if (newSelection) playerState.playbackIdentity else null)
         collapseRequested = false
         if (!playerOpen) playerReturnDestination = page
         homePages.snapToPage(homeDestinations.indexOf(playerReturnDestination))
         playerOpen = true
         presentation.animateTo(true)
     }
-    fun openPlayer() = openPlayerFrom(homeDestinations[homePages.selectedPage])
+    fun openPlayer() = openPlayerFrom(homeDestinations[homePages.selectedPage], playerState.sourceUri, playerState.mediaId, newSelection = false)
     fun leavePlayer() {
         onFullscreenChange(false)
         showQueue = false
@@ -174,6 +176,13 @@ fun ZivPlayerApp(
     }
     fun interceptCollapse(): Boolean = (fullscreen || windowNeedsRestoring).also { restore ->
         if (restore) leavePlayer()
+    }
+    LaunchedEffect(playerOpen, openingOrientation.epoch, playerState.playbackIdentity,
+        playerState.sourceUri, playerState.mediaId, playerState.orientationAspectRatio, rotationBasis, pictureInPicture) {
+        if (playerOpen && !collapseRequested && !pictureInPicture && rotationBasis != null) {
+            openingOrientation.resolve(playerState.playbackIdentity, playerState.sourceUri, playerState.mediaId,
+                playerState.orientationAspectRatio, rotationBasis.landscape)?.let(onFullscreenChange)
+        }
     }
     LaunchedEffect(expanded) {
         if (expanded) {
@@ -204,7 +213,7 @@ fun ZivPlayerApp(
         selection?.let { settings?.importResource(it.uri, importKind) }
     }
     val openMedia = rememberLauncherForActivityResult(OpenMediaDocument()) { selection ->
-        selection?.let { openPlayer(); onDocumentSelected(it) }
+        selection?.let { openPlayerFrom(homeDestinations[homePages.selectedPage], it.uri.toString()); onDocumentSelected(it) }
     }
     val openSubtitle = rememberLauncherForActivityResult(OpenMediaDocument()) { selection ->
         onSubtitleSelected(selection?.uri)
@@ -337,8 +346,8 @@ fun ZivPlayerApp(
                                             message = library?.message?.value ?: selectionNotice?.toUserMessage(), onAddFolder = { openFolder.launch(Unit) },
                                             onScan = { library?.scan(it) }, onCancelScan = { library?.cancelScan() },
                                             onRemoveFolder = { library?.removeFolder(it) }, onFavorite = { library?.setFavorite(it) }, onHidden = { library?.setHidden(it) },
-                                            onOpen = { item -> openPlayerFrom(pageDestination); onDocumentSelected(OpenMediaDocumentResult(Uri.parse(item.sourceUri.value), 0)) },
-                                            onOpenQueue = { items, index -> openPlayerFrom(pageDestination); onLibraryPlaylist(items, index) },
+                                            onOpen = { item -> openPlayerFrom(pageDestination, item.sourceUri.value); onDocumentSelected(OpenMediaDocumentResult(Uri.parse(item.sourceUri.value), 0)) },
+                                            onOpenQueue = { items, index -> openPlayerFrom(pageDestination, items.getOrNull(index)?.sourceUri?.value); onLibraryPlaylist(items, index) },
                                             onOpenFile = { openMedia.launch(arrayOf(if (pageDestination == AppDestination.AUDIO) "audio/*" else "video/*")) },
                                             onHistory = { selectHome(AppDestination.QUEUE) },
                                             onSettings = { selectHome(AppDestination.SETTINGS) },
@@ -350,7 +359,7 @@ fun ZivPlayerApp(
                                         )
                                     }
                                     AppDestination.QUEUE -> PlaybackQueueScreen(playerState, recentMedia, onSelectQueueItem,
-                                        { openPlayerFrom(pageDestination); onOpenRecent(it) }, onForgetRecent,
+                                        { openPlayerFrom(pageDestination, mediaId = it); onOpenRecent(it) }, onForgetRecent,
                                         selectionNotice?.toUserMessage() ?: if (historyUnavailable) stringResource(R.string.media_history_unavailable) else null,
                                         bottomPadding = bottomPadding, active = !expanded && !settingsPages.canPop && page == homePages.selectedPage)
                                     AppDestination.SETTINGS -> SettingsScreen(
@@ -438,7 +447,7 @@ fun ZivPlayerApp(
                             canPrevious = playerState.canPrevious, canNext = playerState.canNext, onPrevious = onPrevious, onNext = onNext,
                             onQueue = { showQueue = true }, queueVisible = showQueue,
                             brightness = brightness, onBrightnessChange = onBrightnessChange,
-                            onRotate = { onFullscreenChange(!fullscreen) },
+                            onRotate = { openingOrientation.manual(playerState.playbackIdentity); onFullscreenChange(!fullscreen) },
                             onPictureInPicture = onEnterPictureInPicture,
                             onOpenMedia = { openMedia.launch(arrayOf("video/*", "audio/*")) }, onStop = onStop,
                             statusMessage = selectionNotice?.toUserMessage(),

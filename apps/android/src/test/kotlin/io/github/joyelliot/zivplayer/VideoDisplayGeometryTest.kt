@@ -5,6 +5,7 @@ package io.github.joyelliot.zivplayer
 import androidx.media3.common.Format
 import androidx.media3.common.MimeTypes
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class VideoDisplayGeometryTest {
@@ -21,6 +22,9 @@ class VideoDisplayGeometryTest {
     @Test fun unavailableGeometryHasAFiniteFallback() {
         assertEquals(16f / 9f, Format.Builder().build().displayAspectRatio(), 0f)
         assertEquals(16f / 9f, video(0, 0).displayAspectRatio(), 0f)
+        assertNull(Format.Builder().build().knownDisplayAspectRatio())
+        assertNull(video(0, 0).knownDisplayAspectRatio())
+        assertNull(video(1920, 1080, pixelRatio = Float.NaN).knownDisplayAspectRatio())
     }
 
     private fun video(width: Int, height: Int, pixelRatio: Float = 1f, rotation: Int = 0) =
