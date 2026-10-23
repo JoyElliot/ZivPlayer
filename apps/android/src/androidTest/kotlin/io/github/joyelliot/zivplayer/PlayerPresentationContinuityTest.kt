@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performTouchInput
@@ -18,6 +19,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import io.github.joyelliot.zivplayer.designsystem.ZivPlaybackSlider
 import io.github.joyelliot.zivplayer.designsystem.ZivTheme
+import io.github.joyelliot.zivplayer.designsystem.ZivInsetSources
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -110,6 +112,87 @@ class PlayerPresentationContinuityTest {
                 assertEquals(initialMeasurements, measurements)
                 assertSame(texture, findTexture(root))
             }
+        }
+    }
+
+    @Test fun hiddenControlsRetainStateWithoutMeasuringDuringWindowChanges() {
+        var visible by mutableStateOf(false)
+        var rotation by mutableFloatStateOf(90f)
+        var width by mutableStateOf(240.dp)
+        var measurements = 0
+        var disposals = 0
+        var lastWidth = 0
+        var expectedWidth = 0
+        compose.setContent {
+            expectedWidth = with(LocalDensity.current) { width.roundToPx() }
+            Box(Modifier.requiredSize(width, 420.dp)) {
+                RotatingPlayerViewport(rotation, visible = visible) {
+                    DisposableEffect(Unit) { onDispose { disposals++ } }
+                    BoxWithConstraints(Modifier.fillMaxSize().layout { measurable, constraints ->
+                        measurements++
+                        lastWidth = constraints.maxWidth
+                        val child = measurable.measure(constraints)
+                        layout(child.width, child.height) { child.place(0, 0) }
+                    }) { Box(Modifier.size(maxWidth, maxHeight)) }
+                }
+            }
+        }
+        compose.waitForIdle()
+        compose.runOnIdle { assertEquals(0, measurements); visible = true }
+        compose.waitForIdle()
+        val initialMeasurements = measurements
+        assertTrue(initialMeasurements > 0)
+        compose.runOnIdle { visible = false }
+        compose.runOnIdle { rotation = 0f; width = 320.dp }
+        compose.runOnIdle {
+            assertEquals(initialMeasurements, measurements)
+            assertEquals(0, disposals)
+            visible = true
+        }
+        compose.runOnIdle {
+            assertTrue(measurements > initialMeasurements)
+            assertEquals(expectedWidth, lastWidth)
+            assertEquals(0, disposals)
+        }
+    }
+
+    @Test fun handoffKeepsInsetProviderIdentityWhileItsGeometryChanges() {
+        var basis by mutableStateOf<PlayerRotationBasis?>(PlayerRotationBasis(0, false))
+        var canvas by mutableStateOf(PlayerCanvasGeometry(1080, 2400, 0))
+        var rotation by mutableFloatStateOf(90f)
+        lateinit var home: ZivInsetSources
+        lateinit var controls: WindowInsets
+        var insetMeasurements = 0
+        compose.setContent {
+            val currentHome = rememberPlayerHomeInsets(basis, canvas)
+            val currentControls = playerControlInsets(rotation, basis, canvas)
+            home = currentHome
+            controls = currentControls
+            Box(Modifier.fillMaxSize().layout { measurable, constraints ->
+                // Inset getters must subscribe this layout even while provider identity is stable.
+                currentHome.safeDrawing.getTop(this)
+                currentHome.ime.getBottom(this)
+                currentControls.getTop(this)
+                insetMeasurements++
+                val child = measurable.measure(constraints)
+                layout(child.width, child.height) { child.place(0, 0) }
+            })
+        }
+        compose.waitForIdle()
+        val initialHome = home
+        val initialControls = controls
+        val initialMeasurements = insetMeasurements
+        compose.runOnIdle { canvas = PlayerCanvasGeometry(2400, 1080, 1); rotation = 0f }
+        compose.runOnIdle {
+            assertSame(initialHome, home)
+            assertSame(initialControls, controls)
+            assertTrue(insetMeasurements > initialMeasurements)
+        }
+        val heldMeasurements = insetMeasurements
+        compose.runOnIdle { canvas = PlayerCanvasGeometry(1080, 2400, 0); basis = null }
+        compose.runOnIdle {
+            assertSame(initialHome, home)
+            assertTrue(insetMeasurements > heldMeasurements)
         }
     }
 

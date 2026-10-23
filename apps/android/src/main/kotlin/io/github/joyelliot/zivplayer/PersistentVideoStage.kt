@@ -67,8 +67,12 @@ internal fun PersistentVideoStage(controller: MediaController?, canRender: Boole
 
 /** Draw and hit-test controls in the same rotating coordinate space. */
 @Composable
-internal fun RotatingPlayerViewport(rotation: Float, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+internal fun RotatingPlayerViewport(rotation: Float, modifier: Modifier = Modifier, visible: Boolean = true,
+    content: @Composable () -> Unit) {
     Layout(modifier = modifier.fillMaxSize(), content = content) { measurables, constraints ->
+        // Gate this measure policy itself: a child policy can be invalidated independently
+        // even when an outer layout modifier no longer measures it.
+        if (!visible) return@Layout layout(constraints.maxWidth, constraints.maxHeight) { }
         val turn = rotationAxisSwap(rotation)
         val width = (constraints.maxWidth + (constraints.maxHeight - constraints.maxWidth) * turn).roundToInt()
         val height = (constraints.maxHeight + (constraints.maxWidth - constraints.maxHeight) * turn).roundToInt()
@@ -111,9 +115,12 @@ internal fun playerControlInsets(rotation: Float, basis: PlayerRotationBasis?, c
     val density = LocalDensity.current
     val view = LocalView.current
     val latch = remember(basis, canvas.width, canvas.height, density) { PlayerControlInsetsLatch() }
-    return remember(source, rotation, canvas, latch, view) {
+    val currentCanvas = rememberUpdatedState(canvas)
+    val currentRotation = rememberUpdatedState(rotation)
+    return remember(source, latch, view) {
         object : WindowInsets {
             private fun area(density: Density): PlayerSafeArea {
+                val canvas = currentCanvas.value
                 // Observe Compose insets so a first dispatch schedules another measurement.
                 val observed = PlayerSafeArea(source.getLeft(density, LayoutDirection.Ltr), source.getTop(density),
                     source.getRight(density, LayoutDirection.Ltr), source.getBottom(density))
@@ -124,7 +131,7 @@ internal fun playerControlInsets(rotation: Float, basis: PlayerRotationBasis?, c
                     (frame.width == canvas.windowWidth && frame.height == canvas.windowHeight))
                 val native = snapshot?.getInsets(Type.systemBars() or Type.displayCutout() or Type.ime())
                 return latch.resolve({ native?.let { PlayerSafeArea(it.left, it.top, it.right, it.bottom) } ?: observed },
-                    canvas.turns, rotation, sourceReady = ready)
+                    canvas.turns, currentRotation.value, sourceReady = ready)
             }
             override fun getLeft(density: Density, layoutDirection: LayoutDirection) =
                 area(density).left

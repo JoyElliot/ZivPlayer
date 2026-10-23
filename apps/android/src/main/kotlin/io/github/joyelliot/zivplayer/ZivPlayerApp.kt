@@ -37,7 +37,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -473,13 +472,8 @@ fun ZivPlayerApp(
                         }
                         RotatingPlayerViewport(rotation, Modifier
                             .then(if (!showsControls || presentation.dragging) Modifier.clearAndSetSemantics { } else Modifier)
-                            .graphicsLayer { alpha = ((progress() - 0.65f) / 0.35f).coerceIn(0f, 1f) }
-                            .layout { measurable, constraints ->
-                                val content = measurable.measure(constraints)
-                                layout(content.width, content.height) {
-                                    if (showsControls && !presentation.dragging) content.place(0, 0)
-                                }
-                            }) {
+                            .graphicsLayer { alpha = ((progress() - 0.65f) / 0.35f).coerceIn(0f, 1f) },
+                            visible = showsControls && !presentation.dragging) {
                             FullscreenPlayerScreen(playerState, {}, ::leavePlayer, onPlayPause, onSeekTo,
                                 onPlaybackSpeedChange, onVolumeChange, onRepeatModeChange, onSelectTrack, launchSubtitle,
                                 onBeginTemporarySpeed, onTemporarySpeedChange, onEndTemporarySpeed, videoOptions, selectVideoFit,
