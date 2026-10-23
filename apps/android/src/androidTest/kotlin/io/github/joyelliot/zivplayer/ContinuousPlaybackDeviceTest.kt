@@ -114,14 +114,18 @@ class ContinuousPlaybackDeviceTest {
                 }
             }
             assertLiveFrames("mini-live", texture)
+            val entryOrientation = onMain { activity.activity.resources.configuration.orientation }
             mini().performTouchInput { click(Offset(width * 0.5f, height * 0.45f)) }
             await("expanded controls") { vm().playerState.value.canSeek }
+            await("landscape video opens in landscape by default") {
+                activity.activity.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+            }
             activity.onNodeWithContentDescription(app.getString(PlayerR.string.player_rotate)).assertIsDisplayed()
             assertSurface("mini to expanded")
             assertLiveFrames("expanded-live", texture)
             capture("expanded")
 
-            val windowHeight = onMain { activity.activity.window.decorView.height.toFloat() }
+            val windowHeight = onMain { maxOf(activity.activity.window.decorView.height, activity.activity.window.decorView.width).toFloat() }
             val density = app.resources.displayMetrics.density
             val orientation = onMain { activity.activity.resources.configuration.orientation }
             button(PlayerR.string.player_rotate).performTouchInput { click() }
@@ -135,15 +139,18 @@ class ContinuousPlaybackDeviceTest {
             capture("rotated-menu-closed")
             revealControls()
             button(PlayerR.string.player_rotate).performClick()
-            await("system orientation returns to its entry direction") {
+            await("manual rotation returns to landscape") {
                 activity.activity.resources.configuration.orientation == orientation
             }
 
-            // Real pointer stream: collapse, reverse a short expansion, then drag fully open.
+            // Collapse directly from landscape: no separate full-size portrait stage.
             activity.onRoot().performTouchInput {
                 swipe(Offset(width / 2f, 11f * density), Offset(width / 2f, height * 0.85f), 600)
             }
-            SystemClock.sleep(650)
+            await("combined collapse restores the entry window") {
+                activity.activity.resources.configuration.orientation == entryOrientation
+            }
+            activity.waitUntil(5_000) { activity.onAllNodesWithTag("mini_player", useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
             mini().assertExists()
             assertSurface("collapsed")
             assertLiveFrames("mini-after-collapse", texture)
@@ -158,7 +165,9 @@ class ContinuousPlaybackDeviceTest {
             mini().assertExists()
             assertSurface("reversed mini drag")
             mini().performTouchInput { swipe(center, center + Offset(0f, -windowHeight * 0.75f), 700) }
-            SystemClock.sleep(750)
+            await("drag expansion chooses landscape again") {
+                activity.activity.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+            }
             button(PlayerR.string.player_rotate).assertIsDisplayed()
             assertSurface("drag expanded")
 

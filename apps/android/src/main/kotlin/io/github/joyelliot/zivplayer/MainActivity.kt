@@ -169,6 +169,7 @@ class MainActivity : ComponentActivity() {
                 },
                 onFullscreenChange = ::changeFullscreen,
                 onEnterPictureInPicture = { enterPip(showFailure = true) },
+                onCancelPictureInPicture = ::cancelManualPipEntry,
                 onPlayerVisibilityChange = {
                     playerVisible = it
                     if (it && rotationBasis == null && !inPictureInPicture) {
@@ -250,12 +251,7 @@ class MainActivity : ComponentActivity() {
 
     private fun changeFullscreen(value: Boolean) {
         playbackController.cancelTemporarySpeed()
-        if (manualPipRequested) {
-            manualPipRequested = false
-            immediatePipAlignment = false
-            pipEntryPending = false
-            pipTransitioning = false
-        }
+        cancelManualPipEntry()
         if (fullscreen != value) {
             videoAlignedWithWindow = false
             updatePipParameters()
@@ -264,6 +260,15 @@ class MainActivity : ComponentActivity() {
             orientationCheck?.cancel()
         }
         fullscreen = value
+    }
+
+    private fun cancelManualPipEntry() {
+        if (manualPipRequested) {
+            manualPipRequested = false
+            immediatePipAlignment = false
+            pipEntryPending = false
+            pipTransitioning = false
+        }
     }
 
     private fun onRotationAnimationFinished(turned: Boolean, pipTransition: Boolean) {

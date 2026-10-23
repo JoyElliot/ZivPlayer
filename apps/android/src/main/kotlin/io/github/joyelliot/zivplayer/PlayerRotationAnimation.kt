@@ -16,12 +16,16 @@ internal fun rememberPlayerRotation(
     pipTransition: Boolean,
     active: Boolean = true,
     immediatePip: Boolean = false,
+    collapsed: Boolean = false,
+    collapsing: Boolean = false,
+    allowWindowRequest: Boolean = true,
     onFinished: (Boolean, Boolean) -> Unit,
 ): Float {
     val animation = remember { Animatable(if (turned) 90f else 0f) }
     val finished by rememberUpdatedState(onFinished)
     val target = if (pipTransition) -canvas.compensation else if (turned) 90f else 0f
-    LaunchedEffect(turned, basis, pictureInPicture, pipTransition, target, active, immediatePip) {
+    LaunchedEffect(turned, basis, pictureInPicture, pipTransition, target, active, immediatePip,
+        collapsed, collapsing, allowWindowRequest) {
         if (pictureInPicture) {
             // PiP draws at zero in its own window. Retain the requested full-player endpoint
             // underneath so exiting PiP cannot briefly revive a half-finished old rotation.
@@ -30,7 +34,14 @@ internal fun rememberPlayerRotation(
         }
         if (pipTransition && immediatePip) { animation.snapTo(target); return@LaunchedEffect }
         if (!active) return@LaunchedEffect
-        animation.animateTo(target, spring(dampingRatio = 1f, stiffness = 360f))
+        // Collapse already rotated the video with its presentation progress. At the mini endpoint,
+        // reset the hidden expanded angle without adding a second animation before WM takes over.
+        if (collapsed && !pipTransition) {
+            if (turned) return@LaunchedEffect
+            animation.snapTo(0f)
+        } else if (collapsing && !pipTransition) return@LaunchedEffect
+        else animation.animateTo(target, spring(dampingRatio = 1f, stiffness = 360f))
+        if (!allowWindowRequest && !pipTransition) return@LaunchedEffect
         // Let the final custom-animation frame reach a drawing opportunity before requesting WM.
         // This is not a promise that SurfaceFlinger has presented that frame.
         withFrameNanos { }

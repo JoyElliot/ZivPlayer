@@ -116,4 +116,17 @@ class PlayerRotationGeometryTest {
         assertFalse(isVideoAlignedWithWindow(90f, 0f))
         assertFalse(isVideoAlignedWithWindow(90f, 90f))
     }
+
+    @Test fun rotatingCollapseKeepsItsFrameAtEveryProgressWhenWindowAxesChange() {
+        val mini = VideoFrame(60f, 740f, 56f, 32f)
+        for (progress in listOf(0f, 0.1f, 0.4f, 0.75f, 1f)) for (aspect in listOf(16f / 9, 9f / 16)) {
+            val portrait = PlayerCanvasGeometry(400, 800, 0)
+            val landscape = PlayerCanvasGeometry(800, 400, 1)
+            fun frame(canvas: PlayerCanvasGeometry) = presentationFrame(canvas.width.toFloat(), canvas.height.toFloat(),
+                aspect, mini, progress, 90f)
+            assertEquals(frame(portrait), frame(landscape))
+            assertEquals(frame(portrait).rotation, 90f + landscape.compensation + frame(landscape).rotation, 0f)
+            assertEquals(90f * progress, frame(landscape).rotation, 0.001f)
+        }
+    }
 }

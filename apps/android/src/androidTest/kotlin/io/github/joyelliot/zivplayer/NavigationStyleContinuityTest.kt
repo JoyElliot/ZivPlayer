@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -33,26 +35,29 @@ class NavigationStyleContinuityTest {
         compose.setContent {
             root = LocalView.current.rootView
             ZivTheme {
-                BoxWithConstraints(Modifier.fillMaxSize()) {
-                    val window = IntSize(constraints.maxWidth, constraints.maxHeight)
-                    ZivHomeScaffold(style.value, bottomBar = {
-                        ZivNavigationBar(listOf(
-                            ZivNavigationItem("Video", ZivPlaybackIcon.PLAY, "test_video"),
-                            ZivNavigationItem("Audio", ZivPlaybackIcon.AUDIO, "test_audio"),
-                            ZivNavigationItem("Queue", ZivPlaybackIcon.LIST, "test_queue"),
-                            ZivNavigationItem("Settings", ZivPlaybackIcon.SETTINGS, "test_settings"),
-                        ), 0, {}, nowPlaying = {
-                            Box(Modifier.fillMaxWidth().height(48.dp)) {
-                                MiniVideoAnchor(style.value) { anchor = it }
-                            }
-                        })
-                    }) { }
-                    val frame = presentationFrame(window.width.toFloat(), window.height.toFloat(), 16f / 9,
-                        anchor ?: VideoFrame(0f, 0f, 56f, 32f), progress.floatValue, 0f)
-                    SideEffect { rendered = frame }
-                    PersistentVideoStage(null, false, 16f / 9, window, frame, progress.floatValue,
-                        miniCornerRadius = if (style.value == ZivNavigationStyle.LIQUID_GLASS) 12.dp else 8.dp,
-                        onBounds = {})
+                var coordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
+                BoxWithConstraints(Modifier.fillMaxSize().onGloballyPositioned { coordinates = it }) {
+                    CompositionLocalProvider(LocalPlayerCanvasCoordinates provides coordinates) {
+                        val window = IntSize(constraints.maxWidth, constraints.maxHeight)
+                        ZivHomeScaffold(style.value, bottomBar = {
+                            ZivNavigationBar(listOf(
+                                ZivNavigationItem("Video", ZivPlaybackIcon.PLAY, "test_video"),
+                                ZivNavigationItem("Audio", ZivPlaybackIcon.AUDIO, "test_audio"),
+                                ZivNavigationItem("Queue", ZivPlaybackIcon.LIST, "test_queue"),
+                                ZivNavigationItem("Settings", ZivPlaybackIcon.SETTINGS, "test_settings"),
+                            ), 0, {}, nowPlaying = {
+                                Box(Modifier.fillMaxWidth().height(48.dp)) {
+                                    MiniVideoAnchor(style.value) { anchor = it }
+                                }
+                            })
+                        }) { }
+                        val frame = presentationFrame(window.width.toFloat(), window.height.toFloat(), 16f / 9,
+                            anchor ?: VideoFrame(0f, 0f, 56f, 32f), progress.floatValue, 0f)
+                        SideEffect { rendered = frame }
+                        PersistentVideoStage(null, false, 16f / 9, window, frame, progress.floatValue,
+                            miniCornerRadius = if (style.value == ZivNavigationStyle.LIQUID_GLASS) 12.dp else 8.dp,
+                            onBounds = {})
+                    }
                 }
             }
         }
@@ -80,15 +85,20 @@ class NavigationStyleContinuityTest {
     @Test fun videoSlotTracksAncestorSpringTransformsWithoutChangingItsLayoutSize() {
         val scale = mutableFloatStateOf(1f)
         val offset = mutableFloatStateOf(0f)
+        val canvasRotation = mutableFloatStateOf(0f)
         var anchor: VideoFrame? = null
         compose.setContent {
-            Box(Modifier.fillMaxSize()) {
-                Box(Modifier.size(240.dp, 80.dp).graphicsLayer {
-                    scaleX = scale.floatValue
-                    scaleY = scale.floatValue
-                    translationX = offset.floatValue
-                }) {
-                    MiniVideoAnchor(ZivNavigationStyle.LIQUID_GLASS) { anchor = it }
+            var coordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
+            Box(Modifier.fillMaxSize().graphicsLayer { rotationZ = canvasRotation.floatValue }
+                .onGloballyPositioned { coordinates = it }) {
+                CompositionLocalProvider(LocalPlayerCanvasCoordinates provides coordinates) {
+                    Box(Modifier.size(240.dp, 80.dp).graphicsLayer {
+                        scaleX = scale.floatValue
+                        scaleY = scale.floatValue
+                        translationX = offset.floatValue
+                    }) {
+                        MiniVideoAnchor(ZivNavigationStyle.LIQUID_GLASS) { anchor = it }
+                    }
                 }
             }
         }
@@ -105,7 +115,17 @@ class NavigationStyleContinuityTest {
             assertEquals(transformed.center.x, actual.centerX, 1f)
             assertEquals(transformed.center.y, actual.centerY, 1f)
         }
-        compose.runOnIdle { scale.floatValue = 1f; offset.floatValue = 0f }
+        lateinit var logical: VideoFrame
+        compose.runOnIdle { logical = checkNotNull(anchor); canvasRotation.floatValue = -90f }
+        compose.waitForIdle()
+        compose.runOnIdle {
+            val actual = checkNotNull(anchor)
+            assertEquals(logical.centerX, actual.centerX, 1f)
+            assertEquals(logical.centerY, actual.centerY, 1f)
+            assertEquals(logical.width, actual.width, 1f)
+            assertEquals(logical.height, actual.height, 1f)
+        }
+        compose.runOnIdle { scale.floatValue = 1f; offset.floatValue = 0f; canvasRotation.floatValue = 0f }
         compose.waitForIdle()
         compose.runOnIdle { assertEquals(initial, anchor) }
     }

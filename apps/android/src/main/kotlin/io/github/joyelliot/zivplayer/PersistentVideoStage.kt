@@ -6,7 +6,6 @@ import android.graphics.Rect
 import android.os.Build
 import android.view.WindowInsets.Type
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
@@ -16,15 +15,9 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.composed
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.Layout
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.layout.onLayoutRectChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -92,48 +85,12 @@ internal fun RotatingPlayerViewport(rotation: Float, modifier: Modifier = Modifi
 /** Only the current video rectangle takes input; the rest of the home page stays interactive. */
 @Composable
 internal fun VideoExpansionTouchTarget(frame: VideoFrame, state: PlayerPresentationState, travel: Float,
-    onOpen: () -> Unit, onSettled: (Boolean) -> Unit, interceptDownwardDrag: () -> Boolean = { false }) {
+    onOpen: () -> Unit, onSettled: (Boolean) -> Unit) {
     val density = LocalDensity.current
     Box(Modifier.offset { IntOffset((frame.centerX - frame.boundingWidth / 2).roundToInt(),
         (frame.centerY - frame.boundingHeight / 2).roundToInt()) }
         .size(with(density) { frame.boundingWidth.toDp() }, with(density) { frame.boundingHeight.toDp() })
-        .playerExpansionDrag(state, travel, onSettled, source = "video",
-            interceptDownwardDrag = interceptDownwardDrag).clickable(onClick = onOpen))
-}
-
-internal fun Modifier.playerExpansionDrag(state: PlayerPresentationState, travel: Float,
-    onSettled: (Boolean) -> Unit, source: String = "mini",
-    interceptDownwardDrag: () -> Boolean = { false }): Modifier = composed {
-    val settled by rememberUpdatedState(onSettled)
-    val intercept by rememberUpdatedState(interceptDownwardDrag)
-    val distance by rememberUpdatedState(travel)
-    var origin by remember { mutableStateOf(Offset.Zero) }
-    onGloballyPositioned { origin = it.positionInRoot() }.pointerInput(state) {
-        val velocity = VelocityTracker()
-        var started = false
-        var intercepted = false
-        detectVerticalDragGestures(
-            onDragStart = { velocity.resetTracking(); started = false; intercepted = false },
-            onDragEnd = { if (started) settled(state.settle(-velocity.calculateVelocity().y, distance)) },
-            onDragCancel = { if (started) settled(state.settle(0f, distance)) },
-            onVerticalDrag = { change, dy ->
-                change.consume()
-                if (!intercepted && dy > 0f && intercept()) {
-                    intercepted = true
-                    if (started) state.animateTo(true)
-                    started = false
-                }
-                if (!started && !intercepted) {
-                    state.beginDrag(source)
-                    started = true
-                }
-                if (started) {
-                    velocity.addPosition(change.uptimeMillis, change.position + origin)
-                    state.dragBy(-dy, distance)
-                }
-            },
-        )
-    }
+        .playerExpansionDrag(state, travel, onSettled, source = "video").clickable(onClick = onOpen))
 }
 
 @Composable
