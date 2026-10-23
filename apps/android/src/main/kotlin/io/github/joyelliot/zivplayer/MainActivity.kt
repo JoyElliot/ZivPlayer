@@ -63,6 +63,13 @@ class MainActivity : ComponentActivity() {
     private var pipEntryPending = false
     private var pipTransitioning by mutableStateOf(false)
     private var videoBounds: android.graphics.Rect? = null
+    private val hasPipSupport by lazy { packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE) }
+    private val pipToggleIntent by lazy {
+        PendingIntent.getBroadcast(this, 1, Intent(PIP_TOGGLE_ACTION).setPackage(packageName),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+    }
+    private val pipPlayAction by lazy { pipAction(android.R.drawable.ic_media_play) }
+    private val pipPauseAction by lazy { pipAction(android.R.drawable.ic_media_pause) }
     private var stoppedPlaybackCheck: Job? = null
     private var started by mutableStateOf(false)
     private var windowFocused by mutableStateOf(false)
@@ -164,7 +171,9 @@ class MainActivity : ComponentActivity() {
                     val visible = visibleBounds.intersect(0, 0, window.decorView.width, window.decorView.height)
                     if (!inPictureInPicture && visible && videoBounds != visibleBounds) {
                         videoBounds = visibleBounds
-                        updatePipParameters()
+                        // Keep the latest local bounds during motion; publish once the expanded
+                        // video is aligned. Explicit PiP entry reads videoBounds directly.
+                        if (videoAlignedWithWindow && !pipTransitioning) updatePipParameters()
                     }
                 },
                 onFullscreenChange = ::changeFullscreen,
@@ -313,14 +322,14 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun pipSupported() = packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
+    private fun pipSupported() = hasPipSupport
+
+    private fun pipAction(icon: Int) = RemoteAction(Icon.createWithResource(this, icon),
+        getString(R.string.app_play_pause), getString(R.string.app_play_pause), pipToggleIntent)
 
     private fun pipParameters(): PictureInPictureParams {
         val state = playbackController.playerState.value
-        val intent = Intent(PIP_TOGGLE_ACTION).setPackage(packageName)
-        val action = RemoteAction(Icon.createWithResource(this, if (state.playWhenReady) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play),
-            getString(R.string.app_play_pause), getString(R.string.app_play_pause),
-            PendingIntent.getBroadcast(this, 1, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
+        val action = if (state.playWhenReady) pipPauseAction else pipPlayAction
         val ratio = state.videoAspectRatio.coerceIn(0.42f, 2.38f)
         return PictureInPictureParams.Builder().setAspectRatio(Rational((ratio * 10_000).roundToInt(), 10_000)).setActions(listOf(action)).apply {
             videoBounds?.let(::setSourceRectHint)
