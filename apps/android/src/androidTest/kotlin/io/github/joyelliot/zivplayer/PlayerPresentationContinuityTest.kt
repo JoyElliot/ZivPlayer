@@ -8,6 +8,7 @@ import android.view.ViewGroup
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -37,7 +38,7 @@ class PlayerPresentationContinuityTest {
                 val window = IntSize(constraints.maxWidth, constraints.maxHeight)
                 val frame = presentationFrame(window.width.toFloat(), window.height.toFloat(), 16f / 9,
                     VideoFrame(50f, window.height - 80f, 56f, 36f), progress.floatValue, rotation.floatValue)
-                PersistentVideoStage(null, false, 16f / 9, window, frame, progress.floatValue, onBounds = {})
+                PersistentVideoStage(null, false, 16f / 9, window, { frame }, { progress.floatValue }, onBounds = {})
             }
         }
         lateinit var texture: TextureView
@@ -74,6 +75,42 @@ class PlayerPresentationContinuityTest {
         }
         compose.mainClock.advanceTimeBy(500)
         compose.runOnIdle { assertEquals((interrupted - 0.1f).coerceAtLeast(0f), presentation.progress, 0.001f) }
+    }
+
+    @Test fun videoMotionUpdatesLayersWithoutRecomposingOrMeasuringTheHost() {
+        var progress by mutableFloatStateOf(1f)
+        var compositions = 0
+        var measurements = 0
+        lateinit var root: View
+        compose.setContent {
+            root = LocalView.current.rootView
+            SideEffect { compositions++ }
+            BoxWithConstraints(Modifier.fillMaxSize().layout { measurable, constraints ->
+                measurements++
+                val child = measurable.measure(constraints)
+                layout(child.width, child.height) { child.place(0, 0) }
+            }) {
+                val window = IntSize(constraints.maxWidth, constraints.maxHeight)
+                PersistentVideoStage(null, false, 16f / 9, window,
+                    { presentationFrame(window.width.toFloat(), window.height.toFloat(), 16f / 9,
+                        VideoFrame(100f, window.height - 150f, 150f, 90f), progress, 90f) },
+                    { progress }, onBounds = {})
+            }
+        }
+        compose.waitForIdle()
+        val initialCompositions = compositions
+        val initialMeasurements = measurements
+        lateinit var texture: TextureView
+        compose.runOnIdle { texture = checkNotNull(findTexture(root)) }
+        for (p in listOf(0.9f, 0.65f, 0.3f, 0.1f, 0f)) {
+            compose.runOnIdle { progress = p }
+            compose.waitForIdle()
+            compose.runOnIdle {
+                assertEquals(initialCompositions, compositions)
+                assertEquals(initialMeasurements, measurements)
+                assertSame(texture, findTexture(root))
+            }
+        }
     }
 
     @Test fun removingAnIdleTimelineDoesNotFinishSomeoneElsesSeekPreview() {

@@ -19,6 +19,11 @@ internal class PlayerPresentationState(private val scope: CoroutineScope, initia
         private set
     var dragSource by mutableStateOf("")
         private set
+    // Composition observes phase changes; continuous values belong in layer/layout callbacks.
+    val hasVisibleFrame by derivedStateOf { progress > 0f }
+    val atMini by derivedStateOf { progress == 0f }
+    val atExpanded by derivedStateOf { progress == 1f }
+    val showsControls by derivedStateOf { progress > 0.999f }
     private var animation: Job? = null
     private var velocity = 0f
 

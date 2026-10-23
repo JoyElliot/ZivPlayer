@@ -54,7 +54,7 @@ class NavigationStyleContinuityTest {
                         val frame = presentationFrame(window.width.toFloat(), window.height.toFloat(), 16f / 9,
                             anchor ?: VideoFrame(0f, 0f, 56f, 32f), progress.floatValue, 0f)
                         SideEffect { rendered = frame }
-                        PersistentVideoStage(null, false, 16f / 9, window, frame, progress.floatValue,
+                        PersistentVideoStage(null, false, 16f / 9, window, { frame }, { progress.floatValue },
                             miniCornerRadius = if (style.value == ZivNavigationStyle.LIQUID_GLASS) 12.dp else 8.dp,
                             onBounds = {})
                     }
