@@ -24,8 +24,8 @@ class PlayerOpeningOrientationTest {
     @Test fun manualTurnWhileNewMediaIsLoadingWinsOverLateDimensions() {
         val policy = PlayerOpeningOrientation()
         policy.open("uri:b", null, "old")
-        policy.manual("old")
-        assertNull(policy.resolve("new", "uri:b", "b", 16f / 9, false))
+        policy.manual("old", false)
+        assertEquals(false, policy.resolve("new", "uri:b", "b", 16f / 9, false))
         assertNull(policy.resolve("new", "uri:b", "b", 9f / 16, false))
         assertEquals(false, policy.resolve("next", "uri:c", "c", 9f / 16, false))
     }
@@ -34,17 +34,19 @@ class PlayerOpeningOrientationTest {
         val policy = PlayerOpeningOrientation()
         policy.open("uri:a", "a", "old")
         assertNull(policy.resolve("old", "uri:a", "a", 16f / 9, false))
-        policy.manual("old")
-        assertNull(policy.resolve("new", "uri:a", "a", 16f / 9, false))
+        policy.manual("old", false)
+        assertEquals(false, policy.resolve("new", "uri:a", "a", 16f / 9, false))
     }
 
-    @Test fun miniReopeningAndQueueChangesGetFreshDefaults() {
+    @Test fun miniReopeningKeepsManualDirectionWhileNewItemsGetFreshDefaults() {
         val policy = PlayerOpeningOrientation()
         assertEquals(true, policy.resolve("a", "uri:a", "a", 16f / 9, false))
-        policy.manual("a")
+        policy.manual("a", false)
         assertNull(policy.resolve("a", "uri:a", "a", 9f / 16, false))
         policy.open("uri:a", "a")
-        assertEquals(true, policy.resolve("a", "uri:a", "a", 16f / 9, false))
+        assertEquals(false, policy.resolve("a", "uri:a", "a", 16f / 9, false))
+        policy.open("uri:a", "a")
+        assertEquals(true, policy.resolve("a", "uri:a", "a", 16f / 9, true))
         assertEquals(false, policy.resolve("b", "uri:b", "b", 9f / 16, false))
     }
 
@@ -62,9 +64,25 @@ class PlayerOpeningOrientationTest {
     @Test fun manualChoiceBindsToTheLoadingItemRatherThanTheNextQueueItem() {
         val policy = PlayerOpeningOrientation()
         policy.open("uri:a", null, "old")
-        policy.manual("old")
-        assertNull(policy.resolve("a", "uri:a", "a", null, false))
+        policy.manual("old", false)
+        assertEquals(false, policy.resolve("a", "uri:a", "a", null, false))
         assertNull(policy.resolve("a", "uri:a", "a", 16f / 9, false))
         assertEquals(true, policy.resolve("b", "uri:b", "b", 16f / 9, false))
+    }
+
+    @Test fun audioAndTerminalUnknownGeometryCanOpenWithoutWaitingForever() {
+        val policy = PlayerOpeningOrientation()
+        policy.open("uri:a", null)
+        assertNull(policy.resolve("a", "uri:a", "a", null, false))
+        assertEquals(false, policy.resolve("a", "uri:a", "a", null, false, readyWithoutGeometry = true))
+    }
+
+    @Test fun newPlaybackOfTheSameFileDoesNotInheritTheOldSessionChoice() {
+        val policy = PlayerOpeningOrientation()
+        policy.resolve("old", "uri:a", "a", 16f / 9, false)
+        policy.manual("old", false)
+        policy.open("uri:a", "a", "old")
+        assertNull(policy.resolve("old", "uri:a", "a", 16f / 9, false))
+        assertEquals(true, policy.resolve("new", "uri:a", "a", 16f / 9, false))
     }
 }

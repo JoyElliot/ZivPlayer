@@ -71,6 +71,7 @@ import io.github.joyelliot.zivplayer.feature.player.PlayerQuickOption
 import io.github.joyelliot.zivplayer.feature.player.MiniPlayer
 import io.github.joyelliot.zivplayer.feature.player.PlaybackQueueScreen
 import io.github.joyelliot.zivplayer.feature.player.PlayerRepeatMode
+import io.github.joyelliot.zivplayer.feature.player.PlayerPlaybackStatus
 import io.github.joyelliot.zivplayer.feature.player.PlayerUiState
 import io.github.joyelliot.zivplayer.feature.player.PlayerTrackKind
 import io.github.joyelliot.zivplayer.feature.player.RecentMediaUiItem
@@ -143,9 +144,11 @@ fun ZivPlayerApp(
 ) {
     var playerOpen by rememberSaveable { mutableStateOf(false) }
     val openingOrientation = rememberSaveable(saver = PlayerOpeningOrientation.Saver) { PlayerOpeningOrientation() }
+    var openingPending by rememberSaveable { mutableStateOf(false) }
+    var openingTarget by rememberSaveable { mutableStateOf<Boolean?>(null) }
     var collapseRequested by rememberSaveable { mutableStateOf(false) }
     val presentationScope = rememberCoroutineScope()
-    val presentation = remember { PlayerPresentationState(presentationScope, playerOpen) }
+    val presentation = remember { PlayerPresentationState(presentationScope, playerOpen && !openingPending) }
     var miniFrame by remember { mutableStateOf<VideoFrame?>(null) }
     val homePages = rememberHomePagerState()
     val destination = if (playerOpen) AppDestination.PLAYER else homeDestinations[homePages.selectedPage]
@@ -173,7 +176,9 @@ fun ZivPlayerApp(
         if (!playerOpen) playerReturnDestination = page
         homePages.snapToPage(homeDestinations.indexOf(playerReturnDestination))
         playerOpen = true
-        presentation.animateTo(true)
+        openingTarget = null
+        openingPending = presentation.atMini
+        if (!openingPending) presentation.animateTo(true)
     }
     fun openPlayer() = openPlayerFrom(homeDestinations[homePages.selectedPage], playerState.sourceUri, playerState.mediaId, newSelection = false)
     fun leavePlayer() {
@@ -181,6 +186,8 @@ fun ZivPlayerApp(
         showQueue = false
         homePages.snapToPage(homeDestinations.indexOf(playerReturnDestination))
         playerOpen = false
+        openingPending = false
+        openingTarget = null
         // Keep the expanded endpoint; progress rotates and shrinks toward the logical mini slot.
         collapseRequested = true
         presentation.animateTo(false)
@@ -189,22 +196,48 @@ fun ZivPlayerApp(
         if (pictureInPicture || pictureInPictureTransition) {
             collapseRequested = false
             playerOpen = true
+            openingPending = false
+            openingTarget = null
             presentation.animateTo(true)
         }
     }
     LaunchedEffect(presentation.dragging) {
+        if (presentation.dragging) {
+            // A finger owns the current frame. Late metadata may animate the orientation,
+            // but can no longer seed an angle or start an automatic expansion over that gesture.
+            openingPending = false
+            openingTarget = null
+        }
         if (presentation.dragging && !playerOpen && !collapseRequested) {
             openingOrientation.open(playerState.sourceUri, playerState.mediaId)
             playerReturnDestination = homeDestinations[homePages.selectedPage]
             playerOpen = true
         }
     }
+    // FILE_LOADED/READY can precede the first complete native track snapshot. Only positive
+    // audio discovery without a video track proves that waiting for video dimensions is futile.
+    val preparedAudioOnly = !playerState.hasVideo && playerState.tracks.any { it.kind == PlayerTrackKind.AUDIO }
     LaunchedEffect(playerOpen, openingOrientation.epoch, playerState.playbackIdentity,
-        playerState.sourceUri, playerState.mediaId, playerState.orientationAspectRatio, rotationBasis, pictureInPicture) {
+        playerState.sourceUri, playerState.mediaId, playerState.orientationAspectRatio, playerState.playbackStatus,
+        preparedAudioOnly, rotationBasis, pictureInPicture) {
         if (playerOpen && !collapseRequested && !pictureInPicture && rotationBasis != null) {
             openingOrientation.resolve(playerState.playbackIdentity, playerState.sourceUri, playerState.mediaId,
-                playerState.orientationAspectRatio, rotationBasis.landscape)?.let(onFullscreenChange)
+                playerState.orientationAspectRatio, rotationBasis.landscape,
+                readyWithoutGeometry = playerState.playbackStatus in listOf(PlayerPlaybackStatus.ENDED, PlayerPlaybackStatus.ERROR) ||
+                    preparedAudioOnly && playerState.playbackStatus in listOf(PlayerPlaybackStatus.PLAYING, PlayerPlaybackStatus.PAUSED))?.let { target ->
+                onFullscreenChange(target)
+                if (openingPending) openingTarget = target
+            }
         }
+    }
+    LaunchedEffect(selectionNotice) {
+        if (openingPending && selectionNotice in listOf(MediaSelectionNotice.OPEN_FAILED,
+                MediaSelectionNotice.RECENT_ACCESS_LOST, MediaSelectionNotice.QUEUE_TOO_LARGE)) leavePlayer()
+    }
+    LaunchedEffect(rotationActive) {
+        // The Activity can cancel a pending SAF/session request on stop without an error notice.
+        // Close its waiting presentation too, so returning does not leave an invisible input shield.
+        if (!rotationActive && openingPending && !pictureInPicture && !pictureInPictureTransition) leavePlayer()
     }
     LaunchedEffect(expanded) {
         if (expanded) {
@@ -344,6 +377,8 @@ fun ZivPlayerApp(
                     val showsControls = !pipPresentation && presentation.showsControls
                     val travel = window.height * 0.65f
                     fun settlePresentation(open: Boolean) {
+                        openingPending = false
+                        openingTarget = null
                         collapseRequested = !open
                         if (open && !playerOpen) {
                             playerReturnDestination = homeDestinations[homePages.selectedPage]
@@ -440,7 +475,15 @@ fun ZivPlayerApp(
                             pictureInPictureTransition, rotationActive, pictureInPictureImmediateTransition,
                             collapsed = !playerOpen && atMini,
                             collapsing = !playerOpen || presentation.dragging && presentation.dragSource == "handle",
-                            allowWindowRequest = !presentation.dragging && (atMini || playerOpen && atExpanded),
+                            allowWindowRequest = !openingPending && !presentation.dragging &&
+                                (!playerOpen && atMini || playerOpen && atExpanded),
+                            prepareOpening = openingPending && openingTarget == fullscreen && atMini && !presentation.dragging,
+                            onOpeningReady = {
+                                val stillAtMini = presentation.atMini && !presentation.dragging && playerOpen
+                                openingPending = false
+                                openingTarget = null
+                                if (stillAtMini) presentation.animateTo(true, rotating = fullscreen)
+                            },
                             onFinished = onRotationAnimationFinished)
                         val rotation = remember(rotationState) { { rotationState.value } }
                         val targetRotation = if (pictureInPicture) 0f else if (pictureInPictureTransition) -canvas.compensation
@@ -503,7 +546,11 @@ fun ZivPlayerApp(
                                 canPrevious = playerState.canPrevious, canNext = playerState.canNext, onPrevious = onPrevious, onNext = onNext,
                                 onQueue = { showQueue = true }, queueVisible = showQueue,
                                 brightness = brightness, onBrightnessChange = onBrightnessChange,
-                                onRotate = { openingOrientation.manual(playerState.playbackIdentity); onFullscreenChange(!fullscreen) },
+                                onRotate = {
+                                    openingOrientation.manual(playerState.playbackIdentity,
+                                        (rotationBasis?.landscape ?: false) != !fullscreen)
+                                    onFullscreenChange(!fullscreen)
+                                },
                                 onPictureInPicture = onEnterPictureInPicture,
                                 onOpenMedia = { openMedia.launch(arrayOf("video/*", "audio/*")) }, onStop = onStop,
                                 statusMessage = selectionNotice?.toUserMessage(),

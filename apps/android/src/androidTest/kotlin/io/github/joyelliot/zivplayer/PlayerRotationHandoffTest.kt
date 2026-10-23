@@ -221,6 +221,33 @@ class PlayerRotationHandoffTest {
         compose.runOnIdle { assertEquals(listOf(true to false), requests) }
     }
 
+    @Test fun openingSeedsItsDirectionBeforeAnyExpansionFrameAndDefersTheWindow() {
+        var prepared by mutableStateOf(false)
+        lateinit var presentation: PlayerPresentationState
+        lateinit var angle: State<Float>
+        val requests = mutableListOf<Boolean>()
+        compose.setContent {
+            val scope = rememberCoroutineScope()
+            presentation = remember { PlayerPresentationState(scope, false) }
+            angle = rememberPlayerRotation(true, PlayerRotationBasis(0, false), PlayerCanvasGeometry(400, 800, 0),
+                false, false, allowWindowRequest = presentation.atExpanded,
+                prepareOpening = prepared, onOpeningReady = {
+                    prepared = false
+                    presentation.animateTo(true)
+                }) { turn, _ -> requests += turn }
+        }
+        compose.mainClock.autoAdvance = false
+        compose.runOnIdle { prepared = true }
+        compose.mainClock.advanceTimeBy(80)
+        compose.runOnIdle {
+            assertEquals(90f, angle.value, 0f)
+            assertTrue(presentation.progress > 0f && presentation.progress < 1f)
+            assertTrue(requests.isEmpty())
+        }
+        compose.mainClock.advanceTimeBy(2_000)
+        compose.runOnIdle { assertEquals(listOf(true), requests) }
+    }
+
     @Test fun draggingUsesTheScreenAxisUnderRotatedAncestors() {
         var rotation by mutableFloatStateOf(0f)
         lateinit var presentation: PlayerPresentationState
