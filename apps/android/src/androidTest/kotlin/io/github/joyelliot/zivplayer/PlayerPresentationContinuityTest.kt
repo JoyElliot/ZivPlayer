@@ -115,6 +115,41 @@ class PlayerPresentationContinuityTest {
         }
     }
 
+    @Test fun visibleRotationTransformsControlsWithoutRecompositionOrMeasurementPerFrame() {
+        var turned by mutableStateOf(false)
+        lateinit var angle: State<Float>
+        var compositions = 0
+        var measurements = 0
+        compose.setContent {
+            SideEffect { compositions++ }
+            angle = rememberPlayerRotation(turned, PlayerRotationBasis(0, false),
+                PlayerCanvasGeometry(400, 800, 0), false, false) { _, _ -> }
+            Box(Modifier.requiredSize(240.dp, 420.dp)) {
+                RotatingPlayerViewport({ angle.value }, if (turned) 90f else 0f) {
+                    BoxWithConstraints(Modifier.fillMaxSize().layout { measurable, constraints ->
+                        measurements++
+                        val child = measurable.measure(constraints)
+                        layout(child.width, child.height) { child.place(0, 0) }
+                    }) { Box(Modifier.size(maxWidth, maxHeight)) }
+                }
+            }
+        }
+        compose.mainClock.autoAdvance = false
+        compose.mainClock.advanceTimeBy(2_000)
+        compose.runOnIdle { turned = true }
+        compose.mainClock.advanceTimeBy(32)
+        val initialCompositions = compositions
+        val initialMeasurements = measurements
+        compose.mainClock.advanceTimeBy(160)
+        compose.runOnIdle {
+            assertTrue(angle.value > 0f && angle.value < 90f)
+            assertEquals(initialCompositions, compositions)
+            assertEquals(initialMeasurements, measurements)
+        }
+        compose.mainClock.advanceTimeBy(2_000)
+        compose.runOnIdle { assertEquals(90f, angle.value, 0f) }
+    }
+
     @Test fun hiddenControlsRetainStateWithoutMeasuringDuringWindowChanges() {
         var visible by mutableStateOf(false)
         var rotation by mutableFloatStateOf(90f)

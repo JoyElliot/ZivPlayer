@@ -20,7 +20,7 @@ internal fun rememberPlayerRotation(
     collapsing: Boolean = false,
     allowWindowRequest: Boolean = true,
     onFinished: (Boolean, Boolean) -> Unit,
-): Float {
+): State<Float> {
     val animation = remember { Animatable(if (turned) 90f else 0f) }
     val finished by rememberUpdatedState(onFinished)
     val target = if (pipTransition) -canvas.compensation else if (turned) 90f else 0f
@@ -47,5 +47,7 @@ internal fun rememberPlayerRotation(
         withFrameNanos { }
         finished(turned, pipTransition)
     }
-    return if (pictureInPicture) 0f else if (pipTransition && immediatePip) target else animation.value
+    return remember(pictureInPicture, pipTransition, immediatePip, target) {
+        derivedStateOf { if (pictureInPicture) 0f else if (pipTransition && immediatePip) target else animation.value }
+    }
 }

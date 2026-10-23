@@ -29,7 +29,7 @@ class PlayerRotationHandoffTest {
         val requests = mutableListOf<Pair<Boolean, Boolean>>()
         compose.setContent {
             angle = rememberPlayerRotation(turned, PlayerRotationBasis(0, false),
-                PlayerCanvasGeometry(400, 800, 0), false, false) { turn, pip -> requests += turn to pip }
+                PlayerCanvasGeometry(400, 800, 0), false, false) { turn, pip -> requests += turn to pip }.value
             Box(Modifier.size((100 + angle).dp))
         }
         compose.mainClock.autoAdvance = false
@@ -51,7 +51,7 @@ class PlayerRotationHandoffTest {
         val requests = mutableListOf<Pair<Boolean, Boolean>>()
         compose.setContent {
             val angle = rememberPlayerRotation(turned, PlayerRotationBasis(0, false), canvas,
-                false, false) { turn, pip -> requests += turn to pip }
+                false, false) { turn, pip -> requests += turn to pip }.value
             effectiveAngle = angle + canvas.compensation
             Box(Modifier.size((100 + angle).dp))
         }
@@ -74,7 +74,7 @@ class PlayerRotationHandoffTest {
         val requests = mutableListOf<Pair<Boolean, Boolean>>()
         compose.setContent {
             angle = rememberPlayerRotation(turned, PlayerRotationBasis(0, false),
-                PlayerCanvasGeometry(400, 800, 0), pip, transition) { turn, p -> requests += turn to p }
+                PlayerCanvasGeometry(400, 800, 0), pip, transition) { turn, p -> requests += turn to p }.value
             Box(Modifier.size((100 + angle).dp))
         }
         compose.mainClock.autoAdvance = false
@@ -98,7 +98,7 @@ class PlayerRotationHandoffTest {
         val requests = mutableListOf<Pair<Boolean, Boolean>>()
         compose.setContent {
             val angle = rememberPlayerRotation(turned, PlayerRotationBasis(0, false),
-                PlayerCanvasGeometry(400, 800, 0), false, false, active) { turn, p -> requests += turn to p }
+                PlayerCanvasGeometry(400, 800, 0), false, false, active) { turn, p -> requests += turn to p }.value
             Box(Modifier.size((100 + angle).dp))
         }
         compose.mainClock.autoAdvance = false
@@ -169,7 +169,7 @@ class PlayerRotationHandoffTest {
         val requests = mutableListOf<Pair<Boolean, Boolean>>()
         compose.setContent {
             angle = rememberPlayerRotation(turned, PlayerRotationBasis(0, false), PlayerCanvasGeometry(800, 400, 1),
-                false, false, collapsed = collapsed) { turn, pip -> requests += turn to pip }
+                false, false, collapsed = collapsed) { turn, pip -> requests += turn to pip }.value
             Box(Modifier.size((100 + angle).dp))
         }
         compose.mainClock.autoAdvance = false
@@ -191,7 +191,7 @@ class PlayerRotationHandoffTest {
         compose.setContent {
             angle = rememberPlayerRotation(turned, PlayerRotationBasis(0, false), PlayerCanvasGeometry(400, 800, 0),
                 false, false, collapsed = collapsed, collapsing = closing,
-                allowWindowRequest = !closing || collapsed) { turn, pip -> requests += turn to pip }
+                allowWindowRequest = !closing || collapsed) { turn, pip -> requests += turn to pip }.value
             Box(Modifier.size((100 + angle).dp))
         }
         compose.mainClock.autoAdvance = false
@@ -212,7 +212,7 @@ class PlayerRotationHandoffTest {
         val requests = mutableListOf<Pair<Boolean, Boolean>>()
         compose.setContent {
             rememberPlayerRotation(true, PlayerRotationBasis(0, false), PlayerCanvasGeometry(400, 800, 0),
-                false, false, allowWindowRequest = ready) { turn, pip -> requests += turn to pip }
+                false, false, allowWindowRequest = ready) { turn, pip -> requests += turn to pip }.value
         }
         compose.mainClock.autoAdvance = false
         compose.mainClock.advanceTimeBy(2_000)
@@ -263,7 +263,7 @@ class PlayerRotationHandoffTest {
         val requests = mutableListOf<Pair<Boolean, Boolean>>()
         compose.setContent {
             angle = rememberPlayerRotation(turned, PlayerRotationBasis(0, false),
-                PlayerCanvasGeometry(400, 800, 0), pip, transition, active, immediate) { turn, p -> requests += turn to p }
+                PlayerCanvasGeometry(400, 800, 0), pip, transition, active, immediate) { turn, p -> requests += turn to p }.value
             Box(Modifier.size((100 + angle).dp))
         }
         compose.mainClock.autoAdvance = false

@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -326,12 +327,12 @@ fun ZivPlayerApp(
         PlayerWindowCanvas(rotationBasis, pictureInPicture, onWindowRotation) { canvas ->
             var canvasCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
             val homeInsets = rememberPlayerHomeInsets(rotationBasis, canvas)
-            BoxWithConstraints(Modifier.fillMaxSize().onGloballyPositioned { canvasCoordinates = it }) {
+            Box(Modifier.fillMaxSize().onGloballyPositioned { canvasCoordinates = it }) {
                 CompositionLocalProvider(
                     LocalPlayerCanvasCoordinates provides canvasCoordinates,
                     LocalZivInsetSources provides homeInsets,
                 ) {
-                    val window = IntSize(constraints.maxWidth, constraints.maxHeight)
+                    val window = IntSize(canvas.width, canvas.height)
                     val pipPresentation = pictureInPicture || pictureInPictureTransition
                     val progress = remember(pipPresentation, presentation) {
                         { if (pipPresentation) 1f else presentation.progress }
@@ -433,32 +434,39 @@ fun ZivPlayerApp(
                             awaitPointerEventScope { while (true) awaitPointerEvent().changes.forEach { it.consume() } }
                         } else Modifier))
                     Box(Modifier.fillMaxSize()) {
-                        val rotation = rememberPlayerRotation(fullscreen, rotationBasis, canvas, pictureInPicture,
+                        val rotationState = rememberPlayerRotation(fullscreen, rotationBasis, canvas, pictureInPicture,
                             pictureInPictureTransition, rotationActive, pictureInPictureImmediateTransition,
                             collapsed = !playerOpen && atMini,
                             collapsing = !playerOpen || presentation.dragging && presentation.dragSource == "handle",
                             allowWindowRequest = !presentation.dragging && (atMini || playerOpen && atExpanded),
                             onFinished = onRotationAnimationFinished)
+                        val rotation = remember(rotationState) { { rotationState.value } }
+                        val layoutRotation = if (pictureInPicture) 0f else if (pictureInPictureTransition) -canvas.compensation
+                            else if (fullscreen) 90f else 0f
+                        val rotationAtTarget by remember(rotationState, layoutRotation) {
+                            derivedStateOf { rotationState.value == layoutRotation }
+                        }
+                        val rotationAtZero by remember(rotationState) { derivedStateOf { rotationState.value == 0f } }
                         val logicalWindow = IntSize(canvas.width, canvas.height)
                         val anchor = miniFrame ?: VideoFrame(window.width * 0.15f, window.height * 0.85f, 56f, 36f)
                         val fit = preferences.options.videoFit
                         val aspect = playerState.videoAspectRatio
                         val frame = remember(canvas.width, canvas.height, aspect, anchor, progress, rotation, fit, pictureInPicture) {
                             { presentationFrame(canvas.width.toFloat(), canvas.height.toFloat(), aspect,
-                                anchor, progress(), rotation,
+                                anchor, progress(), rotation(),
                                 fill = fit == VideoFit.FILL && !pictureInPicture,
                                 stretch = fit == VideoFit.STRETCH && !pictureInPicture) }
                         }
-                        val controlInsets = playerControlInsets(rotation, rotationBasis, canvas)
+                        val controlInsets = playerControlInsets(layoutRotation, rotationBasis, canvas)
                         SideEffect {
-                            onRotationAlignmentChange(playerOpen && atExpanded && rotation == (if (fullscreen) 90f else 0f) &&
-                                isVideoAlignedWithWindow(rotation, canvas.compensation))
+                            onRotationAlignmentChange(playerOpen && atExpanded && rotationAtTarget &&
+                                isVideoAlignedWithWindow(layoutRotation, canvas.compensation))
                         }
-                        LaunchedEffect(collapseRequested, atMini, fullscreen, rotation, canvas.turns, rotationUnavailable,
+                        LaunchedEffect(collapseRequested, atMini, fullscreen, rotationAtZero, canvas.turns, rotationUnavailable,
                             pictureInPicture, pictureInPictureTransition) {
                             if (collapseRequested && atMini && !pictureInPicture && !pictureInPictureTransition) {
                                 if (fullscreen) onFullscreenChange(false)
-                                else if (rotation == 0f && (canvas.turns == 0 || rotationUnavailable)) collapseRequested = false
+                                else if (rotationAtZero && (canvas.turns == 0 || rotationUnavailable)) collapseRequested = false
                             }
                         }
                         if (playerState.hasMedia) {
@@ -470,7 +478,7 @@ fun ZivPlayerApp(
                                 (!showsControls || presentation.dragging) && playerState.hasVideo)
                                 VideoExpansionTouchTarget(frame, presentation, travel, ::openPlayer, ::settlePresentation)
                         }
-                        RotatingPlayerViewport(rotation, Modifier
+                        RotatingPlayerViewport(rotation, layoutRotation, Modifier
                             .then(if (!showsControls || presentation.dragging) Modifier.clearAndSetSemantics { } else Modifier)
                             .graphicsLayer { alpha = ((progress() - 0.65f) / 0.35f).coerceIn(0f, 1f) },
                             visible = showsControls && !presentation.dragging) {
@@ -498,7 +506,7 @@ fun ZivPlayerApp(
                         }
                         if ((showsControls && !presentation.dragging || presentation.dragging && presentation.dragSource == "handle") &&
                             !pictureInPicture && !pictureInPictureTransition) {
-                            RotatingPlayerViewport(rotation) {
+                            RotatingPlayerViewport(rotation, layoutRotation) {
                                 Box(Modifier.fillMaxSize()) {
                                     Box(Modifier.align(Alignment.TopCenter).size(72.dp, 22.dp)
                                         .playerExpansionDrag(presentation, travel, ::settlePresentation, source = "handle"))

@@ -69,17 +69,30 @@ internal fun PersistentVideoStage(controller: MediaController?, canRender: Boole
 @Composable
 internal fun RotatingPlayerViewport(rotation: Float, modifier: Modifier = Modifier, visible: Boolean = true,
     content: @Composable () -> Unit) {
+    RotatingPlayerViewport({ rotation }, rotation, modifier, visible, content)
+}
+
+/** Measure the destination once; intermediate frames transform that fixed control layout. */
+@Composable
+internal fun RotatingPlayerViewport(rotation: () -> Float, layoutRotation: Float,
+    modifier: Modifier = Modifier, visible: Boolean = true, content: @Composable () -> Unit) {
     Layout(modifier = modifier.fillMaxSize(), content = content) { measurables, constraints ->
         // Gate this measure policy itself: a child policy can be invalidated independently
         // even when an outer layout modifier no longer measures it.
         if (!visible) return@Layout layout(constraints.maxWidth, constraints.maxHeight) { }
-        val turn = rotationAxisSwap(rotation)
+        val turn = rotationAxisSwap(layoutRotation)
         val width = (constraints.maxWidth + (constraints.maxHeight - constraints.maxWidth) * turn).roundToInt()
         val height = (constraints.maxHeight + (constraints.maxWidth - constraints.maxHeight) * turn).roundToInt()
         val children = measurables.map { it.measure(Constraints.fixed(width, height)) }
         layout(constraints.maxWidth, constraints.maxHeight) {
             children.forEach { child -> child.placeWithLayer((constraints.maxWidth - width) / 2,
-                (constraints.maxHeight - height) / 2) { rotationZ = rotation } }
+                (constraints.maxHeight - height) / 2) {
+                val angle = rotation()
+                val currentTurn = rotationAxisSwap(angle)
+                rotationZ = angle
+                scaleX = (constraints.maxWidth + (constraints.maxHeight - constraints.maxWidth) * currentTurn) / width
+                scaleY = (constraints.maxHeight + (constraints.maxWidth - constraints.maxHeight) * currentTurn) / height
+            } }
         }
     }
 }
