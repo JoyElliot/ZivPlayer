@@ -118,7 +118,7 @@ def platform_libraries(abis: set[str]) -> dict[str, dict]:
     """Every AndroidX native helper is bound to its exact locked and verified AAR."""
     helpers = (
         ("androidx.graphics", "graphics-path", "1.0.1", "graphics-path-1.0.1.aar", "libandroidx.graphics.path.so"),
-        ("androidx.datastore", "datastore-core-android", "1.2.1", "datastore-core.aar", "libdatastore_shared_counter.so"),
+        ("androidx.datastore", "datastore-core-android", "1.3.0", "datastore-core.aar", "libdatastore_shared_counter.so"),
     )
     dependency_lock = (ROOT / "apps/android/gradle.lockfile").read_text(encoding="utf-8")
     metadata = ET.parse(ROOT / "gradle/verification-metadata.xml").getroot()

@@ -42,10 +42,11 @@ product notices as explicit pending gates.
 | Component | Intended use | Upstream license | Distribution note |
 | --- | --- | --- | --- |
 | AndroidX and Jetpack Compose | Android application and UI runtime | Apache-2.0 | Preserve notices required by resolved artifacts. |
-| AndroidX DataStore 1.2.1 | Persistent player settings, including its native shared-counter helper | Apache-2.0 | The two ABI helper libraries come from the locked `datastore-core-android` AAR and are verified separately from the libmpv execution receipt. |
+| AndroidX DataStore 1.3.0 | Persistent player settings, including its native shared-counter helper | Apache-2.0 | The two ABI helper libraries come from the locked `datastore-core-android` AAR and are verified separately from the libmpv execution receipt. |
 | Protocol Buffers runtime relocated by DataStore | Preferences serialization | BSD-3-Clause | Preserve the bundled `datastore-preferences-external-protobuf/LICENSE.txt`. |
-| Okio and kotlinx.serialization | DataStore storage and serialization dependencies | Apache-2.0 | Exact transitive versions and artifacts remain locked and checksum-verified. |
-| Kotlin and kotlinx.coroutines | Language tooling and asynchronous runtime | Apache-2.0 | Compiler tooling is build-time; runtime artifacts remain inventoried. |
+| Okio | DataStore storage dependencies | Apache-2.0 | Exact transitive versions and artifacts remain locked and checksum-verified. |
+| kotlinx.serialization | Serialization runtime used by AndroidX components | Apache-2.0 | Resolved transitive versions are recorded in the lockfiles; the unused catalog alias does not override them. |
+| Kotlin, kotlinx.coroutines and AtomicFU | Language tooling, asynchronous runtime and atomic operations | Apache-2.0 | Compiler tooling is build-time; runtime artifacts remain inventoried. |
 | Kotlin Symbol Processing (KSP) | Build-time Room code generation | Apache-2.0 | Build-time only; pin and verify the Gradle plugin and processor artifacts. |
 | compose-miuix-ui, miuix-blur 0.9.4 | MIUIX-inspired Compose design system and live backdrop blur/highlights | Apache-2.0 | Community project, not an official Xiaomi SDK. APIs are experimental. The Android home shell uses the locked blur artifact; the rounded lens shader is ZivPlayer source. |
 | FangFeishu liquid navigation / Kyant0 AndroidLiquidGlass adaptations | Press/drag animation, refracted tab capture, lens, highlights and inner shadow | Apache-2.0 | Ported from FangFeishu `8676095d`, retaining its attribution to [Kyant0/AndroidLiquidGlass](https://github.com/Kyant0/AndroidLiquidGlass). Source files retain notices and mark ZivPlayer modifications. See the [license](licenses/Apache-2.0.txt); license and notice are also packaged in the UI module's `assets/licenses`. |
