@@ -9,7 +9,11 @@
 #include <pthread.h>
 
 typedef struct libvlc_media_player_t vlc_player;
-typedef struct libvlc_media_player_time_point_t vlc_time_point;
+// Public time-point layout from the pinned LibVLC 4 header.
+typedef struct libvlc_media_player_time_point_t {
+    double position, rate;
+    int64_t ts_us, length_us, system_date_us;
+} vlc_time_point;
 typedef void (*update_cb)(const vlc_time_point *, void *);
 typedef void (*pause_cb)(int64_t, void *);
 typedef void (*seek_cb)(const vlc_time_point *, void *);
@@ -22,36 +26,85 @@ typedef struct {
     void (*unwatch)(vlc_player *);
     void (*release)(vlc_player *);
     int (*set_time)(vlc_player *, int64_t, bool);
+    int (*interpolate)(const vlc_time_point *, int64_t, int64_t *, double *);
+    int64_t (*clock)(void);
     pthread_mutex_t mutex;
     int64_t token;
     bool started;
+    bool seek_ended;
+    bool require_output;
+    vlc_time_point seek_point;
+    bool has_point;
+    vlc_time_point point;
+    int64_t paused_date;
 } bridge;
 
-static void time_updated(const vlc_time_point *point, void *opaque) {
-    (void)point; (void)opaque;
-}
-
-static void seek_changed(const vlc_time_point *point, void *opaque) {
-    bridge *b = opaque;
-    int64_t completed = 0;
-    pthread_mutex_lock(&b->mutex);
-    if (point != NULL) b->started = b->token != 0;
-    else if (b->started) {
-        completed = b->token;
-        b->token = 0;
-        b->started = false;
-    }
-    pthread_mutex_unlock(&b->mutex);
-    if (!completed) return;
+static void notify_completed(bridge *b, int64_t token, int64_t position_ms) {
     // VLC forbids player calls inside timer callbacks. Java only posts to its main Handler.
     JNIEnv *env = NULL;
     bool attached = (*b->vm)->GetEnv(b->vm, (void **)&env, JNI_VERSION_1_6) == JNI_EDETACHED;
     if (attached && (*b->vm)->AttachCurrentThread(b->vm, &env, NULL) != JNI_OK) return;
     if (env != NULL) {
-        (*env)->CallVoidMethod(env, b->observer, b->completed, (jlong)completed);
+        (*env)->CallVoidMethod(env, b->observer, b->completed, (jlong)token, (jlong)position_ms);
         if ((*env)->ExceptionCheck(env)) (*env)->ExceptionClear(env);
     }
     if (attached) (*b->vm)->DetachCurrentThread(b->vm);
+}
+
+static void time_updated(const vlc_time_point *point, void *opaque) {
+    bridge *b = opaque;
+    int64_t timestamp;
+    if (b->interpolate(point, b->clock(), &timestamp, NULL) != 0) return;
+    int64_t completed = 0;
+    pthread_mutex_lock(&b->mutex);
+    b->point = *point;
+    b->has_point = true;
+    b->paused_date = 0;
+    // A PCR reset can finish on_seek before any new frame/sample is output.
+    // Wait for a subsequent real clock update before releasing the token.
+    if (b->started && b->seek_ended) {
+        completed = b->token;
+        b->token = 0;
+        b->started = false;
+        b->seek_ended = false;
+    }
+    pthread_mutex_unlock(&b->mutex);
+    if (!completed) return;
+    notify_completed(b, completed, timestamp / 1000);
+}
+
+static void time_paused(int64_t date, void *opaque) {
+    bridge *b = opaque;
+    pthread_mutex_lock(&b->mutex);
+    if (date > 0) b->paused_date = date;
+    else { b->has_point = false; b->paused_date = 0; }
+    pthread_mutex_unlock(&b->mutex);
+}
+
+static void seek_changed(const vlc_time_point *point, void *opaque) {
+    bridge *b = opaque;
+    int64_t completed = 0, timestamp = -1;
+    pthread_mutex_lock(&b->mutex);
+    if (point != NULL) {
+        b->started = b->token != 0;
+        b->seek_ended = false;
+        if (b->started) b->seek_point = *point;
+    } else if (b->started) {
+        b->seek_ended = true;
+        // Paused audio has no output clock update until play. The native seek
+        // end acknowledges its logical cursor; do not require a video frame.
+        if (!b->require_output && b->interpolate(&b->seek_point, b->clock(), &timestamp, NULL) == 0) {
+            b->point = b->seek_point;
+            b->has_point = true;
+            b->paused_date = 0;
+            completed = b->token;
+            b->token = 0;
+            b->started = false;
+            b->seek_ended = false;
+        }
+    }
+    pthread_mutex_unlock(&b->mutex);
+    if (completed) notify_completed(b, completed, timestamp / 1000);
 }
 
 JNIEXPORT jlong JNICALL
@@ -63,23 +116,27 @@ Java_io_github_joyelliot_zivplayer_platform_libvlc_VlcSeekBridge_nativeOpen(JNIE
     if (!b->library) { free(b); return 0; }
     int (*watch)(vlc_player *, int64_t, update_cb, pause_cb, seek_cb, void *) =
         dlsym(b->library, "libvlc_media_player_watch_time");
-    void (*retain)(vlc_player *) = dlsym(b->library, "libvlc_media_player_retain");
+    vlc_player *(*retain)(vlc_player *) = dlsym(b->library, "libvlc_media_player_retain");
     b->unwatch = dlsym(b->library, "libvlc_media_player_unwatch_time");
     b->release = dlsym(b->library, "libvlc_media_player_release");
     b->set_time = dlsym(b->library, "libvlc_media_player_set_time");
+    b->interpolate = dlsym(b->library, "libvlc_media_player_time_point_interpolate");
+    b->clock = dlsym(b->library, "libvlc_clock");
     jclass clazz = (*env)->GetObjectClass(env, self);
-    b->completed = (*env)->GetMethodID(env, clazz, "onNativeSeekCompleted", "(J)V");
+    b->completed = (*env)->GetMethodID(env, clazz, "onNativeSeekCompleted", "(JJ)V");
     (*env)->DeleteLocalRef(env, clazz);
-    if (!watch || !retain || !b->unwatch || !b->release || !b->set_time || !b->completed) {
+    if (!watch || !retain || !b->unwatch || !b->release || !b->set_time || !b->interpolate || !b->clock || !b->completed) {
         dlclose(b->library); free(b); return 0;
     }
     b->observer = (*env)->NewGlobalRef(env, self);
     if (!b->observer) { dlclose(b->library); free(b); return 0; }
-    (*env)->GetJavaVM(env, &b->vm);
+    if ((*env)->GetJavaVM(env, &b->vm) != JNI_OK || pthread_mutex_init(&b->mutex, NULL) != 0) {
+        (*env)->DeleteGlobalRef(env, b->observer);
+        dlclose(b->library); free(b); return 0;
+    }
     b->player = (vlc_player *)(intptr_t)pointer;
-    pthread_mutex_init(&b->mutex, NULL);
     retain(b->player);
-    if (watch(b->player, 100000, time_updated, NULL, seek_changed, b) != 0) {
+    if (watch(b->player, 100000, time_updated, time_paused, seek_changed, b) != 0) {
         b->release(b->player);
         pthread_mutex_destroy(&b->mutex);
         (*env)->DeleteGlobalRef(env, b->observer);
@@ -90,7 +147,7 @@ Java_io_github_joyelliot_zivplayer_platform_libvlc_VlcSeekBridge_nativeOpen(JNIE
 
 JNIEXPORT jint JNICALL
 Java_io_github_joyelliot_zivplayer_platform_libvlc_VlcSeekBridge_nativeSeek(JNIEnv *env, jobject self,
-        jlong handle, jlong token, jlong milliseconds, jboolean fast) {
+        jlong handle, jlong token, jlong milliseconds, jboolean fast, jboolean require_output) {
     (void)env; (void)self;
     bridge *b = (bridge *)(intptr_t)handle;
     if (!b || !token || milliseconds < 0) return -1;
@@ -98,15 +155,33 @@ Java_io_github_joyelliot_zivplayer_platform_libvlc_VlcSeekBridge_nativeSeek(JNIE
     if (b->token) { pthread_mutex_unlock(&b->mutex); return -1; }
     b->token = token;
     b->started = false;
+    b->seek_ended = false;
+    b->require_output = require_output == JNI_TRUE;
     pthread_mutex_unlock(&b->mutex);
     int result = b->set_time(b->player, milliseconds, fast == JNI_TRUE);
     if (result != 0) {
         pthread_mutex_lock(&b->mutex);
         b->token = 0;
         b->started = false;
+        b->seek_ended = false;
         pthread_mutex_unlock(&b->mutex);
     }
     return result;
+}
+
+JNIEXPORT jlong JNICALL
+Java_io_github_joyelliot_zivplayer_platform_libvlc_VlcSeekBridge_nativePosition(JNIEnv *env, jobject self, jlong handle) {
+    (void)env; (void)self;
+    bridge *b = (bridge *)(intptr_t)handle;
+    if (!b) return -1;
+    pthread_mutex_lock(&b->mutex);
+    bool valid = b->has_point;
+    vlc_time_point point = b->point;
+    int64_t date = b->paused_date;
+    pthread_mutex_unlock(&b->mutex);
+    int64_t timestamp;
+    if (!valid || b->interpolate(&point, date > 0 ? date : b->clock(), &timestamp, NULL) != 0) return -1;
+    return timestamp / 1000;
 }
 
 JNIEXPORT void JNICALL

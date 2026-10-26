@@ -86,7 +86,9 @@ internal class MpvDiagnosticsObserver {
         }
         return true
     }
-    fun clearMedia() { strings.keys.retainAll(setOf("mpv-version", "ffmpeg-version")) }
+    // Output instances can survive a file change without another property event.
+    // Keep these process/output properties; media-specific codec data is cleared.
+    fun clearMedia() { strings.keys.retainAll(setOf("mpv-version", "ffmpeg-version", "current-vo", "current-ao", "hwdec-interop")) }
     fun snapshot(player: MpvClient?, mediaLoaded: Boolean): PlaybackDiagnostics {
         fun number(name: String): Double? = if (!mediaLoaded || player == null) null
             else runCatching { player.getPropertyDouble(name)?.takeIf(Double::isFinite) }.getOrNull()
@@ -103,11 +105,14 @@ internal class MpvDiagnosticsObserver {
             transferFunction = string("video-params/gamma"), pixelFormat = string("video-params/pixelformat"),
             videoBitrate = count("video-bitrate"), audioBitrate = count("audio-bitrate"),
             engineVersion = strings["mpv-version"], ffmpegVersion = strings["ffmpeg-version"],
+            videoOutput = string("current-vo"), audioOutput = string("current-ao"),
+            hardwareInterop = string("hwdec-interop"),
         )
     }
     private companion object {
         const val FIRST_TOKEN = 10L
         val STRING_PROPERTIES = listOf("video-codec", "audio-codec", "hwdec-current", "video-params/primaries",
-            "video-params/gamma", "video-params/pixelformat", "mpv-version", "ffmpeg-version")
+            "video-params/gamma", "video-params/pixelformat", "mpv-version", "ffmpeg-version",
+            "current-vo", "current-ao", "hwdec-interop")
     }
 }

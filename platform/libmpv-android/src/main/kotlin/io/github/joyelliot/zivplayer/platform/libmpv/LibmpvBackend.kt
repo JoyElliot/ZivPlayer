@@ -45,13 +45,16 @@ class LibmpvBackend internal constructor(
     private val clientFactory: MpvClientFactory,
     private val prepareConfigDirectory: () -> String,
     private val sourceOpener: MpvMediaSourceOpener,
+    private val videoOutput: MpvVideoOutput = MpvVideoOutput.GPU_NEXT,
 ) : PlayerBackend, LibmpvSurfacePort, LibmpvConfigurationPort {
-    internal constructor(context: Context, clientFactory: MpvClientFactory, prepareConfigDirectory: () -> String) :
-        this(context, clientFactory, prepareConfigDirectory, MpvMediaSourceOpener { OpenMpvMediaSource(it) })
+    internal constructor(context: Context, clientFactory: MpvClientFactory, prepareConfigDirectory: () -> String,
+        videoOutput: MpvVideoOutput = MpvVideoOutput.GPU_NEXT) :
+        this(context, clientFactory, prepareConfigDirectory, MpvMediaSourceOpener { OpenMpvMediaSource(it) }, videoOutput)
 
-    constructor(context: Context) : this(context, SourceMpvClient,
+    @JvmOverloads
+    constructor(context: Context, videoOutput: MpvVideoOutput = MpvVideoOutput.GPU_NEXT) : this(context, SourceMpvClient,
         { MpvFontConfig.prepare(context.applicationContext).absolutePath },
-        AndroidMpvMediaSourceOpener(context.applicationContext.contentResolver))
+        AndroidMpvMediaSourceOpener(context.applicationContext.contentResolver), videoOutput)
 
     private val applicationContext = context.applicationContext
     private val nativeEvents = Channel<BackendEvent>(capacity = MAX_NATIVE_EVENTS)
@@ -725,7 +728,7 @@ class LibmpvBackend internal constructor(
         surfaceAttachmentAttempted = true
         player.setPropertyString("android-surface-size", "0x0")
         player.attachSurface(surface)
-        player.setPropertyString("vo", "gpu")
+        player.setPropertyString("vo", videoOutput.optionValue)
         player.setPropertyString(OPTION_FORCE_WINDOW, OPTION_ENABLED)
     }
 

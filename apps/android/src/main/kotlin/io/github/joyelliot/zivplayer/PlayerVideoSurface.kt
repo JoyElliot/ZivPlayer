@@ -4,6 +4,7 @@ package io.github.joyelliot.zivplayer
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.PixelFormat
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -51,14 +52,14 @@ internal fun PlayerVideoSurface(
     val context = LocalContext.current
     val viewport = remember(context) { VideoViewport(context) }
     val videoView = viewport.surfaceView
-    val sourceDimensions = remember(player) { mutableStateOf(0 to 0) }
+    val sourceFormat = remember(player) { mutableStateOf<androidx.media3.common.Format?>(null) }
     DisposableEffect(player) {
         fun updateSourceDimensions() {
             val group = player?.currentTracks?.groups?.firstOrNull {
                 it.type == androidx.media3.common.C.TRACK_TYPE_VIDEO && it.isSelected
             }
             val format = group?.let { (0 until it.length).firstOrNull(it::isTrackSelected)?.let(it::getTrackFormat) }
-            sourceDimensions.value = (format?.width ?: 0) to (format?.height ?: 0)
+            sourceFormat.value = format
         }
         val listener = object : Player.Listener {
             override fun onTracksChanged(tracks: androidx.media3.common.Tracks) = updateSourceDimensions()
@@ -68,7 +69,7 @@ internal fun PlayerVideoSurface(
         onDispose { player?.removeListener(listener) }
     }
     AndroidView(factory = { viewport }, modifier = modifier.background(Color.Black), update = {
-        it.configure(videoAspectRatio, videoFit, sourceDimensions.value.first, sourceDimensions.value.second)
+        it.configure(videoAspectRatio, videoFit, sourceFormat.value)
         it.showPreview(previewFrame, onPreviewPresented)
     })
 
@@ -82,8 +83,8 @@ internal fun PlayerVideoSurface(
             val redrawCompletions = mutableSetOf<Runnable>()
             val redrawHandler = Handler(Looper.getMainLooper())
             fun resizeSurface() {
-                val width = viewport.renderWidth
-                val height = viewport.renderHeight
+                val width = if (PlaybackExperiment.usesLibVlc) videoView.width else viewport.renderWidth
+                val height = if (PlaybackExperiment.usesLibVlc) videoView.height else viewport.renderHeight
                 if (width <= 0 || height <= 0 || !VideoSurfaceRequests.isCurrent(surfaceToken) || !player.isConnected) return
                 val command = SessionCommand(VideoSurfaceRequestContract.ACTION_RESIZE, Bundle.EMPTY)
                 if (!player.isSessionCommandAvailable(command)) return
@@ -98,6 +99,14 @@ internal fun PlayerVideoSurface(
                         Log.w("ZivVideoSurface", "Surface resize was not accepted.", result.exceptionOrNull())
                     }
                 }, java.util.concurrent.Executor { it.run() })
+            }
+            fun configureBuffers() {
+                if (PlaybackExperiment.usesLibVlc) {
+                    // VLC 4 can create a child SurfaceControl. It needs window
+                    // coordinates, not SurfaceView's fixed-buffer scaling matrix.
+                    videoView.holder.setSizeFromLayout()
+                    viewport.vlcSubtitles?.holder?.setSizeFromLayout()
+                } else videoView.holder.setFixedSize(viewport.renderWidth, viewport.renderHeight)
             }
             fun detachSurface() {
                 viewport.onVideoSurfaceDetached()
@@ -128,16 +137,23 @@ internal fun PlayerVideoSurface(
             }
             fun attachSurface(surface: Surface) {
                 if (attachedSurface != null || !surface.isValid || !player.canSetVideoSurface()) return
+                val subtitleSurface = viewport.vlcSubtitles?.holder?.surface
+                if (subtitleSurface != null && !subtitleSurface.isValid) return
                 attachedSurface = surface
                 surfaceToken = VideoSurfaceRequests.claim()
                 viewport.onVideoSurfaceAttached()
+                PlaybackExperiment.registerVideoSurfaces(surface, viewport.vlcSubtitles, viewport::onVlcLayout)
                 player.setVideoSurface(surface)
                 redrawAfterResize()
             }
             viewport.onRenderSizeChanged = {
-                videoView.holder.setFixedSize(viewport.renderWidth, viewport.renderHeight)
+                configureBuffers()
                 redrawAfterResize()
             }
+            val layoutListener = View.OnLayoutChangeListener { _, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom ->
+                if (PlaybackExperiment.usesLibVlc && (right - left != oldRight - oldLeft || bottom - top != oldBottom - oldTop)) redrawAfterResize()
+            }
+            videoView.addOnLayoutChangeListener(layoutListener)
             val callback = object : SurfaceHolder.Callback2 {
                 override fun surfaceCreated(holder: SurfaceHolder) {
                     attachSurface(holder.surface)
@@ -169,6 +185,7 @@ internal fun PlayerVideoSurface(
                     fun probeBuffer() {
                         if (finished) return
                         if (!holder.surface.isValid || attachedSurface == null) { finish.run(); return }
+                        if (viewport.hasVlcDirectLayout) { finish.run(); return }
                         val bitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
                         try {
                             PixelCopy.request(videoView, bitmap, { result ->
@@ -185,12 +202,20 @@ internal fun PlayerVideoSurface(
                     redrawAfterResize { probeBuffer() }
                 }
             }
-            videoView.holder.setFixedSize(viewport.renderWidth, viewport.renderHeight)
+            val subtitleCallback = object : SurfaceHolder.Callback {
+                override fun surfaceCreated(holder: SurfaceHolder) = attachSurface(videoView.holder.surface)
+                override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) = Unit
+                override fun surfaceDestroyed(holder: SurfaceHolder) = detachSurface()
+            }
+            configureBuffers()
             videoView.holder.addCallback(callback)
+            viewport.vlcSubtitles?.holder?.addCallback(subtitleCallback)
             attachSurface(videoView.holder.surface)
             onDispose {
                 viewport.onRenderSizeChanged = null
+                videoView.removeOnLayoutChangeListener(layoutListener)
                 videoView.holder.removeCallback(callback)
+                viewport.vlcSubtitles?.holder?.removeCallback(subtitleCallback)
                 detachSurface()
             }
         }
@@ -200,6 +225,14 @@ internal fun PlayerVideoSurface(
 /** Keeps the renderer's buffer geometry stable while the window rotates. */
 private class VideoViewport(context: Context) : FrameLayout(context) {
     val surfaceView = SurfaceView(context)
+    val vlcSubtitles = if (PlaybackExperiment.usesLibVlc) SurfaceView(context).apply {
+        tag = "vlc-subtitles-surface"
+        setZOrderMediaOverlay(true)
+        holder.setFormat(PixelFormat.TRANSLUCENT)
+    } else null
+    private data class VlcLayout(val width: Int, val height: Int, val placeWidth: Int, val placeHeight: Int, val x: Int, val y: Int)
+    private var vlcLayout: VlcLayout? = null
+    val hasVlcDirectLayout: Boolean get() = vlcLayout != null
     private val subtitles = if (PlaybackExperiment.usesExoPlayer) PlaybackExperiment.subtitleView(context) else null
     private val previewView = ImageView(context).apply {
         tag = "seek-preview-frame"
@@ -227,6 +260,7 @@ private class VideoViewport(context: Context) : FrameLayout(context) {
         // Default SurfaceView ordering leaves app chrome and this preview above
         // the video. Setting z-order-on-top would hide controls and subtitles UI.
         addView(surfaceView)
+        vlcSubtitles?.let(::addView)
         subtitles?.let(::addView)
         addView(previewView)
     }
@@ -255,6 +289,13 @@ private class VideoViewport(context: Context) : FrameLayout(context) {
         ++surfaceGeneration
         surfaceAttached = false
         settlingToken = null
+        vlcLayout = null
+    }
+
+    fun onVlcLayout(width: Int, height: Int, placeWidth: Int, placeHeight: Int, x: Int, y: Int) {
+        vlcLayout = if (width > 0 && height > 0 && placeWidth > 0 && placeHeight > 0)
+            VlcLayout(width, height, placeWidth, placeHeight, x, y) else null
+        requestLayout()
     }
 
     fun onVideoSurfaceReady() = settlePreview()
@@ -269,12 +310,19 @@ private class VideoViewport(context: Context) : FrameLayout(context) {
             val deadline = SystemClock.uptimeMillis() + 1_000
             fun awaitSurfaceBuffer() {
                 if (!isCurrent()) return
+                if (hasVlcDirectLayout) {
+                    // The correlated native seek has completed. A SurfaceControl
+                    // child does not enqueue into the parent Surface; this is not
+                    // an independent measurement of physical frame presentation.
+                    previewPresented(frame.token)
+                    return
+                }
                 val probe = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
                 fun finish(result: Int) {
                     probe.recycle()
                     if (!isCurrent()) return
                     if (result == PixelCopy.SUCCESS || SystemClock.uptimeMillis() >= deadline) {
-                        // Native seek completion is the frame/position fence. A
+                        // Native seek completion correlates this position request. A
                         // successful copy only proves this Surface has a buffer;
                         // it does not identify that buffer's presentation time.
                         if (result != PixelCopy.SUCCESS) Log.w("ZivVideoSurface", "Surface buffer probe timed out: $result")
@@ -293,17 +341,19 @@ private class VideoViewport(context: Context) : FrameLayout(context) {
         }
     }
 
-    fun configure(aspectRatio: Float, fit: VideoFit, sourceWidth: Int = 0, sourceHeight: Int = 0) {
+    fun configure(aspectRatio: Float, fit: VideoFit, source: androidx.media3.common.Format? = null) {
         val ratio = aspectRatio.takeIf { it.isFinite() && it > 0f } ?: (16f / 9f)
         val presentationChanged = videoAspectRatio != ratio || videoFit != fit
         videoAspectRatio = ratio
         videoFit = fit
         val testSize = PlaybackExperiment.instrumentationSurfaceSize
-        val useSourceSize = PlaybackExperiment.usesExoPlayer && sourceWidth in 1..16384 && sourceHeight in 1..16384
-        val newWidth = (testSize?.first ?: if (useSourceSize) sourceWidth else if (ratio >= 1f) renderLongEdge else (renderLongEdge * ratio).roundToInt())
-            .coerceAtLeast(2).let { it - it % 2 }
-        val newHeight = (testSize?.second ?: if (useSourceSize) sourceHeight else if (ratio >= 1f) (renderLongEdge / ratio).roundToInt() else renderLongEdge)
-            .coerceAtLeast(2).let { it - it % 2 }
+        // Codec Surfaces own their crop/rotation. GPU outputs already contain the
+        // rotated, square-pixel image, but must not upscale it to the screen long edge.
+        val sourceSize = if (PlaybackExperiment.usesExoPlayer) {
+            source?.takeIf { it.width in 1..16384 && it.height in 1..16384 }?.let { it.width to it.height }
+        } else source?.nativeRenderSize()
+        val newWidth = (testSize?.first ?: sourceSize?.first ?: if (ratio >= 1f) renderLongEdge else (renderLongEdge * ratio).roundToInt()).coerceAtLeast(1)
+        val newHeight = (testSize?.second ?: sourceSize?.second ?: if (ratio >= 1f) (renderLongEdge / ratio).roundToInt() else renderLongEdge).coerceAtLeast(1)
         if (!presentationChanged && renderWidth == newWidth && renderHeight == newHeight) return
         if (renderWidth != newWidth || renderHeight != newHeight) {
             renderWidth = newWidth
@@ -325,7 +375,12 @@ private class VideoViewport(context: Context) : FrameLayout(context) {
         }
         val childWidth = if (videoFit == VideoFit.STRETCH || matchWidth) width else (height * videoAspectRatio).roundToInt()
         val childHeight = if (videoFit == VideoFit.STRETCH || !matchWidth) height else (width / videoAspectRatio).roundToInt()
-        surfaceView.measure(MeasureSpec.makeMeasureSpec(childWidth.coerceAtLeast(1), MeasureSpec.EXACTLY),
+        val layout = vlcLayout
+        val videoWidth = layout?.let { (childWidth.toDouble() * it.placeWidth / it.width).roundToInt() } ?: childWidth
+        val videoHeight = layout?.let { (childHeight.toDouble() * it.placeHeight / it.height).roundToInt() } ?: childHeight
+        surfaceView.measure(MeasureSpec.makeMeasureSpec(videoWidth.coerceAtLeast(1), MeasureSpec.EXACTLY),
+            MeasureSpec.makeMeasureSpec(videoHeight.coerceAtLeast(1), MeasureSpec.EXACTLY))
+        vlcSubtitles?.measure(MeasureSpec.makeMeasureSpec(childWidth.coerceAtLeast(1), MeasureSpec.EXACTLY),
             MeasureSpec.makeMeasureSpec(childHeight.coerceAtLeast(1), MeasureSpec.EXACTLY))
         previewView.measure(MeasureSpec.makeMeasureSpec(childWidth.coerceAtLeast(1), MeasureSpec.EXACTLY),
             MeasureSpec.makeMeasureSpec(childHeight.coerceAtLeast(1), MeasureSpec.EXACTLY))
@@ -334,11 +389,17 @@ private class VideoViewport(context: Context) : FrameLayout(context) {
     }
 
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
-        val childLeft = (width - surfaceView.measuredWidth) / 2
-        val childTop = (height - surfaceView.measuredHeight) / 2
-        surfaceView.layout(childLeft, childTop, childLeft + surfaceView.measuredWidth, childTop + surfaceView.measuredHeight)
-        previewView.layout(childLeft, childTop, childLeft + surfaceView.measuredWidth, childTop + surfaceView.measuredHeight)
-        subtitles?.layout(childLeft, childTop, childLeft + surfaceView.measuredWidth, childTop + surfaceView.measuredHeight)
+        val childWidth = previewView.measuredWidth
+        val childHeight = previewView.measuredHeight
+        val childLeft = (width - childWidth) / 2
+        val childTop = (height - childHeight) / 2
+        val layout = vlcLayout
+        val videoLeft = childLeft + (layout?.let { (childWidth.toDouble() * it.x / it.width).roundToInt() } ?: 0)
+        val videoTop = childTop + (layout?.let { (childHeight.toDouble() * it.y / it.height).roundToInt() } ?: 0)
+        surfaceView.layout(videoLeft, videoTop, videoLeft + surfaceView.measuredWidth, videoTop + surfaceView.measuredHeight)
+        previewView.layout(childLeft, childTop, childLeft + childWidth, childTop + childHeight)
+        vlcSubtitles?.layout(childLeft, childTop, childLeft + childWidth, childTop + childHeight)
+        subtitles?.layout(childLeft, childTop, childLeft + childWidth, childTop + childHeight)
     }
 }
 

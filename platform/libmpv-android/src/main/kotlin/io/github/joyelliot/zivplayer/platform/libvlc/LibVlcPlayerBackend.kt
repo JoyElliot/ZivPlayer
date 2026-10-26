@@ -6,6 +6,8 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.os.ParcelFileDescriptor
+import android.system.Os
+import android.system.OsConstants
 import android.view.Surface
 import io.github.joyelliot.zivplayer.core.model.*
 import io.github.joyelliot.zivplayer.core.player.*
@@ -17,12 +19,18 @@ import java.io.File
 import java.io.InputStream
 import java.util.concurrent.FutureTask
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import org.videolan.libvlc.LibVLC
 import org.videolan.libvlc.Media
 import org.videolan.libvlc.MediaPlayer
@@ -34,6 +42,7 @@ class LibVlcPlayerBackend(context: Context) : PlayerBackend, LibmpvSurfacePort,
     private val context = context.applicationContext
     private val main = Handler(Looper.getMainLooper())
     private val lifecycle = Mutex()
+    private val surfaceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val channel = Channel<BackendEvent>(Channel.UNLIMITED)
     override val events = channel.receiveAsFlow()
     private var library: LibVLC? = null
@@ -43,6 +52,7 @@ class LibVlcPlayerBackend(context: Context) : PlayerBackend, LibmpvSurfacePort,
     private var request: BackendLoadRequest? = null
     private var prepared = false
     private var initializingSeek = false
+    private var initializingPause = false
     private var failed = false
     private var closed = false
     private var scrubbing = false
@@ -51,6 +61,8 @@ class LibVlcPlayerBackend(context: Context) : PlayerBackend, LibmpvSurfacePort,
     private var muted = false
     private var rate = PlaybackRatePermille.NORMAL
     private var pendingSeek: BackendSeekRequest? = null
+    private var pendingSeekIssued = false
+    private var reopenBeforeBackgroundPlay = false
     private var seekEpoch: SeekGeneration? = null
     private var seekToken = 0L
     private var videoSurface: Surface? = null
@@ -58,11 +70,20 @@ class LibVlcPlayerBackend(context: Context) : PlayerBackend, LibmpvSurfacePort,
     private var leaseSerial = 0L
     private var surfaceWidth = 0
     private var surfaceHeight = 0
+    private data class SurfaceRestore(val positionMs: Long, val tracks: Map<Int, IMedia.Track?>)
+    private var surfaceRestore: SurfaceRestore? = null
+    private var surfaceReopening = false
+    private var surfaceReopenScheduled = false
+    private var boundVideoSurface: Surface? = null
+    private var restoredPausePositionMs: Long? = null
+    private var detachedVideoTrackId: String? = null
+    private var playAfterSurfaceRestore = false
+    private var directVideoOutput = false
     private val tracksById = mutableMapOf<TrackId, IMedia.Track>()
     private val temporarySubtitles = mutableListOf<File>()
 
     override val configurationMessage: String get() =
-        "libVLC 4.0.0-eap29 实验（OpenGL ES 合成）：支持音轨、字幕、倍速及音频/字幕延迟；解码模式在重新打开媒体后生效。mpv 着色器、缩放滤镜、色调映射、导入字体和字幕覆盖样式未接入。"
+        "libVLC 4.0.0-eap29 实验：支持音轨、字幕、倍速及音频/字幕延迟；解码模式在重新打开媒体后生效。mpv 着色器、缩放滤镜、色调映射、导入字体和字幕覆盖样式未接入。"
 
     private val loadTimeout = Runnable { fail("LibVLC preparation timed out.") }
     private val seekTimeout = Runnable { fail("LibVLC seek completion timed out.") }
@@ -71,20 +92,28 @@ class LibVlcPlayerBackend(context: Context) : PlayerBackend, LibmpvSurfacePort,
             val active = player ?: return
             val load = request ?: return
             if (!prepared || failed || closed) return
-            if (!scrubbing && pendingSeek == null) channel.trySend(BackendEvent.PositionChanged(
+            if (!scrubbing && pendingSeek == null && surfaceRestore == null) channel.trySend(BackendEvent.PositionChanged(
                 load.generation, position(active), duration(active), null, seekEpoch))
             main.postDelayed(this, 100)
         }
     }
 
-    override suspend fun load(request: BackendLoadRequest) = serialized {
+    override suspend fun load(request: BackendLoadRequest) = serialized { openPlayer(request) }
+    private suspend fun openPlayer(request: BackendLoadRequest, restoring: SurfaceRestore? = null) {
         check(!closed)
-        releasePlayer()
+        val previousEpoch = seekEpoch
+        val queuedSeek = pendingSeek
+        val queuedPlay = playAfterSurfaceRestore
+        releasePlayer(forSurfaceReopen = restoring != null)
         this@LibVlcPlayerBackend.request = request
         prepared = false
         failed = false
         initializingSeek = false
-        seekEpoch = null
+        initializingPause = false
+        seekEpoch = if (restoring != null) previousEpoch else null
+        surfaceRestore = restoring
+        surfaceReopening = restoring != null
+        if (restoring != null) { pendingSeek = queuedSeek; playAfterSurfaceRestore = queuedPlay }
         val lib = library ?: LibVLC(context, arrayListOf("--no-video-title-show")).also { library = it }
         val source = request.item.media.source
         val uri = Uri.parse(source.locator)
@@ -96,12 +125,28 @@ class LibVlcPlayerBackend(context: Context) : PlayerBackend, LibmpvSurfacePort,
                 "fd" -> ParcelFileDescriptor.fromFd(source.locator.removePrefix("fd://").toInt())
                 else -> null
             }
+            // The old player has stopped before this reopen. dup shares its
+            // source offset; paused restoration is offered only for seekable media.
+            if (restoring != null && uri.scheme == "fd") mediaFd?.let {
+                Os.lseek(it.fileDescriptor, 0, OsConstants.SEEK_SET)
+            }
         }
         val fd = mediaFd
         val media = if (fd != null) Media(lib, fd.fileDescriptor) else Media(lib, uri)
         try {
             media.setHWDecoderEnabled(options.decoder != DecoderMode.SOFTWARE, false)
-            media.addOption(":start-paused")
+            // eap29's AIR/SurfaceControl output loses transforms on this codec.
+            // Confirm untransformed local tracks before choosing zero-copy. Keep
+            // MediaCodec decoding with picture copy for transformed/unknown media.
+            directVideoOutput = options.decoder != DecoderMode.SOFTWARE && hasUntransformedLocalVideo(context, lib, uri)
+            if (!directVideoOutput) media.addOption(":no-mediacodec-dr")
+            // A fresh paused decoder need not produce a frame or clock. For a
+            // resume, preroll muted, seek on the running clock, then acknowledge
+            // native pause before exposing READY or restoring audible volume.
+            if (restoring == null && request.startPosition.value == 0L) media.addOption(":start-paused")
+            if (restoring != null) temporarySubtitles.forEach { file ->
+                media.addSlave(IMedia.Slave(IMedia.Slave.Type.Subtitle, 4, Uri.fromFile(file).toString()))
+            }
             // This wrapper exposes no generic HTTP-header API. Never silently lose credentials.
             source.httpHeaders.forEach { (name, value) ->
                 require(value.none { it == '\r' || it == '\n' })
@@ -120,11 +165,11 @@ class LibVlcPlayerBackend(context: Context) : PlayerBackend, LibmpvSurfacePort,
                 if (player === active && this@LibVlcPlayerBackend.request === request && !closed && !failed)
                     handleEvent(active, event)
             }
-            bridge = VlcSeekBridge(active.instance) { token ->
+            bridge = VlcSeekBridge(active.instance) { token, positionMs ->
                 if (player === active && this@LibVlcPlayerBackend.request === request && !closed && !failed)
-                    completeSeek(active, token)
+                    completeSeek(active, token, positionMs)
             }
-            bindSurfaces()
+            bindSurfaces(initializingPlayer = true)
             main.postDelayed(loadTimeout, 30_000)
             active.play()
         } finally { media.release() }
@@ -138,20 +183,20 @@ class LibVlcPlayerBackend(context: Context) : PlayerBackend, LibmpvSurfacePort,
         val load = request ?: return
         when (event.type) {
             MediaPlayer.Event.Paused -> {
-                if (!prepared && !initializingSeek) {
-                    if (load.startPosition.value > 0 && active.isSeekable) {
-                        initializingSeek = true
-                        runCatching { bridge!!.seek(++seekToken, load.startPosition.value, false) }
-                            .onFailure { fail("LibVLC resume seek failed.") }
-                    } else publishPrepared(active)
-                } else if (prepared && !scrubbing) channel.trySend(BackendEvent.PlaybackPaused(load.generation))
+                if (initializingPause || (!prepared && !initializingSeek)) publishPrepared(active)
+                else if (prepared && !scrubbing) channel.trySend(BackendEvent.PlaybackPaused(load.generation))
             }
-            MediaPlayer.Event.Playing -> if (prepared && !scrubbing)
-                channel.trySend(BackendEvent.PlaybackStarted(load.generation))
+            MediaPlayer.Event.Playing -> {
+                restoredPausePositionMs = null
+                if (!prepared && !initializingSeek && !initializingPause) continuePreparation(active)
+                else if (prepared && !scrubbing) channel.trySend(BackendEvent.PlaybackStarted(load.generation))
+            }
             MediaPlayer.Event.Buffering -> if (prepared && !scrubbing)
                 channel.trySend(BackendEvent.BufferingChanged(load.generation, event.buffering < 100f))
-            MediaPlayer.Event.ESAdded, MediaPlayer.Event.ESDeleted, MediaPlayer.Event.ESSelected ->
+            MediaPlayer.Event.ESAdded, MediaPlayer.Event.ESDeleted, MediaPlayer.Event.ESSelected -> {
                 if (prepared) channel.trySend(BackendEvent.TracksChanged(load.generation, trackSnapshot(active)))
+                if (surfaceReopening) surfaceRestore?.let { restoreTrackChoices(active, it) }
+            }
             MediaPlayer.Event.EncounteredError -> fail("LibVLC could not play this media.")
             // In this v4 binding 0x109 is MediaStopping, despite the Java name EndReached.
             // Wait for Stopped, after error delivery. Our own stop invalidates the player first.
@@ -161,12 +206,43 @@ class LibVlcPlayerBackend(context: Context) : PlayerBackend, LibmpvSurfacePort,
         }
     }
 
+    private fun continuePreparation(active: MediaPlayer) {
+        val load = request ?: return
+        if (player !== active || prepared || initializingSeek || failed || closed) return
+        val target = surfaceRestore?.positionMs ?: load.startPosition.value
+        surfaceRestore?.let { restoreTrackChoices(active, it) }
+        if ((target > 0 || surfaceReopening) && active.isSeekable) {
+            initializingSeek = true
+            runCatching { bridge!!.seek(++seekToken, target, false, requiresSeekOutput(active)) }
+                .onFailure { fail("LibVLC resume seek failed.") }
+        } else {
+            initializingPause = true
+            active.pause()
+        }
+    }
+
     private fun publishPrepared(active: MediaPlayer) {
         if (prepared || failed) return
+        // Explicit choices made while native preparation was in progress win
+        // over the tracks selected by the freshly opened media.
+        surfaceRestore?.let { restoreTrackChoices(active, it) }
         prepared = true
         initializingSeek = false
+        initializingPause = false
         main.removeCallbacks(loadTimeout)
         applyAudio(active)
+        if (surfaceReopening) {
+            restoredPausePositionMs = surfaceRestore?.positionMs
+            surfaceRestore = null
+            surfaceReopening = false
+            val generation = checkNotNull(request).generation
+            channel.trySend(BackendEvent.TracksChanged(generation, trackSnapshot(active)))
+            channel.trySend(BackendEvent.BufferingChanged(generation, false))
+            main.post(positionPoll)
+            pendingSeek?.let { issueSeek(it); return }
+            if (playAfterSurfaceRestore) { playAfterSurfaceRestore = false; active.play() }
+            return
+        }
         val capabilities = mutableSetOf(PlayerCapability.PLAY, PlayerCapability.PAUSE, PlayerCapability.STOP,
             PlayerCapability.SET_VOLUME, PlayerCapability.SET_MUTED, PlayerCapability.SET_RATE,
             PlayerCapability.SELECT_TRACK, PlayerCapability.ADD_SUBTITLE)
@@ -176,34 +252,83 @@ class LibVlcPlayerBackend(context: Context) : PlayerBackend, LibmpvSurfacePort,
         main.post(positionPoll)
     }
 
-    private fun completeSeek(active: MediaPlayer, token: Long) {
+    private fun completeSeek(active: MediaPlayer, token: Long, positionMs: Long) {
         if (token != seekToken) return
-        if (initializingSeek) { publishPrepared(active); return }
+        if (initializingSeek) {
+            initializingPause = true
+            active.pause()
+            return
+        }
         val pending = pendingSeek ?: return
+        restoredPausePositionMs = null
         pendingSeek = null
+        pendingSeekIssued = false
+        if (!surfaceReopening) surfaceRestore = surfaceRestore?.copy(positionMs = positionMs)
         main.removeCallbacks(seekTimeout)
-        channel.trySend(BackendEvent.SeekCompleted(pending.generation, pending.seekGeneration, position(active)))
+        channel.trySend(BackendEvent.SeekCompleted(pending.generation, pending.seekGeneration, Milliseconds(positionMs)))
+        if (playAfterSurfaceRestore) { playAfterSurfaceRestore = false; active.play() }
     }
 
     override suspend fun play() = serialized {
         endScrubbing()
-        checkNotNull(player).play()
+        restoredPausePositionMs = null
+        if (surfaceRestore != null && !surfaceReopening && videoSurface == null) {
+            if (reopenBeforeBackgroundPlay) {
+                // eap29 can advance its PCR by seconds when a detached paused
+                // pipeline resumes after a no-output seek. Keep its acknowledged
+                // cursor, but initialize fresh clocks before background playback.
+                val restore = checkNotNull(surfaceRestore)
+                val load = checkNotNull(request)
+                playAfterSurfaceRestore = true
+                surfaceReopening = true
+                channel.trySend(BackendEvent.BufferingChanged(load.generation, true))
+                openPlayer(load, restore)
+                return@serialized
+            }
+            // Notification play while the screen is absent must still resume
+            // audio. The attached window will select the saved video track.
+            surfaceRestore = null
+            if (pendingSeek != null) {
+                playAfterSurfaceRestore = true
+                if (!pendingSeekIssued) issueSeek(checkNotNull(pendingSeek))
+            }
+            else checkNotNull(player).play()
+        } else if (surfaceRestore != null) playAfterSurfaceRestore = true else checkNotNull(player).play()
     }
     override suspend fun pause() = serialized {
         // This Java binding calls deterministic libvlc_media_player_set_pause(..., 1).
-        player?.pause()
+        playAfterSurfaceRestore = false
+        if (prepared) player?.pause()
         Unit
     }
     override suspend fun seekTo(request: BackendSeekRequest) = serialized {
-        check(this@LibVlcPlayerBackend.request?.generation == request.generation && prepared && !failed)
+        check(this@LibVlcPlayerBackend.request?.generation == request.generation && (prepared || surfaceReopening) && !failed)
         check(pendingSeek == null) // Core coalesces previews while the native seek is unfinished.
         if (request.precision == SeekPrecision.EXACT) endScrubbing() else beginScrubbing()
         pendingSeek = request
+        pendingSeekIssued = false
+        restoredPausePositionMs = null
         seekEpoch = request.seekGeneration
-        checkNotNull(bridge).seek(++seekToken, request.position.value, request.precision == SeekPrecision.KEYFRAME)
-        main.postDelayed(seekTimeout, 8_000)
+        // The native watcher accepts one request. A user seek during restoration
+        // waits for its completion, then replaces the restored position precisely.
+        if (surfaceRestore == null || (!surfaceReopening && videoSurface?.isValid != true)) {
+            // With no window, acknowledge the native logical cursor now. Keep
+            // that position for a later video reopen instead of leaving a user
+            // seek pending until a Surface arrives (the core has an 8s timeout).
+            surfaceRestore = surfaceRestore?.copy(positionMs = request.position.value)
+            reopenBeforeBackgroundPlay = surfaceRestore != null
+            issueSeek(request)
+        }
         Unit
     }
+    private fun issueSeek(request: BackendSeekRequest) {
+        checkNotNull(bridge).seek(++seekToken, request.position.value, request.precision == SeekPrecision.KEYFRAME,
+            requiresSeekOutput(checkNotNull(player)))
+        pendingSeekIssued = true
+        main.postDelayed(seekTimeout, 8_000)
+    }
+    private fun requiresSeekOutput(active: MediaPlayer) = active.isPlaying ||
+        (videoSurface?.isValid == true && active.getSelectedTrack(IMedia.Track.Type.Video) != null)
     override fun beginScrubbing() = onMain { scrubbing = true }
     override fun endScrubbing() = onMain { scrubbing = false }
     override suspend fun stop() = serialized {
@@ -232,17 +357,24 @@ class LibVlcPlayerBackend(context: Context) : PlayerBackend, LibmpvSurfacePort,
     override suspend fun selectTrack(kind: TrackKind, trackId: TrackId?) = serialized {
         val active = checkNotNull(player)
         val type = nativeType(kind)
-        if (trackId == null) active.unselectTrackType(type)
-        else {
-            val track = checkNotNull(tracksById[trackId]) { "Unavailable VLC track." }
-            check(track.type == type && active.selectTrack(track.id)) { "VLC track selection failed." }
+        val track = trackId?.let { checkNotNull(tracksById[it]) { "Unavailable VLC track." } }
+        require(track == null || track.type == type)
+        surfaceRestore?.let { restore ->
+            surfaceRestore = restore.copy(tracks = restore.tracks + (type to track))
+            // The old Java descriptors remain valid metadata while the new
+            // player discovers ES IDs. Paused/ES events apply this latest intent.
+            if (surfaceReopening) return@serialized
         }
+        if (track == null) active.unselectTrackType(type)
+        else check(active.selectTrack(track.id)) { "VLC track selection failed." }
         channel.trySend(BackendEvent.TracksChanged(checkNotNull(request).generation, trackSnapshot(active)))
         Unit
     }
 
     override suspend fun addSubtitle(source: SubtitleSource) = serialized {
         check(!closed && player != null)
+        val active = checkNotNull(player)
+        val previousIds = active.getTracks(IMedia.Track.Type.Text)?.map { it.id }?.toSet().orEmpty()
         var copiedFile: File? = null
         try {
         val file = withContext(Dispatchers.IO) {
@@ -256,11 +388,26 @@ class LibVlcPlayerBackend(context: Context) : PlayerBackend, LibmpvSurfacePort,
                 it.writeBytes(bytes)
             }
         }
-            check(checkNotNull(player).addSlave(IMedia.Slave.Type.Subtitle, Uri.fromFile(file), true)) {
+            check(active.addSlave(IMedia.Slave.Type.Subtitle, Uri.fromFile(file), true)) {
                 "LibVLC could not add the subtitle."
             }
             temporarySubtitles += file
             copiedFile = null // Ownership transferred to releasePlayer, including cancellation paths.
+            // eap29 addSlave(select=true) adds the ES but does not override a
+            // previously disabled subtitle category. Select its actual new ID.
+            val added = withTimeout(5_000) {
+                var track = active.getTracks(IMedia.Track.Type.Text)?.firstOrNull { it.id !in previousIds }
+                while (track == null) {
+                    delay(20)
+                    track = active.getTracks(IMedia.Track.Type.Text)?.firstOrNull { it.id !in previousIds }
+                }
+                track
+            }
+            surfaceRestore?.let { restore ->
+                surfaceRestore = restore.copy(tracks = restore.tracks + (IMedia.Track.Type.Text to added))
+            }
+            check(active.selectTrack(added.id)) { "LibVLC could not select the added subtitle." }
+            if (prepared) channel.trySend(BackendEvent.TracksChanged(checkNotNull(request).generation, trackSnapshot(active)))
         } finally {
             withContext(NonCancellable + Dispatchers.IO) { copiedFile?.delete() }
         }
@@ -290,26 +437,111 @@ class LibVlcPlayerBackend(context: Context) : PlayerBackend, LibmpvSurfacePort,
         if (videoSurface === surface) detachVideoSurface()
     }
     private fun detachVideoSurface() {
+        player?.getSelectedTrack(IMedia.Track.Type.Video)?.id?.let { detachedVideoTrackId = it }
+        preservePausedSurfacePosition()
         player?.vlcVout?.detachViews()
+        boundVideoSurface = null
         videoSurface = null
         lease = null
     }
-    internal fun bindSurfaces() = onMain {
+    private fun preservePausedSurfacePosition() {
+        val active = player ?: return
+        if (surfaceRestore != null || !prepared || failed || pendingSeek != null || active.isPlaying || !active.isSeekable) return
+        val video = active.getSelectedTrack(IMedia.Track.Type.Video) ?: detachedVideoTrackId?.let { id ->
+            active.getTracks(IMedia.Track.Type.Video)?.firstOrNull { it.id == id }
+        } ?: return
+        // eap29 detaching AWindow disables video and destroys its decoder. For
+        // paused video-only media the native clock can then reset to an old time.
+        surfaceRestore = SurfaceRestore(position(active).value,
+            listOf(IMedia.Track.Type.Video, IMedia.Track.Type.Audio, IMedia.Track.Type.Text)
+                .associateWith { if (it == IMedia.Track.Type.Video) video else active.getSelectedTrack(it) })
+    }
+    private fun restoreTrackChoices(active: MediaPlayer, restore: SurfaceRestore) {
+        restore.tracks.forEach { (type, saved) ->
+            val selected = active.getSelectedTrack(type)
+            if (saved == null) {
+                if (selected != null) active.unselectTrackType(type)
+            } else if (selected?.id != saved.id) {
+                val match = active.getTracks(type)?.firstOrNull { it.id == saved.id }
+                if (match != null) active.selectTrack(match.id)
+            }
+        }
+    }
+    private fun applySurfaceGeometry(active: MediaPlayer) {
+        if (surfaceWidth <= 0 || surfaceHeight <= 0) return
+        val video = active.getSelectedTrack(IMedia.Track.Type.Video) as? IMedia.VideoTrack
+        // VLC applies this DAR before the source's rotation. Opaque decoder
+        // output may already be normalized; copy output still has its transform.
+        val swapsAxes = video?.orientation?.and(4) != 0 && video != null
+        active.setAspectRatio(if (swapsAxes) "$surfaceHeight:$surfaceWidth" else "$surfaceWidth:$surfaceHeight")
+        active.vlcVout.setWindowSize(surfaceWidth, surfaceHeight)
+    }
+    internal fun bindSurfaces(initializingPlayer: Boolean = false): Unit = onMain {
         val active = player ?: return@onMain
         val video = videoSurface?.takeIf(Surface::isValid) ?: return@onMain
+        if (boundVideoSurface === video && active.vlcVout.areViewsAttached()) {
+            applySurfaceGeometry(active)
+            return@onMain
+        }
+        if (!initializingPlayer && boundVideoSurface !== video) preservePausedSurfacePosition()
+        if (!initializingPlayer && surfaceRestore != null && boundVideoSurface !== video) {
+            if (!surfaceReopenScheduled) {
+                surfaceReopenScheduled = true
+                val load = checkNotNull(request)
+                surfaceScope.launch {
+                    try {
+                        serialized {
+                            // A replacement Surface may arrive while stop runs
+                            // on IO. openPlayer binds the latest valid Surface.
+                            val restore = surfaceRestore
+                            if (!closed && !failed && request === load && restore != null && videoSurface?.isValid == true) {
+                                // A transient replacement can disappear while
+                                // this job waits for the lifecycle lock. Only an
+                                // actual reopen enters the restoring state.
+                                surfaceReopening = true
+                                channel.trySend(BackendEvent.BufferingChanged(load.generation, true))
+                                runCatching { openPlayer(load, restore) }
+                                    .onFailure { fail("LibVLC could not reopen its paused video surface.") }
+                            }
+                        }
+                    } finally {
+                        surfaceReopenScheduled = false
+                        if (!closed && !failed && surfaceRestore != null && videoSurface?.isValid == true &&
+                            boundVideoSurface !== videoSurface) bindSurfaces()
+                    }
+                }
+            }
+            return@onMain
+        }
         val vout = active.vlcVout
-        if (vout.areViewsAttached()) vout.detachViews()
+        if (vout.areViewsAttached()) { preservePausedSurfacePosition(); vout.detachViews() }
         vout.setVideoSurface(video, null)
-        if (surfaceWidth > 0 && surfaceHeight > 0) vout.setWindowSize(surfaceWidth, surfaceHeight)
-        // A null layout listener selects VLC's GLES compositor, including subtitles.
-        // VideoViewport supplies a display-aspect buffer and owns FIT/FILL/STRETCH.
-        vout.attachViews()
+        val binding = VlcSurfaceOutput.bindingFor(video)
+        // Use the View API: eap29 marks two bare Surface helpers ready before
+        // the second attach, then throws on its duplicate ready notification.
+        binding?.let { vout.setSubtitlesView(it.subtitles) }
+        applySurfaceGeometry(active)
+        // A layout listener plus two Surfaces allows MediaCodec's android-display
+        // output. VLC retains its GLES fallback for unsupported/direct-less modes.
+        if (binding == null) vout.attachViews()
+        else vout.attachViews { _, displayWidth, displayHeight, placeWidth, placeHeight, placeX, placeY ->
+            if (player === active && videoSurface === video) {
+                binding.onLayout(displayWidth, displayHeight, placeWidth, placeHeight, placeX, placeY)
+            }
+        }
+        boundVideoSurface = video
+        if (surfaceRestore == null) detachedVideoTrackId?.let { id ->
+            if (active.getSelectedTrack(IMedia.Track.Type.Video)?.id != id) active.selectTrack(id)
+            detachedVideoTrackId = null
+        }
     }
     override fun resizeSurface(lease: LibmpvSurfaceLease, width: Int, height: Int) = onMain {
         if (this.lease === lease && width > 0 && height > 0) {
             surfaceWidth = width
             surfaceHeight = height
-            player?.vlcVout?.setWindowSize(width, height)
+            // The UI already chooses the FIT/FILL/STRETCH rectangle. Native
+            // SurfaceControl children must fill that actual window rectangle.
+            player?.let(::applySurfaceGeometry)
         }
     }
     override suspend fun configure(options: PlaybackOptions, resources: LibmpvResourcePaths) = serialized {
@@ -355,13 +587,14 @@ class LibVlcPlayerBackend(context: Context) : PlayerBackend, LibmpvSurfacePort,
                     channels = audio?.channels?.takeIf { it > 0 }, sampleRateHz = audio?.rate?.takeIf { it > 0 },
                     width = video?.width?.takeIf { it > 0 }, height = video?.height?.takeIf { it > 0 },
                     pixelWidthHeightRatio = video?.takeIf { it.sarNum > 0 && it.sarDen > 0 }?.let { it.sarNum.toFloat() / it.sarDen } ?: 1f,
-                    rotationDegrees = when (video?.orientation) { 3 -> 180; 5 -> 90; 6 -> 270; else -> 0 })
+                    rotationDegrees = when (video?.orientation) { 3 -> 180; 5 -> 270; 4, 6, 7 -> 90; else -> 0 })
                 if (track.selected) selected[kind] = id
             }
         }
         return TrackSnapshot.of(available, selected)
     }
-    private fun position(active: MediaPlayer) = Milliseconds(active.time.coerceAtLeast(0))
+    private fun position(active: MediaPlayer) = Milliseconds(surfaceRestore?.positionMs ?:
+        restoredPausePositionMs?.takeIf { !active.isPlaying } ?: bridge?.positionMs() ?: active.time.coerceAtLeast(0))
     private fun duration(active: MediaPlayer) = active.length.takeIf { it > 0 }?.let(::Milliseconds)
     private fun fail(message: String) {
         val load = request ?: return
@@ -374,19 +607,28 @@ class LibVlcPlayerBackend(context: Context) : PlayerBackend, LibmpvSurfacePort,
         channel.trySend(BackendEvent.Failure(load.generation,
             PlayerError(PlayerErrorKind.BACKEND_OPERATION_FAILED, message, ErrorRecovery.RESET)))
     }
-    private suspend fun releasePlayer() = withContext(NonCancellable + Dispatchers.Main.immediate) {
+    private suspend fun releasePlayer(forSurfaceReopen: Boolean = false) = withContext(NonCancellable + Dispatchers.Main.immediate) {
         main.removeCallbacksAndMessages(null)
         val old = player
         val oldBridge = bridge
         val oldFd = mediaFd
-        val oldSubtitles = temporarySubtitles.toList()
+        val oldSubtitles = if (forSurfaceReopen) emptyList() else temporarySubtitles.toList()
         player = null // Invalidates all old event/seek callbacks before stop can send Stopped.
         bridge = null
         mediaFd = null
-        temporarySubtitles.clear()
+        if (!forSurfaceReopen) temporarySubtitles.clear()
         prepared = false
         initializingSeek = false
+        initializingPause = false
         pendingSeek = null
+        pendingSeekIssued = false
+        reopenBeforeBackgroundPlay = false
+        surfaceRestore = null
+        surfaceReopening = false
+        boundVideoSurface = null
+        restoredPausePositionMs = null
+        detachedVideoTrackId = null
+        playAfterSurfaceRestore = false
         scrubbing = false
         var cleanupFailure: Throwable? = null
         fun clean(action: () -> Unit) {
@@ -405,12 +647,13 @@ class LibVlcPlayerBackend(context: Context) : PlayerBackend, LibmpvSurfacePort,
             clean { oldFd?.close() }
             oldSubtitles.forEach { file -> clean { file.delete(); Unit } }
         }
-        tracksById.clear()
+        if (!forSurfaceReopen) tracksById.clear()
         cleanupFailure?.let { throw it }
     }
     override suspend fun close() = withContext(NonCancellable) { serialized {
         if (!closed) {
             closed = true
+            surfaceScope.cancel()
             try { releasePlayer() } finally {
                 val oldLibrary = library
                 library = null

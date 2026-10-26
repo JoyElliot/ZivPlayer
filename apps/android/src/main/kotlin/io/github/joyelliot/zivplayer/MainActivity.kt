@@ -14,8 +14,11 @@ import android.content.IntentFilter
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Icon
 import android.util.Rational
+import android.view.View
 import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -81,11 +84,17 @@ class MainActivity : ComponentActivity() {
             android.provider.Settings.System.SCREEN_BRIGHTNESS, 128) / 255f).coerceIn(0f, 1f)
         playbackBrightness = savedInstanceState?.takeIf { it.containsKey("playback-brightness") }?.getFloat("playback-brightness")
         fullscreen = savedInstanceState?.getBoolean("fullscreen") ?: false
+        playerVisible = savedInstanceState?.getBoolean("player-visible") ?: false
         inPictureInPicture = isInPictureInPictureMode
         pendingDiagnosticJson = savedInstanceState?.getString("pending-diagnostics-export")
         if (!inPictureInPicture) changeFullscreen(fullscreen)
         ContextCompat.registerReceiver(this, pipReceiver, IntentFilter(PIP_TOGGLE_ACTION), ContextCompat.RECEIVER_NOT_EXPORTED)
         enableEdgeToEdge()
+        val windowBackgroundAttributes = theme.obtainStyledAttributes(intArrayOf(android.R.attr.windowBackground))
+        val pageWindowBackground = try { windowBackgroundAttributes.getDrawable(0) }
+            finally { windowBackgroundAttributes.recycle() }
+        val playerWindowBackground = ColorDrawable(Color.BLACK)
+        if (fullscreen || playerVisible || inPictureInPicture) window.setBackgroundDrawable(playerWindowBackground)
         setContent {
             val playing = playbackController.playerState.value.playWhenReady
             val hasVideo = playbackController.playerState.value.hasVideo
@@ -97,6 +106,8 @@ class MainActivity : ComponentActivity() {
                 else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             }
             LaunchedEffect(fullscreen, playerVisible, inPictureInPicture) {
+                window.setBackgroundDrawable(if (fullscreen || playerVisible || inPictureInPicture)
+                    playerWindowBackground else pageWindowBackground)
                 val bars = WindowCompat.getInsetsController(window, window.decorView)
                 bars.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
                 if ((fullscreen || playerVisible) && !inPictureInPicture) bars.hide(WindowInsetsCompat.Type.systemBars())
@@ -196,6 +207,14 @@ class MainActivity : ComponentActivity() {
                 onForgetRecent = mediaSelection::forgetRecent,
             )
         }
+        // The platform's action-mode overlay container can still fit the cutout
+        // after recreation, even when the Window is edge-to-edge. Compose owns
+        // safe-drawing insets; keep its host full-size and pass insets through.
+        val contentParent = findViewById<View>(android.R.id.content).parent as? View
+        if (contentParent != null && contentParent !== window.decorView && contentParent.fitsSystemWindows) {
+            contentParent.fitsSystemWindows = false
+            contentParent.setPadding(0, 0, 0, 0)
+        }
     }
 
     private fun changeFullscreen(value: Boolean) {
@@ -279,6 +298,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putBoolean("fullscreen", fullscreen)
+        outState.putBoolean("player-visible", playerVisible)
         playbackBrightness?.let { outState.putFloat("playback-brightness", it) }
         outState.putString("pending-diagnostics-export", pendingDiagnosticJson)
         super.onSaveInstanceState(outState)

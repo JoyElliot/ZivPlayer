@@ -90,7 +90,7 @@ class PlaybackService : MediaSessionService() {
                         directScrubPort = backend,
                     )
                 } else {
-                val backend = LibmpvBackend(this)
+                val backend = LibmpvBackend(this, PlaybackExperiment.mpvVideoOutput)
                 PlaybackEngine(
                     session = DefaultPlayerSession(backend, onAutomaticTransition = { from, _ ->
                         createdPlayer?.advanceAfterCompletion(from)

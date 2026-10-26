@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-@file:androidx.annotation.OptIn(markerClass = [androidx.media3.common.util.UnstableApi::class])
+@file:androidx.annotation.OptIn(markerClass = [
+    androidx.media3.common.util.UnstableApi::class,
+    androidx.media3.common.util.ExperimentalApi::class,
+])
 
 package io.github.joyelliot.zivplayer.platform.exoplayer
 
@@ -19,13 +22,16 @@ import androidx.media3.common.Player
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
+import androidx.media3.common.TrackSelectionParameters.AudioOffloadPreferences
 import androidx.media3.common.text.CueGroup
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.DecoderCounters
 import androidx.media3.exoplayer.ScrubbingModeParameters
 import androidx.media3.exoplayer.SeekParameters
 import androidx.media3.exoplayer.analytics.AnalyticsListener
+import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.extractor.DefaultExtractorsFactory
@@ -94,6 +100,7 @@ class ExoPlayerBackend(context: Context) : PlayerBackend, LibmpvSurfacePort,
     private val tracksById = mutableMapOf<TrackId, Pair<Tracks.Group, Int>>()
     private val desiredTracks = mutableMapOf<TrackKind, TrackId?>()
     private var decoderName: String? = null
+    private var audioOffloaded: Boolean? = null
     private var droppedFrames = 0L
 
     override val configurationMessage: String
@@ -130,6 +137,7 @@ class ExoPlayerBackend(context: Context) : PlayerBackend, LibmpvSurfacePort,
         desiredTracks.clear()
         deleteTemporarySubtitles()
         decoderName = null
+        audioOffloaded = null
         droppedFrames = 0
         ExoFrameObservation.lastError = null
         val handler = AssHandler(AssRenderType.OVERLAY_OPEN_GL)
@@ -146,6 +154,7 @@ class ExoPlayerBackend(context: Context) : PlayerBackend, LibmpvSurfacePort,
             })
         val active = ExoPlayer.Builder(context)
             .setLooper(Looper.getMainLooper())
+            .experimentalSetDynamicSchedulingEnabled(true)
             .setMediaSourceFactory(sourceFactory)
             .setRenderersFactory(renderers.withAssSupport(handler))
             .setHandleAudioBecomingNoisy(false)
@@ -163,6 +172,10 @@ class ExoPlayerBackend(context: Context) : PlayerBackend, LibmpvSurfacePort,
         active.setPlaybackSpeed(rate.value / 1000f)
         active.trackSelectionParameters = active.trackSelectionParameters.buildUpon()
             .setPreferredTextLanguages(java.util.Locale.getDefault().language, "zh", "en")
+            // Eligible audio-only playback may use the device DSP. Media3 keeps
+            // regular AudioTrack playback when video/text or the format prevents offload.
+            .setAudioOffloadPreferences(AudioOffloadPreferences.Builder()
+                .setAudioOffloadMode(AudioOffloadPreferences.AUDIO_OFFLOAD_MODE_ENABLED).build())
             .setSelectUndeterminedTextLanguage(true).build()
         active.scrubbingModeParameters = ScrubbingModeParameters.DEFAULT
         active.setVideoFrameMetadataListener { timeUs, _, _, _ ->
@@ -188,6 +201,16 @@ class ExoPlayerBackend(context: Context) : PlayerBackend, LibmpvSurfacePort,
             }
         }
         active.addAnalyticsListener(object : AnalyticsListener {
+            // AudioTrack release can arrive after its replacement was initialized.
+            // Clear on renderer disable/teardown rather than a late release event.
+            override fun onAudioTrackInitialized(eventTime: AnalyticsListener.EventTime,
+                audioTrackConfig: AudioSink.AudioTrackConfig) {
+                if (player === active) audioOffloaded = audioTrackConfig.offload
+            }
+            override fun onAudioDisabled(eventTime: AnalyticsListener.EventTime,
+                decoderCounters: DecoderCounters) {
+                if (player === active) audioOffloaded = null
+            }
             override fun onVideoDecoderInitialized(eventTime: AnalyticsListener.EventTime,
                 decoderName: String, initializedTimestampMs: Long, initializationDurationMs: Long) {
                 if (player === active) this@ExoPlayerBackend.decoderName = decoderName
@@ -392,6 +415,7 @@ class ExoPlayerBackend(context: Context) : PlayerBackend, LibmpvSurfacePort,
                 .setMimeType(if (file.extension == "ass") MimeTypes.TEXT_SSA else MimeTypes.APPLICATION_SUBRIP).build()
             val item = checkNotNull(active.currentMediaItem).buildUpon().setSubtitleConfigurations(externalSubtitles).build()
             val position = active.currentPosition
+            audioOffloaded = null
             active.setMediaItem(item, position)
             loadFonts(checkNotNull(ass))
             active.prepare()
@@ -471,7 +495,10 @@ class ExoPlayerBackend(context: Context) : PlayerBackend, LibmpvSurfacePort,
             droppedFrames = droppedFrames, cacheDurationSeconds = active?.let { (it.bufferedPosition - it.currentPosition).coerceAtLeast(0) / 1000.0 },
             colorPrimaries = video?.colorInfo?.colorSpace?.toString(), transferFunction = video?.colorInfo?.colorTransfer?.toString(),
             videoBitrate = video?.bitrate?.toLong()?.takeIf { it > 0 }, audioBitrate = audio?.bitrate?.toLong()?.takeIf { it > 0 },
-            engineVersion = "ExoPlayer ${MediaLibraryInfo.VERSION} + libass (ass-media 0.5.1)")
+            engineVersion = "ExoPlayer ${MediaLibraryInfo.VERSION} + libass (ass-media 0.5.1)",
+            videoOutput = if (video != null && surface?.isValid == true) "mediacodec-surface" else null,
+            audioOutput = audioOffloaded?.let { if (it) "audiotrack-offload" else "audiotrack" },
+            audioOffloaded = audioOffloaded)
     }
 
     private fun trackSnapshot(active: ExoPlayer): TrackSnapshot {
@@ -523,6 +550,7 @@ class ExoPlayerBackend(context: Context) : PlayerBackend, LibmpvSurfacePort,
         ExoSubtitleOutput.clear(this)
         val old = player
         player = null
+        audioOffloaded = null
         old?.release()
         ass?.release()
         ass = null

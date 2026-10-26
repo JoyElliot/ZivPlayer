@@ -42,11 +42,18 @@ class PowerPlaybackBenchmarkTest {
     @Test fun steadyPlaybackBatteryTrace() {
         val args = InstrumentationRegistry.getArguments()
         assumeTrue(args.getString("powerBenchmark") == "true")
-        val engine = checkNotNull(args.getString("engine")).also { require(it in setOf("exo", "libmpv")) }
+        val engine = checkNotNull(args.getString("engine")).also { require(it in setOf("exo", "libmpv", "vlc")) }
         val codec = checkNotNull(args.getString("fixture")).also { require(it in setOf("avc", "hevc", "hevc10", "vp9", "av1")) }
         val mode = args.getString("decoderMode", "automatic").also { require(it in setOf("automatic", "software")) }
+        val mpvVideoOutput = args.getString("mpvVideoOutput", "gpu-next")
+            .also { require(it in setOf("gpu-next", "gpu")) }
         val surfaceProtocol = args.getString("surfaceProtocol", "matched-1080p").also { require(it in setOf("matched-1080p", "current-app")) }
         val validationOnly = args.getString("validationOnly") == "true"
+        val requireHardware = args.getString("requireHardwareDecoder") == "true"
+        require(!requireHardware || mode == "automatic")
+        val frameProofMethod = args.getString("frameProofMethod", "surface-pixelcopy-v1")
+            .also { require(it in setOf("surface-pixelcopy-v1", "display-crop-v1")) }
+        require(engine != "vlc" || frameProofMethod == "display-crop-v1")
         val allowExternalPower = args.getString("allowExternalPower") == "true"
         require(!allowExternalPower || validationOnly) { "External power is allowed only for functional validation." }
         val minimumBatteryPercent = args.getString("minimumBatteryPercent", "25").toInt()
@@ -61,9 +68,13 @@ class PowerPlaybackBenchmarkTest {
         check(!resultFile.exists() && !traceFile.exists()) { "Never overwrite an earlier measurement." }
         val report = JSONObject().put("schemaVersion", 1).put("runLabel", label)
             .put("requestedEngine", engine).put("requestedDecoderMode", mode).put("fixture", fixture.name)
+            .put("requestedMpvVideoOutput", mpvVideoOutput)
+            .put("mainApkSha256", fileSha256(File(context.applicationInfo.sourceDir)))
+            .put("testApkSha256", fileSha256(File(instrumentation.context.applicationInfo.sourceDir)))
             .put("surfaceProtocol", surfaceProtocol).put("validationOnly", validationOnly)
+            .put("requireHardwareDecoder", requireHardware).put("frameProofMethod", frameProofMethod)
             .put("measurementCohort", args.getString("measurementCohort", "unassigned"))
-            .put("controlProtocolVersion", 2)
+            .put("controlProtocolVersion", 3).put("decoderEvidenceProtocol", "v2-current-pid-stream")
             .put("fixtureStorage", "private-files").put("resultsStorage", "private-files")
             .put("allowExternalPower", allowExternalPower)
             .put("minimumBatteryPercent", minimumBatteryPercent)
@@ -81,6 +92,7 @@ class PowerPlaybackBenchmarkTest {
         val pixelThread = HandlerThread("PowerFrameProof").apply { start() }
         val pixels = Bitmap.createBitmap(96, 54, Bitmap.Config.ARGB_8888)
         var primaryFailure: Throwable? = null
+        var codecCapture: PowerCodecLogCapture? = null
         try {
             report.put("stage", "fixture_hash")
             check(fixture.isFile) { "The staged power fixture is missing." }
@@ -92,9 +104,14 @@ class PowerPlaybackBenchmarkTest {
                 while (true) { val count = input.read(buffer); if (count < 0) break; hash.update(buffer, 0, count) }
             }
             report.put("fixtureSha256", hash.digest().joinToString("") { "%02x".format(it) })
+            codecCapture = PowerCodecLogCapture(Process.myPid())
+            report.put("codecStreamOpened", codecCapture.endpoint().metadata())
             PlaybackExperiment.configureForInstrumentation(context, engine == "exo",
                 PlaybackOptions(decoder = if (mode == "software") DecoderMode.SOFTWARE else DecoderMode.AUTOMATIC),
-                surfaceSize = if (surfaceProtocol == "matched-1080p") 1920 to 1080 else null)
+                surfaceSize = if (surfaceProtocol == "matched-1080p") 1920 to 1080 else null, libVlc = engine == "vlc",
+                mpvVideoOutput = io.github.joyelliot.zivplayer.platform.libmpv.MpvVideoOutput.entries.single {
+                    it.optionValue == mpvVideoOutput
+                })
             report.put("stage", "launch_foreground")
             DeviceForegroundRule.startActivity("${context.packageName}/.MainActivity")
             await(15_000) {
@@ -167,7 +184,7 @@ class PowerPlaybackBenchmarkTest {
                     checkSampleConditions(row, allowExternalPower, minimumBatteryPercent)
                     trace.appendLine(row.toString())
                     if (second == warmupSeconds - 3 || second == warmupSeconds - 1) {
-                        val currentHash = frameHash(surface, pixels, pixelThread)
+                        val currentHash = frameHash(surface, pixels, pixelThread, frameProofMethod)
                         if (previousHash != null && currentHash != previousHash) warmupPixelsChanged = true
                         previousHash = currentHash
                     }
@@ -180,15 +197,24 @@ class PowerPlaybackBenchmarkTest {
                 val surfaceWidthStart = onMain { surface.holder.surfaceFrame.width() }
                 val surfaceHeightStart = onMain { surface.holder.surfaceFrame.height() }
                 report.put("surfaceBufferWidthStart", surfaceWidthStart).put("surfaceBufferHeightStart", surfaceHeightStart)
-                if (surfaceProtocol == "matched-1080p") check(surfaceWidthStart == 1920 && surfaceHeightStart == 1080) {
-                    "Matched output size was not applied to the actual Surface buffer: ${surfaceWidthStart}x$surfaceHeightStart"
+                check(surfaceWidthStart == 1920 && surfaceHeightStart == 1080) {
+                    "The fixed 1080p power workload requires a 1920x1080 actual output, without overriding current-app geometry: ${surfaceWidthStart}x$surfaceHeightStart"
                 }
                 val diagnosticStart = diagnostics(activeController)
+                val codecLogStart = checkNotNull(codecCapture).endpoint()
+                File(resultDir, "$label-codec-start.txt").writeText(codecLogStart.text)
+                report.put("codecStreamStart", codecLogStart.metadata())
+                if (engine == "vlc") augmentVlcDiagnostics(diagnosticStart, codecLogStart, codec, mode)
                 report.put("diagnosticsStart", bundleJson(diagnosticStart))
+                if (engine == "libmpv") check(diagnosticStart.getString("videoOutput") == mpvVideoOutput) {
+                    "The actual mpv renderer does not match the requested renderer."
+                }
                 val countersStart = exoCounters()
                 report.put("exoCountersStart", countersStart)
+                val vlcStart = if (engine == "vlc") vlcCounters() else null
+                report.put("vlcCountersStart", vlcStart)
                 val actualVersion = diagnosticStart.getString("engineVersion").orEmpty()
-                check(if (engine == "exo") actualVersion.startsWith("ExoPlayer ") else actualVersion.startsWith("mpv ")) {
+                check(actualVersion.startsWith(when (engine) { "exo" -> "ExoPlayer "; "vlc" -> "libVLC "; else -> "mpv " })) {
                     "The actual engine does not match the requested engine: $actualVersion"
                 }
                 check(diagnosticStart.getInt("videoWidth") == 1920 && diagnosticStart.getInt("videoHeight") == 1080)
@@ -198,21 +224,32 @@ class PowerPlaybackBenchmarkTest {
                     check(diagnosticStart.getDouble("sourceFramesPerSecond") in 23.9..24.1) { "Actual source FPS was not 24." }
                 val expectedCodec = when (codec) { "avc" -> listOf("avc", "h264", "h.264")
                     "hevc", "hevc10" -> listOf("hevc", "h265", "h.265")
-                    "vp9" -> listOf("vp9"); else -> listOf("av1", "av01") }
+                    "vp9" -> listOf("vp9", "vp09"); else -> listOf("av1", "av01") }
                 check(expectedCodec.any { it in diagnosticStart.getString("videoCodec").orEmpty().lowercase() }) {
                     "Actual source codec does not match the fixture."
                 }
                 val settingsMessage = diagnosticStart.getString(PlaybackDiagnosticsContract.SETTINGS_MESSAGE).orEmpty()
-                check(settingsMessage.isBlank() || (engine == "exo" && settingsMessage.startsWith("ExoPlayer + libass 实验："))) {
+                check(settingsMessage.isBlank() || (engine == "exo" && settingsMessage.startsWith("ExoPlayer + libass 实验：")) ||
+                    (engine == "vlc" && settingsMessage.startsWith("libVLC 4.0.0-eap29 实验："))) {
                     "Playback settings did not apply: $settingsMessage"
                 }
                 val actualDecoder = diagnosticStart.getString("decoder")
-                val actualSoftware = if (engine == "exo") MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos
+                val actualSoftware = if (engine == "vlc" && diagnosticStart.getBoolean("softwareOnlyDevicePathConfirmed")) true
+                    else if (engine == "exo" || engine == "vlc") MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos
                     .firstOrNull { it.name == actualDecoder }?.let { if (Build.VERSION.SDK_INT >= 29) it.isSoftwareOnly else null }
-                    else actualDecoder?.let { it == "no" }
+                    else when (actualDecoder) { "no" -> true; "mediacodec", "mediacodec-copy" -> false; else -> null }
                 report.put("actualSoftwareDecoder", actualSoftware ?: JSONObject.NULL)
+                report.put("decoderClassificationEvidence", diagnosticStart.getString("decoderEvidence") ?: "engine-runtime-diagnostics")
+                    .put("decoderClassificationConfidence", if (diagnosticStart.getBoolean("softwareOnlyDevicePathConfirmed")) "indirect" else "runtime")
                 check(!actualDecoder.isNullOrBlank()) { "No actual video decoder evidence was available." }
                 if (mode == "software") check(actualSoftware == true) { "The requested software path was not confirmed: $actualDecoder" }
+                if (requireHardware) {
+                    val hardware = if (engine == "libmpv") actualDecoder in setOf("mediacodec", "mediacodec-copy")
+                        else Build.VERSION.SDK_INT >= 29 && MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos
+                            .firstOrNull { it.name == actualDecoder }?.isHardwareAccelerated == true
+                    check(actualSoftware == false && hardware) { "Actual hardware decoding was not confirmed: $actualDecoder" }
+                    report.put("actualHardwareDecoderConfirmed", true)
+                }
                 val samples = JSONArray()
                 val frameProof = JSONArray()
                 val surfaceEventStart = onMain { surfaceEvents.length() }
@@ -225,7 +262,7 @@ class PowerPlaybackBenchmarkTest {
                     samples.put(row)
                     trace.appendLine(row.toString())
                     if (second % 61 == 0 || second == measureSeconds) {
-                        frameProof.put(JSONObject().put("second", second).put("surfaceHash", frameHash(surface, pixels, pixelThread)))
+                        frameProof.put(JSONObject().put("second", second).put("surfaceHash", frameHash(surface, pixels, pixelThread, frameProofMethod)))
                     }
                     if (second % 30 == 0) {
                         trace.flush()
@@ -239,18 +276,40 @@ class PowerPlaybackBenchmarkTest {
                 report.put("samples", samples).put("steadyActualMs", SystemClock.elapsedRealtime() - steadyStart)
                 report.put("stage", "validate_steady")
                 val diagnosticEnd = diagnostics(activeController)
+                val codecLogEnd = checkNotNull(codecCapture).endpoint()
+                File(resultDir, "$label-codec-end.txt").writeText(codecLogEnd.text)
+                report.put("codecStreamEnd", codecLogEnd.metadata())
+                if (engine == "vlc") augmentVlcDiagnostics(diagnosticEnd, codecLogEnd, codec, mode)
+                val vlcEnd = if (engine == "vlc") vlcCounters() else null
+                report.put("vlcCountersEnd", vlcEnd)
                 val countersEnd = exoCounters()
                 report.put("diagnosticsEnd", bundleJson(diagnosticEnd)).put("exoCountersEnd", countersEnd)
-                    .put("steadyFrameProof", frameProof)
+                if (engine == "libmpv") check(diagnosticEnd.getString("videoOutput") == mpvVideoOutput) {
+                    "The mpv renderer changed during the measurement."
+                }
+                report.put("steadyFrameProof", frameProof)
                 report.put("environmentAfter", environment(activeActivity))
                 report.put("surfaceBufferWidth", onMain { surface.holder.surfaceFrame.width() })
                     .put("surfaceBufferHeight", onMain { surface.holder.surfaceFrame.height() })
-                report.put("finalSurfaceHash", frameHash(surface, pixels, pixelThread))
+                report.put("finalSurfaceHash", frameHash(surface, pixels, pixelThread, frameProofMethod))
                 val first = samples.getJSONObject(0)
                 val last = samples.getJSONObject(samples.length() - 1)
                 val elapsed = last.getLong("elapsedMs") - first.getLong("elapsedMs")
                 val advanced = last.getLong("positionMs") - first.getLong("positionMs")
+                var energyMwMs = 0.0
+                for (index in 1 until samples.length()) {
+                    val a = samples.getJSONObject(index - 1)
+                    val b = samples.getJSONObject(index)
+                    energyMwMs += (a.getDouble("currentNowUa") * a.getDouble("voltageMv") +
+                        b.getDouble("currentNowUa") * b.getDouble("voltageMv")) / 2_000_000.0 *
+                        (b.getLong("elapsedMs") - a.getLong("elapsedMs"))
+                }
+                report.put("steadyMeanPowerMw", energyMwMs / elapsed)
                 val issues = JSONArray()
+                if (kotlin.math.abs(elapsed - measureSeconds * 1000L) > 500L ||
+                    (1 until samples.length()).any { samples.getJSONObject(it).getLong("elapsedMs") -
+                        samples.getJSONObject(it - 1).getLong("elapsedMs") !in 1L..1999L })
+                    issues.put("sampling_timing_invalid")
                 val steadySurfaceEvents = onMain { JSONArray().apply {
                     for (index in surfaceEventStart until surfaceEvents.length()) put(surfaceEvents.getJSONObject(index))
                 } }
@@ -284,6 +343,13 @@ class PowerPlaybackBenchmarkTest {
                     if (countersStart !is JSONObject || countersEnd !is JSONObject || !countersStart.has("renderedOutputBufferCount") || !countersEnd.has("renderedOutputBufferCount")) issues.put("rendered_frame_evidence_missing")
                     else if (countersEnd.getInt("renderedOutputBufferCount") - countersStart.getInt("renderedOutputBufferCount") < measureSeconds * 24 * 0.97) issues.put("too_few_rendered_frames")
                 }
+                if (engine == "vlc") {
+                    if (vlcStart == null || vlcEnd == null ||
+                        vlcEnd.getLong("displayedPictures") - vlcStart.getLong("displayedPictures") < measureSeconds * 24 * 0.97)
+                        issues.put("too_few_rendered_frames")
+                    if (vlcStart?.optBoolean("directVideoOutput") != vlcEnd?.optBoolean("directVideoOutput"))
+                        issues.put("vlc_output_path_changed")
+                }
                 for (key in listOf("droppedFrames", "decoderDroppedFrames")) {
                     if (diagnosticStart.containsKey(key) && diagnosticEnd.containsKey(key)) {
                         val dropped = diagnosticEnd.getLong(key) - diagnosticStart.getLong(key)
@@ -292,6 +358,7 @@ class PowerPlaybackBenchmarkTest {
                 }
                 if ((0 until samples.length()).any { samples.getJSONObject(it).getInt("thermalStatus") >= 2 }) issues.put("thermal_throttling")
                 if ((0 until samples.length()).any { !samples.getJSONObject(it).getBoolean("windowFocused") }) issues.put("window_not_focused_during_sampling")
+                if ((0 until samples.length()).any { !samples.getJSONObject(it).getBoolean("screenInteractive") }) issues.put("screen_not_interactive")
                 if ((0 until samples.length()).map { samples.getJSONObject(it).getDouble("displayRefreshRate") }.distinct().size != 1)
                     issues.put("display_refresh_rate_changed_during_sampling")
                 report.put("qualityIssues", issues).put("playbackValidationPassed", issues.length() == 0)
@@ -313,6 +380,14 @@ class PowerPlaybackBenchmarkTest {
             val cleanupErrors = mutableListOf<Throwable>()
             fun cleanup(action: () -> Unit) {
                 try { action() } catch (error: Throwable) { cleanupErrors += error }
+            }
+            cleanup {
+                codecCapture?.let { capture ->
+                    capture.close()
+                    report.put("codecStreamCleanupSucceeded", true)
+                    val evidence = File(resultDir, "$label-codec-end.txt")
+                    if (!evidence.exists()) evidence.writeText(capture.rawText())
+                }
             }
             cleanup { resultFile.writeText(report.toString(2)) }
             cleanup { onMain { surfaceObserver?.let { observedSurface?.holder?.removeCallback(it) } } }
@@ -349,6 +424,7 @@ class PowerPlaybackBenchmarkTest {
         PowerTelemetryDeviceTest.batterySample(context).put("phase", phase).put("second", second).also { row ->
             row.put("systemBrightness", Settings.System.getInt(context.contentResolver, Settings.System.SCREEN_BRIGHTNESS, -1))
                 .put("brightnessMode", Settings.System.getInt(context.contentResolver, Settings.System.SCREEN_BRIGHTNESS_MODE, -1))
+                .put("screenInteractive", context.getSystemService(PowerManager::class.java).isInteractive)
             onMain {
                 surface?.let { row.put("surfaceBufferWidth", it.holder.surfaceFrame.width())
                     .put("surfaceBufferHeight", it.holder.surfaceFrame.height())
@@ -371,6 +447,7 @@ class PowerPlaybackBenchmarkTest {
         check(row.getInt("currentNowUa") != Int.MIN_VALUE) { "Current telemetry is unavailable." }
         check(row.getInt("voltageMv") in 3000..5000 && row.getInt("temperatureTenthsC") in 100..400) { "Invalid voltage/temperature telemetry." }
         check(row.getInt("systemBrightness") == 1 && row.getInt("brightnessMode") == 0) { "Screen brightness changed during sampling." }
+        check(row.getBoolean("screenInteractive")) { "Screen stopped being interactive during sampling." }
     }
 
     private fun displayBrightness(): JSONObject {
@@ -437,7 +514,19 @@ class PowerPlaybackBenchmarkTest {
     @Suppress("DEPRECATION")
     private fun bundleJson(bundle: Bundle) = JSONObject().apply { bundle.keySet().forEach { put(it, bundle.get(it) ?: JSONObject.NULL) } }
 
-    private fun frameHash(surface: SurfaceView, bitmap: Bitmap, thread: HandlerThread): Int {
+    private fun frameHash(surface: SurfaceView, bitmap: Bitmap, thread: HandlerThread, method: String): Int {
+        if (method == "display-crop-v1") {
+            val xy = IntArray(2)
+            val size = onMain { surface.getLocationOnScreen(xy); surface.width to surface.height }
+            val screen = checkNotNull(instrumentation.uiAutomation.takeScreenshot())
+            try {
+                check(xy[0] >= 0 && xy[1] >= 0 && xy[0] + size.first <= screen.width && xy[1] + size.second <= screen.height)
+                val colors = IntArray(96 * 54) { i ->
+                    screen.getPixel(xy[0] + (i % 96) * size.first / 96, xy[1] + (i / 96) * size.second / 54)
+                }
+                return colors.contentHashCode()
+            } finally { screen.recycle() }
+        }
         val latch = CountDownLatch(1)
         var success = false
         PixelCopy.request(surface, bitmap, { success = it == PixelCopy.SUCCESS; latch.countDown() }, Handler(thread.looper))
@@ -447,10 +536,67 @@ class PowerPlaybackBenchmarkTest {
         return colors.contentHashCode()
     }
 
+    private fun shell(command: String): String = ParcelFileDescriptor.AutoCloseInputStream(
+        instrumentation.uiAutomation.executeShellCommand(command)).bufferedReader().use { it.readText() }
+
+    private fun augmentVlcDiagnostics(bundle: Bundle, endpoint: PowerCodecLogCapture.Endpoint, codec: String, mode: String) {
+        val mime = when (codec) { "avc" -> "video/avc"; "hevc", "hevc10" -> "video/hevc";
+            "vp9" -> "video/x-vnd.on2.vp9"; else -> "video/av01" }
+        // Full-session evidence detects ambiguity; only fresh active Stats establishes an endpoint.
+        // Never reuse a cached creation event as proof that a decoder is still active at the end.
+        val log = endpoint.text
+        val fresh = PowerCodecLogCapture.freshStats(endpoint)
+        val created = MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos.filter { info ->
+            !info.isEncoder && mime in info.supportedTypes && log.lineSequence().any { line ->
+                line.contains("Created component [${info.name}]") || line.contains("allocate(${info.name})") ||
+                    (line.contains("[video-debug-dec] Stats ") && line.contains("Component:${info.name},"))
+            }
+        }
+        if (created.size == 1 && fresh.any { it.contains("Component:${created.single().name},") }) {
+            bundle.putString("decoder", created.single().name)
+            bundle.putString("decoderEvidence", "current-app-pid-continuous-log-fresh-15s-active-stats-and-MediaCodecInfo")
+        } else if (created.isEmpty() && mode == "software" && codec == "av1" && Build.VERSION.SDK_INT >= 29 &&
+            MediaCodecList(MediaCodecList.ALL_CODECS).codecInfos.none { !it.isEncoder && mime in it.supportedTypes && it.isHardwareAccelerated } &&
+            vlcCounters().getLong("decodedVideo") > 0) {
+            bundle.putString("decoder", "libVLC native AV1 software path; exact decoder module unavailable")
+            bundle.putString("decoderEvidence", "software-request; decodedVideo>0; no-process-video-MediaCodec; no-device-AV1-hardware-codec")
+            bundle.putBoolean("softwareOnlyDevicePathConfirmed", true)
+        }
+        bundle.putString("requestedVlcDecoderMode", mode)
+    }
+
+    private fun vlcCounters(): JSONObject = onMain {
+        val output = Class.forName("io.github.joyelliot.zivplayer.platform.libvlc.VlcSurfaceOutput")
+        val reference = output.getDeclaredField("reference").apply { isAccessible = true }.get(null) as WeakReference<*>
+        val backend = checkNotNull(reference.get())
+        fun field(name: String) = backend.javaClass.getDeclaredField(name).apply { isAccessible = true }.get(backend)
+        val player = checkNotNull(field("player"))
+        val media = checkNotNull(player.javaClass.getMethod("getMedia").invoke(player))
+        val stats = try { checkNotNull(media.javaClass.getMethod("getStats").invoke(media)) }
+            finally { media.javaClass.getMethod("release").invoke(media) }
+        JSONObject().put("directVideoOutput", field("directVideoOutput")).apply {
+            for (name in listOf("decodedVideo", "displayedPictures", "lostPictures", "decodedAudio"))
+                put(name, stats.javaClass.getField(name).getLong(stats))
+        }
+    }
+
     private fun findSurface(view: View): SurfaceView? = when (view) {
         is SurfaceView -> view
         is ViewGroup -> (0 until view.childCount).firstNotNullOfOrNull { findSurface(view.getChildAt(it)) }
         else -> null
+    }
+
+    private fun fileSha256(file: File): String {
+        val hash = MessageDigest.getInstance("SHA-256")
+        file.inputStream().buffered().use { input ->
+            val buffer = ByteArray(1024 * 1024)
+            while (true) {
+                val count = input.read(buffer)
+                if (count < 0) break
+                hash.update(buffer, 0, count)
+            }
+        }
+        return hash.digest().joinToString("") { "%02x".format(it) }
     }
 
     private fun await(timeoutMs: Long, condition: () -> Boolean) {
