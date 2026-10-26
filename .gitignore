@@ -3,6 +3,8 @@
 .kotlin/
 build/
 **/build/
+# Build cache directories may be represented by symlinks in the WSL checkout.
+**/build
 
 # Local configuration file (sdk path, etc)
 local.properties

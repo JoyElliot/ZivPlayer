@@ -6,5 +6,5 @@
 
 -keep class io.github.joyelliot.zivplayer.platform.libvlc.VlcSeekBridge {
     native <methods>;
-    void onNativeSeekCompleted(long);
+    void onNativeSeekCompleted(long, long);
 }

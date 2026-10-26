@@ -69,6 +69,11 @@ kotlin {
 }
 
 dependencies {
+    constraints {
+        // Optional playback adapters must use the app's AndroidX Core baseline.
+        implementation(libs.androidx.core.base)
+        implementation(libs.androidx.core.ktx)
+    }
     api(project(":core:player-runtime"))
 
     implementation(libs.kotlinx.coroutines.core)
