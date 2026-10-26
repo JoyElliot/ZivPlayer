@@ -1,0 +1,842 @@
+[
+  {
+    "stage": "avccheck",
+    "analysis": "avccheck-b1-1-libmpv-gpu-next.json",
+    "sampleCount": 66,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 42360,
+    "steadyElapsedMs": 65003
+  },
+  {
+    "stage": "avccheck",
+    "analysis": "avccheck-b1-2-exo-gpu-next.json",
+    "sampleCount": 66,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 43449,
+    "steadyElapsedMs": 65001
+  },
+  {
+    "stage": "avccheck",
+    "analysis": "avccheck-b1-3-vlc-gpu-next.json",
+    "sampleCount": 66,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 31394,
+    "steadyElapsedMs": 65002
+  },
+  {
+    "stage": "avcmva",
+    "analysis": "avcmva-b1-1-libmpv-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 136612,
+    "steadyElapsedMs": 240002
+  },
+  {
+    "stage": "avcmva",
+    "analysis": "avcmva-b1-2-vlc-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 101349,
+    "steadyElapsedMs": 240001
+  },
+  {
+    "stage": "avcmva",
+    "analysis": "avcmva-b1-3-vlc-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 100958,
+    "steadyElapsedMs": 240001
+  },
+  {
+    "stage": "avcmva",
+    "analysis": "avcmva-b1-4-libmpv-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 136492,
+    "steadyElapsedMs": 240001
+  },
+  {
+    "stage": "avcmvb",
+    "analysis": "avcmvb-b1-1-vlc-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 102138,
+    "steadyElapsedMs": 240001
+  },
+  {
+    "stage": "avcmvb",
+    "analysis": "avcmvb-b1-2-libmpv-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 137565,
+    "steadyElapsedMs": 240001
+  },
+  {
+    "stage": "avcmvb",
+    "analysis": "avcmvb-b1-3-libmpv-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 137898,
+    "steadyElapsedMs": 240004
+  },
+  {
+    "stage": "avcmvb",
+    "analysis": "avcmvb-b1-4-vlc-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 101915,
+    "steadyElapsedMs": 240001
+  },
+  {
+    "stage": "n22r1vp9check",
+    "analysis": "n22r1vp9check-b1-1-libmpv-gpu-next.json",
+    "sampleCount": 66,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 43640,
+    "steadyElapsedMs": 65001
+  },
+  {
+    "stage": "n22r1vp9check",
+    "analysis": "n22r1vp9check-b1-2-exo-gpu-next.json",
+    "sampleCount": 66,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 43027,
+    "steadyElapsedMs": 65001
+  },
+  {
+    "stage": "n22r1vp9check",
+    "analysis": "n22r1vp9check-b1-3-vlc-gpu-next.json",
+    "sampleCount": 66,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 30730,
+    "steadyElapsedMs": 65003
+  },
+  {
+    "stage": "n22r1vp9mva",
+    "analysis": "n22r1vp9mva-b1-1-libmpv-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 144020,
+    "steadyElapsedMs": 240002
+  },
+  {
+    "stage": "n22r1vp9mva",
+    "analysis": "n22r1vp9mva-b1-2-vlc-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 101336,
+    "steadyElapsedMs": 240002
+  },
+  {
+    "stage": "n22r1vp9mva",
+    "analysis": "n22r1vp9mva-b1-3-vlc-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 100826,
+    "steadyElapsedMs": 240002
+  },
+  {
+    "stage": "n22r1vp9mva",
+    "analysis": "n22r1vp9mva-b1-4-libmpv-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 143546,
+    "steadyElapsedMs": 240001
+  },
+  {
+    "stage": "n22r1vp9mvb",
+    "analysis": "n22r1vp9mvb-b1-1-vlc-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 100845,
+    "steadyElapsedMs": 240002
+  },
+  {
+    "stage": "n22r1vp9mvb",
+    "analysis": "n22r1vp9mvb-b1-2-libmpv-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 143386,
+    "steadyElapsedMs": 240002
+  },
+  {
+    "stage": "n22r1vp9mvb",
+    "analysis": "n22r1vp9mvb-b1-3-libmpv-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 143508,
+    "steadyElapsedMs": 240002
+  },
+  {
+    "stage": "n22r1vp9mvb",
+    "analysis": "n22r1vp9mvb-b1-4-vlc-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 101283,
+    "steadyElapsedMs": 240004
+  },
+  {
+    "stage": "n22r1hevccheck",
+    "analysis": "n22r1hevccheck-b1-1-libmpv-gpu-next.json",
+    "sampleCount": 66,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 43904,
+    "steadyElapsedMs": 65002
+  },
+  {
+    "stage": "n22r1hevccheck",
+    "analysis": "n22r1hevccheck-b1-2-exo-gpu-next.json",
+    "sampleCount": 66,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 42409,
+    "steadyElapsedMs": 65002
+  },
+  {
+    "stage": "n22r1hevccheck",
+    "analysis": "n22r1hevccheck-b1-3-vlc-gpu-next.json",
+    "sampleCount": 66,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 30994,
+    "steadyElapsedMs": 65002
+  },
+  {
+    "stage": "n22r1hevcmea",
+    "analysis": "n22r1hevcmea-b1-1-libmpv-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 143995,
+    "steadyElapsedMs": 240002
+  },
+  {
+    "stage": "n22r1hevcmea",
+    "analysis": "n22r1hevcmea-b1-2-exo-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 145177,
+    "steadyElapsedMs": 240001
+  },
+  {
+    "stage": "n22r1hevcmea",
+    "analysis": "n22r1hevcmea-b1-3-exo-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 144001,
+    "steadyElapsedMs": 240002
+  },
+  {
+    "stage": "n22r1hevcmea",
+    "analysis": "n22r1hevcmea-b1-4-libmpv-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 143556,
+    "steadyElapsedMs": 240004
+  },
+  {
+    "stage": "n22r1hevcmeb",
+    "analysis": "n22r1hevcmeb-b1-1-exo-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 143963,
+    "steadyElapsedMs": 240002
+  },
+  {
+    "stage": "n22r1hevcmeb",
+    "analysis": "n22r1hevcmeb-b1-2-libmpv-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 143255,
+    "steadyElapsedMs": 240001
+  },
+  {
+    "stage": "n22r1hevcmeb",
+    "analysis": "n22r1hevcmeb-b1-3-libmpv-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 143464,
+    "steadyElapsedMs": 240001
+  },
+  {
+    "stage": "n22r1hevcmeb",
+    "analysis": "n22r1hevcmeb-b1-4-exo-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 144366,
+    "steadyElapsedMs": 240002
+  },
+  {
+    "stage": "n22r1hevc10check",
+    "analysis": "n22r1hevc10check-b1-1-libmpv-gpu-next.json",
+    "sampleCount": 66,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 43281,
+    "steadyElapsedMs": 65001
+  },
+  {
+    "stage": "n22r1hevc10check",
+    "analysis": "n22r1hevc10check-b1-2-exo-gpu-next.json",
+    "sampleCount": 66,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 43550,
+    "steadyElapsedMs": 65001
+  },
+  {
+    "stage": "n22r1hevc10check",
+    "analysis": "n22r1hevc10check-b1-3-vlc-gpu-next.json",
+    "sampleCount": 66,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 31089,
+    "steadyElapsedMs": 65002
+  },
+  {
+    "stage": "n22r1hevc10mea",
+    "analysis": "n22r1hevc10mea-b1-1-libmpv-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 144454,
+    "steadyElapsedMs": 240001
+  },
+  {
+    "stage": "n22r1hevc10mea",
+    "analysis": "n22r1hevc10mea-b1-2-exo-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 144283,
+    "steadyElapsedMs": 240000
+  },
+  {
+    "stage": "n22r1hevc10mea",
+    "analysis": "n22r1hevc10mea-b1-3-exo-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 143923,
+    "steadyElapsedMs": 240002
+  },
+  {
+    "stage": "n22r1hevc10mea",
+    "analysis": "n22r1hevc10mea-b1-4-libmpv-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 143683,
+    "steadyElapsedMs": 240003
+  },
+  {
+    "stage": "n22r1hevc10meb",
+    "analysis": "n22r1hevc10meb-b1-1-exo-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 144771,
+    "steadyElapsedMs": 240001
+  },
+  {
+    "stage": "n22r1hevc10meb",
+    "analysis": "n22r1hevc10meb-b1-2-libmpv-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 144386,
+    "steadyElapsedMs": 240002
+  },
+  {
+    "stage": "n22r1hevc10meb",
+    "analysis": "n22r1hevc10meb-b1-3-libmpv-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 144731,
+    "steadyElapsedMs": 240001
+  },
+  {
+    "stage": "n22r1hevc10meb",
+    "analysis": "n22r1hevc10meb-b1-4-exo-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 144782,
+    "steadyElapsedMs": 240002
+  },
+  {
+    "stage": "n22r1vp9mea",
+    "analysis": "n22r1vp9mea-b1-1-libmpv-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 143681,
+    "steadyElapsedMs": 240002
+  },
+  {
+    "stage": "n22r1vp9mea",
+    "analysis": "n22r1vp9mea-b1-2-exo-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 141788,
+    "steadyElapsedMs": 240001
+  },
+  {
+    "stage": "n22r1vp9mea",
+    "analysis": "n22r1vp9mea-b1-3-exo-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 142199,
+    "steadyElapsedMs": 240002
+  },
+  {
+    "stage": "n22r1vp9mea",
+    "analysis": "n22r1vp9mea-b1-4-libmpv-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 143500,
+    "steadyElapsedMs": 240001
+  },
+  {
+    "stage": "n22r1vp9meb",
+    "analysis": "n22r1vp9meb-b1-1-exo-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 141638,
+    "steadyElapsedMs": 240002
+  },
+  {
+    "stage": "n22r1vp9meb",
+    "analysis": "n22r1vp9meb-b1-2-libmpv-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 144137,
+    "steadyElapsedMs": 240001
+  },
+  {
+    "stage": "n22r1vp9meb",
+    "analysis": "n22r1vp9meb-b1-3-libmpv-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 144220,
+    "steadyElapsedMs": 240002
+  },
+  {
+    "stage": "n22r1vp9meb",
+    "analysis": "n22r1vp9meb-b1-4-exo-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 142931,
+    "steadyElapsedMs": 240003
+  },
+  {
+    "stage": "n22r1hevcmva",
+    "analysis": "n22r1hevcmva-b1-1-libmpv-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 143657,
+    "steadyElapsedMs": 240001
+  },
+  {
+    "stage": "n22r1hevcmva",
+    "analysis": "n22r1hevcmva-b1-2-vlc-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 102618,
+    "steadyElapsedMs": 240004
+  },
+  {
+    "stage": "n22r1hevcmva",
+    "analysis": "n22r1hevcmva-b1-3-vlc-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 100711,
+    "steadyElapsedMs": 240001
+  },
+  {
+    "stage": "n22r1hevcmva",
+    "analysis": "n22r1hevcmva-b1-4-libmpv-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 143950,
+    "steadyElapsedMs": 240001
+  },
+  {
+    "stage": "n22r1hevcmvb",
+    "analysis": "n22r1hevcmvb-b1-1-vlc-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 101312,
+    "steadyElapsedMs": 240001
+  },
+  {
+    "stage": "n22r1hevcmvb",
+    "analysis": "n22r1hevcmvb-b1-2-libmpv-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 145197,
+    "steadyElapsedMs": 240002
+  },
+  {
+    "stage": "n22r1hevcmvb",
+    "analysis": "n22r1hevcmvb-b1-3-libmpv-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 143773,
+    "steadyElapsedMs": 240002
+  },
+  {
+    "stage": "n22r1hevcmvb",
+    "analysis": "n22r1hevcmvb-b1-4-vlc-gpu-next.json",
+    "sampleCount": 241,
+    "hardware": true,
+    "software": false,
+    "qualityIssues": [],
+    "screenPlaying": true,
+    "thermalStatuses": [
+      0
+    ],
+    "processCpuDeltaMs": 100667,
+    "steadyElapsedMs": 240001
+  }
+]

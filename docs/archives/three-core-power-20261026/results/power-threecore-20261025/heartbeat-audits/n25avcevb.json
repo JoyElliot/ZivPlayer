@@ -1,0 +1,36 @@
+{
+  "verifiedUtc": "2026-10-25T00:33:35.770082+00:00",
+  "status": "failed_playback_validation",
+  "auditSha256": "8cc65492a0b9f6774db150ce10a11b36941d1087beccf4c49554f6c9be02103d",
+  "archiveSha256": "d56845a631b847e0251870013fb201ad7329b8f9d82ba0489df48135dd69f0c8",
+  "independentArchiveEvidenceVerified": true,
+  "qualifiedLegs": 3,
+  "completeBlock": false,
+  "excludedFromCompleteBlockMeans": true,
+  "failedLabel": "n25avcevb-b1-3-exo-gpu-next",
+  "qualityIssues": [
+    "playback_did_not_advance_at_normal_rate"
+  ],
+  "playbackAdvanceMs": 247895,
+  "steadyElapsedMs": 240085,
+  "observedPositionJumps": [
+    {
+      "fromSecond": 130,
+      "toSecond": 131,
+      "positionDeltaMs": 8996
+    }
+  ],
+  "codecEndCoverageComplete": true,
+  "codecEndCounts": {
+    "n25avcevb-b1-1-vlc-gpu-next": 1,
+    "n25avcevb-b1-2-exo-gpu-next": 1,
+    "n25avcevb-b1-3-exo-gpu-next": 1,
+    "n25avcevb-b1-4-vlc-gpu-next": 1
+  },
+  "hardwareComponent": "c2.qti.avc.decoder",
+  "retryStage": "n25avcevbr1",
+  "notes": [
+    "Do not change the normal-rate gate or patch in one leg. Retry the entire BAAB block with unique labels.",
+    "The cause of the playback position jump is not established by archived evidence."
+  ]
+}

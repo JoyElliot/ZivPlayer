@@ -1,0 +1,22 @@
+{
+  "independentSdMethod": "Decimal pairwise squared differences / n(n-1), then square root",
+  "groupsAndContrastsChecked": 51,
+  "maxSdErrorMw": "9.939155249448140189352523E-14",
+  "sourceHashesRechecked": 134,
+  "frozenStages": {
+    "repeatability": {
+      "planMatches": true,
+      "frozenFilesMatch": 8
+    },
+    "software": {
+      "planMatches": true,
+      "frozenFilesMatch": 8
+    }
+  },
+  "toolHashesMatch": true,
+  "sessionStateSha256": "311c385037101a792aa95d3c1437ffc37ac605876d7ff79cd4e1d948d6b8828b",
+  "reportLocalLinksResolve": true,
+  "reportSha256": "fbec2e465f465043fd07bad868c876db6f0b2b8c2d8fe8e7bf06bd6a779ad644",
+  "analysisScriptSha256": "21928bb7e5625fdfb5cb0c5bc0152f2580723e14ade2ffa172d0e96ab80d5455",
+  "analysisJsonSha256": "cd260ccf6620ff9679e6fc22b153444ac7d26d3f7bbe33d75360b675f0fd1202"
+}

@@ -1,0 +1,49 @@
+{
+  "utc": "2026-09-26T20:50:23.512592+00:00",
+  "remoteDirectory": "/data/local/tmp/ziv-power-20260927",
+  "planSha256": "2033023dd8db416e969e5417b7a0d36e9f2385f87bfc13b882adbb664fc358d6",
+  "archives": {
+    "all-app-power-results.tar": {
+      "sha256": "930d4baab7963008b3de2abfed38377a89cff0661f439f67750fc6e785eeb8a8",
+      "bytes": 7437312
+    },
+    "all-device-directories.tar": {
+      "sha256": "6b68bf2b811439522073e07f368c1e29b3315d137c589a58f577edf0412bfe7b",
+      "bytes": 99768320
+    }
+  },
+  "localFixtures": {
+    "avc-1080p24.mkv": {
+      "path": "F:\\Git\\ZivPlayer\\native\\out\\power-fixtures\\avc-1080p24.mkv",
+      "sha256": "a6d9a6848aa52e6749a106a0987a13cd8db186008171b45aaca55da94649bb33",
+      "bytes": 276433859
+    },
+    "hevc-1080p24.mkv": {
+      "path": "F:\\Git\\ZivPlayer\\native\\out\\power-fixtures\\hevc-1080p24.mkv",
+      "sha256": "49fee53a0264f2373cb95a88c506796f68c2229aa985e1d9348d341c53169d14",
+      "bytes": 279514400
+    },
+    "av1-1080p24.mkv": {
+      "path": "F:\\Git\\ZivPlayer\\native\\out\\power-fixtures\\av1-1080p24.mkv",
+      "sha256": "ab071388fdf9c3b074b4fd7540d28fdf10ecae65afe635a326e5b1dca62e301d",
+      "bytes": 280854099
+    }
+  },
+  "exit": {
+    "finishedUtc": "2026-09-26T20:11:06Z",
+    "stopReason": "manifest_completed",
+    "runnerExitCode": 0,
+    "cleanupSucceeded": true,
+    "screenTimeout": "86400000",
+    "bluetooth": "0",
+    "sleepRequested": false,
+    "sleepVerified": false,
+    "batteryPercent": 86
+  },
+  "guard": {
+    "finishedUtc": "2026-09-26T20:48:20Z",
+    "action": "deadline_recovery",
+    "trigger": "host_requested",
+    "cleanupSucceeded": true
+  }
+}

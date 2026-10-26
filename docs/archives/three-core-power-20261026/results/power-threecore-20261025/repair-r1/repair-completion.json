@@ -1,0 +1,21 @@
+{
+  "completedUtc": "2026-10-24T19:45:35.557116+00:00",
+  "status": "resumed",
+  "failedStage": "n25hevc10check",
+  "retryStage": "n25hevc10checkr1",
+  "controllerPid": 17840,
+  "runnerPid": 4309,
+  "guardPid": 32329,
+  "awakePid": 32419,
+  "guardGeneration": 1,
+  "frozenControllerSha256": "c92e57bd858750a83d61e9684b4d27806a41702a468ddcf3ca931bb444c938fe",
+  "preservedCompleteBlocks": 2,
+  "preservedQualifiedFormalLegs": 8,
+  "pendingComparisonGroups": 8,
+  "sameMeasurementProtocol": true,
+  "temperatureLimitUnchanged": true,
+  "originalBaselineUnchanged": true,
+  "oldGenerationRecoveryVerified": true,
+  "remoteOldGuardArchive": "/data/local/tmp/ziv-power-20261025/guard-archive-r1",
+  "globalMemoryUnmodified": true
+}

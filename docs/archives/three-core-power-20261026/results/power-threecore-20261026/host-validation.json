@@ -1,0 +1,18 @@
+{
+  "utc": "2026-10-25T16:10:03.339612+00:00",
+  "checks": {
+    "schedule_24_formal_9_preflight_unique": true,
+    "freeze_paths_deadline_strata_hashes_complementary_blocks": true,
+    "launch_transaction_two_deadline_intent_checks_shell_parse": true,
+    "all_frozen_python_shell_parse": true,
+    "runner_only_adds_precise_cutoff_gate_before_home": true,
+    "cancel_during_screen_probe_blocks_home_input": true,
+    "awake_rechecks_recovery_intent_immediately_before_input": true,
+    "deadline_playback_stop_precedes_lock_wait_enabled_restored_last": true,
+    "actual_guard_anchor_before_at_after_cutoff": true,
+    "guard_monotonic_anchor_ignores_later_wallclock_changes": true,
+    "six_existing_guard_watchdog_child_identity_regressions": true
+  },
+  "scope": "Offline only; temporary freeze, fake-clock source execution, launch-shell generation, immutable runner and source parsing. Device acceptance pending.",
+  "updatedUtc": "2026-10-25T16:15:14.956832+00:00"
+}

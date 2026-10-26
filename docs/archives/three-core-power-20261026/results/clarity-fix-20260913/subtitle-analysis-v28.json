@@ -1,0 +1,89 @@
+{
+  "method": "Exact RGB inequality at original 2400x1080 screenshot resolution; no resize, threshold or inferred OCR.",
+  "run": "vlc-v28-subtitles-final-01",
+  "positionRequestedMs": 5000,
+  "videoRectExclusive": [
+    240,
+    0,
+    2160,
+    1080
+  ],
+  "subtitleRegionExclusive": [
+    240,
+    800,
+    2160,
+    1080
+  ],
+  "results": [
+    {
+      "kind": "embedded-ass",
+      "onSha256": "f20750a02d4e294539fd56d269862d05ed5b3cd3573c909a977619d55edf9f65",
+      "offSha256": "dba85b843ff76623cded31b8bac68ca3b40b4b8d3dd8fcb588db3f1de095cc6f",
+      "changedPixels": 1291,
+      "differenceBoundsExclusive": [
+        3,
+        34,
+        27,
+        198
+      ],
+      "videoChangedPixels": 0,
+      "videoDifferenceBoundsInScreenCoordinatesExclusive": null,
+      "videoOutsideLowerSubtitleRegionChangedPixels": 0
+    },
+    {
+      "kind": "embedded-srt",
+      "onSha256": "dba85b843ff76623cded31b8bac68ca3b40b4b8d3dd8fcb588db3f1de095cc6f",
+      "offSha256": "dba85b843ff76623cded31b8bac68ca3b40b4b8d3dd8fcb588db3f1de095cc6f",
+      "changedPixels": 0,
+      "differenceBoundsExclusive": null,
+      "videoChangedPixels": 0,
+      "videoDifferenceBoundsInScreenCoordinatesExclusive": null,
+      "videoOutsideLowerSubtitleRegionChangedPixels": 0
+    },
+    {
+      "kind": "external-ass",
+      "onSha256": "11b2c2b1173b990cea6259ac2cf24f3c403a2b5dd33222aaff4f370e42e38359",
+      "offSha256": "dba85b843ff76623cded31b8bac68ca3b40b4b8d3dd8fcb588db3f1de095cc6f",
+      "changedPixels": 60199,
+      "differenceBoundsExclusive": [
+        801,
+        837,
+        1604,
+        1011
+      ],
+      "videoChangedPixels": 60199,
+      "videoDifferenceBoundsInScreenCoordinatesExclusive": [
+        801,
+        837,
+        1604,
+        1011
+      ],
+      "videoOutsideLowerSubtitleRegionChangedPixels": 0
+    },
+    {
+      "kind": "external-srt",
+      "onSha256": "bb096265e897a22430521b6158448b3179297e214ac6d9aa473f961135c1689b",
+      "offSha256": "dba85b843ff76623cded31b8bac68ca3b40b4b8d3dd8fcb588db3f1de095cc6f",
+      "changedPixels": 39676,
+      "differenceBoundsExclusive": [
+        897,
+        897,
+        1505,
+        1037
+      ],
+      "videoChangedPixels": 39676,
+      "videoDifferenceBoundsInScreenCoordinatesExclusive": [
+        897,
+        897,
+        1505,
+        1037
+      ],
+      "videoOutsideLowerSubtitleRegionChangedPixels": 0
+    }
+  ],
+  "interpretation": "Pixel differences show where the archived on/off screens change; inspect the actual subtitle text separately. No video differences after selection do not qualify as subtitle visibility. Linear runs test a separate path without the initial seek.",
+  "separateLinearRuns": [
+    "vlc-v28-embedded-ass-linear-01",
+    "vlc-v28-embedded-srt-linear-01"
+  ]
+}

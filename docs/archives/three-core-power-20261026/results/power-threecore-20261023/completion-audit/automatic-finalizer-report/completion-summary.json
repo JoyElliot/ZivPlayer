@@ -1,0 +1,50 @@
+{
+  "generatedUtc": "2026-10-22T22:35:00.110865+00:00",
+  "phase": "completed",
+  "formalRuns": 27,
+  "preflightLegs": 12,
+  "completeBlocks": 6,
+  "sameStratumBlocks": 4,
+  "recovery": {
+    "finishedUtc": "2026-10-22T22:34:44Z",
+    "action": "deadline_recovery",
+    "trigger": "host_requested",
+    "cleanupSucceeded": true,
+    "keptAwake": true,
+    "awakeGuardStopped": true,
+    "originalTimeoutRestored": true
+  },
+  "recoveryVerified": true,
+  "archivedHardwareComponentsVerified": true,
+  "cpuFlags": [],
+  "screenTimeoutMs": "***",
+  "awakeGuardStoppedAfterRecovery": true,
+  "skippedStages": [
+    {
+      "name": "n23hevcmea",
+      "reason": "insufficient_time_for_complementary_pair"
+    },
+    {
+      "name": "n23hevcmeb",
+      "reason": "insufficient_time_for_complementary_pair"
+    },
+    {
+      "name": "n23hevc10eva",
+      "reason": "insufficient_time_for_complementary_pair"
+    },
+    {
+      "name": "n23hevc10evb",
+      "reason": "insufficient_time_for_complementary_pair"
+    },
+    {
+      "name": "n23avceva",
+      "reason": "insufficient_time_for_complementary_pair"
+    },
+    {
+      "name": "n23avcevb",
+      "reason": "insufficient_time_for_complementary_pair"
+    }
+  ],
+  "statisticsPolicy": "Unchanged predeclared 1C and 10-percent start strata; complete blocks only; no cross-night pooling.",
+  "automationStatus": "awaiting_agent_completion_audit"
+}

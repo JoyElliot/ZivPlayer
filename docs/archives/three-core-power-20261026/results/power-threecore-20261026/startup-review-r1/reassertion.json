@@ -1,0 +1,40 @@
+{
+  "utc": "2026-10-25T16:17:03.624774+00:00",
+  "results": [
+    {
+      "package": "app-03-***",
+      "before": {
+        "suspended": "true",
+        "stopped": "false",
+        "enabled": "0"
+      },
+      "after": {
+        "suspended": "true",
+        "stopped": "true",
+        "enabled": "0"
+      },
+      "logs": [
+        ""
+      ]
+    },
+    {
+      "package": "app-09-***",
+      "before": {
+        "suspended": "true",
+        "stopped": "false",
+        "enabled": "1"
+      },
+      "after": {
+        "suspended": "true",
+        "stopped": "true",
+        "enabled": "0"
+      },
+      "logs": [
+        "Package app-09-*** new state: default\r\n",
+        ""
+      ]
+    }
+  ],
+  "samplingStarted": false,
+  "attempts": 1
+}

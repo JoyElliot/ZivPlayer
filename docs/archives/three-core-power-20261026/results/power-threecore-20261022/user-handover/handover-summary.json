@@ -1,0 +1,23 @@
+{
+  "updatedUtc": "2026-10-21T23:37:39.144168+00:00",
+  "userReturned": true,
+  "awakeGuardExitedUtc": "2026-10-21T23:35:03Z",
+  "awakeGuardStopped": true,
+  "screenTimeoutMs": "***",
+  "timeoutSource": "../power-renderer-20261018/preparation-settings-before.json",
+  "timeoutRestoredUtc": "2026-10-21T23:36:56.898407+00:00",
+  "baselineSettingsRepresentConfirmedDailyPreferences": false,
+  "dailyUsePreferencesPending": true,
+  "brightnessAtLastRead": "13",
+  "brightnessModeAtLastRead": "0",
+  "brightnessChangedByUserSincePriorRead": true,
+  "brightnessWritesByAgent": false,
+  "airplaneModeAtLastRead": "1",
+  "mediaVolumeAtRead": "***",
+  "otherSettingWrites": [],
+  "phoneMutations": [
+    "request_verified_awake_guard_stop",
+    "restore_screen_off_timeout_86400000_to_600000"
+  ],
+  "recordScope": "APK/background restoration verified against this night baseline. Daily setting preferences are separate."
+}

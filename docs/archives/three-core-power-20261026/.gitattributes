@@ -1,0 +1,4 @@
+# Preserve report bytes and accept original CRLF for archived evidence.
+results/** -text whitespace=cr-at-eol
+bundles/*.tar.gz -text
+retained-device-evidence.jsonl.gz -text

@@ -1,0 +1,67 @@
+{
+  "verifiedUtc": "2026-10-25T03:17:54.817259+00:00",
+  "auditSha256": "fadbae6e364ad3df603246c43fef994fdbd79d9cc1b906ac53ea4963a24515c3",
+  "archiveSha256": "90dd981a7423461dce3be5079ca4bf75836c5ba5a8da4fb2a95d2bad82463dc6",
+  "independentArchiveEvidenceVerified": true,
+  "qualifiedLegs": 4,
+  "completeBlock": true,
+  "codecEndCoverageComplete": true,
+  "codecEndCounts": {
+    "n25hevceva-b1-1-exo-gpu-next": 1,
+    "n25hevceva-b1-2-vlc-gpu-next": 1,
+    "n25hevceva-b1-3-vlc-gpu-next": 1,
+    "n25hevceva-b1-4-exo-gpu-next": 1
+  },
+  "hardwareComponent": "c2.qti.hevc.decoder",
+  "formalMeasurements": true,
+  "aggregationEligible": false,
+  "aggregationIssues": [
+    "crosses_1C_start_temperature_strata"
+  ],
+  "startTemperatureBandsC": [
+    34,
+    35
+  ],
+  "startBatteryBandsPercent": [
+    40
+  ],
+  "cpuWithinLeg": [],
+  "cpuPolicyApplicable": false,
+  "qualityIssues": [],
+  "diagnosticVideoDroppedFrames": 0,
+  "archivedCooldownSeconds": [
+    189,
+    425,
+    79,
+    64
+  ],
+  "archivedStageElapsedSeconds": 2126,
+  "preplayEntryTemperaturesC": [
+    35.0,
+    34.9,
+    34.9,
+    34.9
+  ],
+  "measurementStartTemperaturesC": [
+    35.0,
+    35.1,
+    34.9,
+    35.1
+  ],
+  "measurementStartBatteryPercents": [
+    44,
+    42,
+    42,
+    41
+  ],
+  "endingThreeNonrisingComparisonsVerified": true,
+  "notes": [
+    "Complete ABBA block crosses the 1 C start-temperature strata and remains visible separately.",
+    "All four codec-end streams have unique matching markers and QTI HEVC positive Render statistics with Drop 0.",
+    "Cooling requires an ending streak of three nonrising comparisons, not monotonic cooling throughout. Root checked the last four readings of every leg.",
+    "Second leg cooling had earlier small rises; final four readings were 35.0, 34.9, 34.9, 34.9 C at 377, 393, 409, 425 seconds.",
+    "Playback entry temperatures satisfy 35 C; 35.1 C first measured samples after 90-second warmup remain below the 40 C sampling limit. No whole-steady nonrising requirement was introduced.",
+    "Only Exo/VLC legs are present, so the mpv CPU threshold does not apply.",
+    "Whole-device awake/background effects remain unquantified, and diagnostics do not establish subjective visual quality. No additional ADB queries were issued."
+  ]
+}

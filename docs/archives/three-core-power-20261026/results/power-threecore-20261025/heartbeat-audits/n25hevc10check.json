@@ -1,0 +1,21 @@
+{
+  "verifiedUtc": "2026-10-24T19:32:24.546701+00:00",
+  "auditSha256": "c40b46cdb159e24595d13267f2e3570f3bbafb15e5f08562afd7e366eaec13e0",
+  "archiveSha256": "a0137341c66e7592b6437462fdafc02296c142a88c38d27fbd75489e517a8cfc",
+  "independentArchiveEvidenceVerified": true,
+  "status": "failed_thermal_gate",
+  "stopReason": "cooling_deadline_expired",
+  "formalMeasurements": false,
+  "preflightPassed": 0,
+  "instrumentationStarted": false,
+  "temperatureTenths": [
+    352,
+    353
+  ],
+  "requiredMaximumStartTemperatureTenths": 350,
+  "coolingElapsedSeconds": 1208,
+  "stabilityEventuallySatisfied": true,
+  "gateNeverSatisfied": true,
+  "recoveryVerifiedSeparately": true,
+  "retryStage": "n25hevc10checkr1"
+}

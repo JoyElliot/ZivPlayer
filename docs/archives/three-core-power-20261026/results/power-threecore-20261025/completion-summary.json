@@ -1,0 +1,93 @@
+{
+  "generatedUtc": "2026-10-25T05:25:28.645259+00:00",
+  "phase": "completed",
+  "formalRuns": 51,
+  "preflightLegs": 12,
+  "completeBlocks": 12,
+  "sameStratumBlocks": 6,
+  "recovery": {
+    "finishedUtc": "2026-10-25T05:17:40Z",
+    "action": "session_recovery",
+    "trigger": "host_requested",
+    "cleanupSucceeded": true,
+    "keptAwake": true,
+    "awakeGuardStopped": true,
+    "originalTimeoutRestored": true,
+    "finalScreenAwake": true
+  },
+  "recoveryVerified": true,
+  "archivedHardwareComponentsVerified": true,
+  "cpuFlags": [],
+  "screenTimeoutMs": "***",
+  "awakeGuardStoppedAfterRecovery": true,
+  "skippedStages": [],
+  "statisticsPolicy": "Unchanged predeclared 1C and 10-percent start strata; complete blocks only; no cross-night pooling.",
+  "automationStatus": "deleted",
+  "completionKind": "human_selected_checkpoint_completed_and_restored",
+  "allComparisonsCompleted": false,
+  "stopReason": "user_selected_option_1",
+  "qualifiedFormalLegs": 51,
+  "completeBlockFormalLegs": 48,
+  "excludedIncompleteQualifiedLegs": 3,
+  "attemptedFormalLegs": 52,
+  "currentSessionCompleteComparisons": 6,
+  "currentSessionTargetComparisons": 9,
+  "currentSessionTargetBlocks": 18,
+  "overallCompleteComparisons": 9,
+  "overallTargetComparisons": 12,
+  "overallCompleteBlocks": 18,
+  "overallTargetBlocks": 24,
+  "priorSessionCoverageOnly": {
+    "completeComparisons": 3,
+    "completeBlocks": 6,
+    "powerDataPooled": false
+  },
+  "remainingComparisons": [
+    {
+      "codec": "avc",
+      "pair": [
+        "libmpv@gpu-next",
+        "vlc"
+      ],
+      "blocks": 2,
+      "status": "not_started",
+      "originalPendingStages": [
+        "n25avcmva",
+        "n25avcmvb"
+      ]
+    },
+    {
+      "codec": "hevc",
+      "pair": [
+        "libmpv@gpu-next",
+        "vlc"
+      ],
+      "blocks": 2,
+      "status": "not_started",
+      "originalPendingStages": [
+        "n25hevcmva",
+        "n25hevcmvb"
+      ]
+    },
+    {
+      "codec": "vp9",
+      "pair": [
+        "libmpv@gpu-next",
+        "vlc"
+      ],
+      "blocks": 2,
+      "status": "not_started",
+      "originalPendingStages": [
+        "n25vp9mva",
+        "n25vp9mvb"
+      ]
+    }
+  ],
+  "remainingBlocks": 6,
+  "measurementFinishedUtc": "2026-10-25T05:16:59Z",
+  "measurementEndArchivedBatteryPercent": 29,
+  "restorationVerification": "2026-10-25T05:25:28.418827+00:00",
+  "narrowRestorationCorrection": "checkpoint-final-review/wechat-correction.json",
+  "automationDeletedUtc": "2026-10-25T05:29:47.813562+00:00",
+  "agentClosureUtc": "2026-10-25T05:29:47.813562+00:00"
+}

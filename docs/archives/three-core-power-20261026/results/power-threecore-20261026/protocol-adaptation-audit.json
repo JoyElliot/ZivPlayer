@@ -1,0 +1,37 @@
+{
+  "utc": "2026-10-25T16:12:41.837068+00:00",
+  "changedSourceFiles": [
+    {
+      "file": "phone-awake-open-guard.sh",
+      "oldSha256": "805b47905ad2599f6ac30d2153b30c445d9e6a754212dafbf6b1b95eb6effc5f",
+      "newSha256": "cb2d93ad13dcdd8248b5be88080de9b6181248322c2af34d98468b2cf04b172d"
+    },
+    {
+      "file": "phone-power-stable-runner.sh",
+      "oldSha256": "11a0e62b1f2fa7ba91d0a22c57b06a0297671b53838678b6ca3b8e318e3473f6",
+      "newSha256": "b7a39f9a2d5216c36346f05c4621408375bb99a370eba99d70d9adff8a475ce8"
+    },
+    {
+      "file": "power-night-open-guard.sh",
+      "oldSha256": "ec9fdb55000e5a602d645a46d7648da2263df3e65afa7180ad7b91cc76065785",
+      "newSha256": "b17eff3c8a0be6e78231ba8ee52226bad2b829ef4658d087cd60526e30709773"
+    },
+    {
+      "file": "three-core-open-session.py",
+      "oldSha256": "c92e57bd858750a83d61e9684b4d27806a41702a468ddcf3ca931bb444c938fe",
+      "newSha256": "31f02139ba5be1dc8dad154431d317d1617d7b3d5157253e1bd59d036b9257a6"
+    }
+  ],
+  "hardwareInstrumentApksUnchanged": true,
+  "instrumentAndAnalysisSourcesUnchanged": true,
+  "identityAndChildSafeguardsByteEquivalent": true,
+  "newDatePathsLabelsCohort": true,
+  "finiteCutoffRequiresNewProtocolIdentity": true,
+  "changes": "Only remaining schedule/new independent baseline, finite host+guard+runner cutoff, no foreground input after cutoff, restore complete enabled journal after unstop.",
+  "noCrossNightPooling": true,
+  "reviewFindingsAddressed": [
+    "Open guard ignored hard stop: now monotonic cutoff and early bounded playback stop before transition waits.",
+    "HOME/wake stale-probe race: now recheck cutoff/intent immediately before input.",
+    "Default enabled state drift: every selected package journaled and enabled restored last."
+  ]
+}

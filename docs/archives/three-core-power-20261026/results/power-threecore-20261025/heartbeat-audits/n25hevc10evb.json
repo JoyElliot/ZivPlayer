@@ -1,0 +1,55 @@
+{
+  "verifiedUtc": "2026-10-24T22:01:17.255102+00:00",
+  "auditSha256": "47a9e3274679e7de0b9729498d4fe101df6cf308ea68cfbb76455a3b0ffe9f71",
+  "archiveSha256": "a400c2f5eee3510caa204960f87ea245fe95bc2999d637a94a26311df6efc09c",
+  "independentArchiveEvidenceVerified": true,
+  "qualifiedLegs": 4,
+  "codecEndCoverageComplete": true,
+  "hardwareComponent": "c2.qti.hevc.decoder",
+  "formalMeasurements": true,
+  "aggregationEligible": false,
+  "aggregationIssues": [
+    "crosses_10pct_start_battery_strata"
+  ],
+  "cpuWithinLeg": [],
+  "cpuPolicyApplicable": false,
+  "qualityIssues": [],
+  "diagnosticDroppedFrames": 0,
+  "archivedCooldownSeconds": [
+    1146,
+    989,
+    895,
+    64
+  ],
+  "archivedStageElapsedSeconds": 4462,
+  "preplayEntryTemperaturesC": [
+    35.0,
+    34.9,
+    35.0,
+    35.0
+  ],
+  "measurementStartTemperaturesC": [
+    35.0,
+    35.0,
+    35.0,
+    35.3
+  ],
+  "measurementStartBatteryPercents": [
+    72,
+    70,
+    68,
+    68
+  ],
+  "codecEndCounts": {
+    "n25hevc10evb-b1-1-vlc-gpu-next": 1,
+    "n25hevc10evb-b1-2-exo-gpu-next": 1,
+    "n25hevc10evb-b1-3-exo-gpu-next": 1,
+    "n25hevc10evb-b1-4-vlc-gpu-next": 1
+  },
+  "notes": [
+    "Only Exo/VLC legs; the mpv CPU threshold is not applicable.",
+    "All four playback entries meet the 35.0 C gate; measurement starts follow 90 seconds of warmup.",
+    "Complete block is retained separately because its start battery levels cross the 70-percent stratum boundary. Do not pool with the previous complementary block.",
+    "Whole-device power under controlled awake/background conditions; their effects remain unquantified."
+  ]
+}

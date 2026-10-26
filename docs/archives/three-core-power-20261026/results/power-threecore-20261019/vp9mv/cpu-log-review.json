@@ -1,0 +1,22 @@
+{
+  "reviewedUtc": "2026-10-18T21:46:43.119501+00:00",
+  "archive": "finished-device.tar",
+  "legs": [
+    "vp9mv-b1-1-libmpv-gpu-next",
+    "vp9mv-b1-4-libmpv-gpu-next"
+  ],
+  "findings": [
+    "Both instrumentation logs complete 240/240 seconds and OK (1 test); trace-error empty; renderer records gpu-next.",
+    "Each archived codec-end records one QTI VP9 allocation/create/configure/surface connection; subsequent two startup flushes, no second creation/configure/connect recorded.",
+    "65/66 five-second active decoder stat lines, all Drop:0, similar Render counts.",
+    "Each leg has 10 Codec2Client query-param-skipped warnings and 189 artwork FileProvider permission exceptions; qdgralloc warnings 7935/7942. Similar logging volume does not explain CPU difference.",
+    "Only first leg has two render-interval warnings. No continuous renderer internal tracing available."
+  ],
+  "evidence": [
+    "raw/vp9mv-b1-1-libmpv-gpu-next.instrumentation.log:33,47",
+    "raw/vp9mv-b1-4-libmpv-gpu-next.instrumentation.log:33,47",
+    "raw/vp9mv-b1-1-libmpv-gpu-next-codec-end.txt:851-858,906,936,1055-1082,1191-1192,1514,9446",
+    "raw/vp9mv-b1-4-libmpv-gpu-next-codec-end.txt:852-859,907,937,1066-1077,1198-1199,1509,9545"
+  ],
+  "conclusion": "Cause remains unknown; no decoder-rebuild or divergent renderer evidence in these archived logs. Do not infer absence of unlogged behavior."
+}

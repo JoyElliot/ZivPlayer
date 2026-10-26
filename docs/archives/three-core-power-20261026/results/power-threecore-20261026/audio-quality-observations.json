@@ -1,0 +1,31 @@
+{
+  "scope": "Independent archived audio observations, not subjective audio quality or video dropped-frame measurements.",
+  "observations": [
+    {
+      "stage": "n26avccheck",
+      "notes": [
+        "Exo AAC component Render 0 / Drop counters are audio-only; their semantics are unresolved and are not AVC video drops.",
+        "Current-leg startup stale buffer callbacks and Choreographer skipped frames are preserved, without causal attribution.",
+        "VLC libcuda load warning precedes successful QTI AVC decoder creation; no hardware-failure claim."
+      ]
+    },
+    {
+      "stage": "n26hevccheck",
+      "notes": [
+        "Exo AAC audio-debug decoder Render:0/Drop counters are preserved separately from HEVC video Drop:0; relationship to AudioTrack records is unresolved and not a subjective audio-quality conclusion."
+      ]
+    },
+    {
+      "stage": "n26vp9check",
+      "notes": [
+        "Exo AAC audio-debug Render0/Drop235 is separate from VP9 video Drop0; relationship to AudioTrack observations is unresolved, without subjective audio-quality inference.",
+        "Current app identity uses host.newAppPid matching codecStreamOpened/Start/End.pid; no separate field named currentAppPid is required."
+      ]
+    }
+  ],
+  "limitations": [
+    "Exo AAC audio-debug Render:0/Drop counters are audio-only; their relationship to separate AudioTrack observations is unresolved.",
+    "Some VLC/libmpv diagnostics lack output/format/independent audio-count fields; retain missingness rather than infer unsupported properties.",
+    "QTI video Drop evidence, audio counters, temperature/CPU and subjective quality are separate. Frame hash does not establish subjective picture quality."
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "collect-power-night.py": "1b0b09d552352e4ca5192ff65e7a9b1803eb1ebfca24ffc0688b229c8c90e4b2",
+  "current-source-diff.patch": "08981c87fc17e537aeba42b40ebf1bf5aee08ec15ddc6f0800386b3013aafcb1",
+  "current-working-native-source-manifest.toml": "69f5207b0bba1de0b68bfc77aa99b7d719c2680acbe707be0eb78ec996c00385",
+  "finalize-three-core-open.py": "abe503f67d5bd6740338cb844bbc36a8e85618c34b0e632c44788b62813eb914",
+  "native-source-manifest.toml": "69f5207b0bba1de0b68bfc77aa99b7d719c2680acbe707be0eb78ec996c00385",
+  "phone-awake-open-guard.sh": "cb2d93ad13dcdd8248b5be88080de9b6181248322c2af34d98468b2cf04b172d",
+  "phone-power-stable-runner.sh": "b7a39f9a2d5216c36346f05c4621408375bb99a370eba99d70d9adff8a475ce8",
+  "power-night-open-guard.sh": "b17eff3c8a0be6e78231ba8ee52226bad2b829ef4658d087cd60526e30709773",
+  "PowerCodecLogCapture.kt": "b47549dd284e03b349f96c7551610372d470b2a94640aa10c0e1930e25ae46f7",
+  "PowerPlaybackBenchmarkTest.kt": "e76b7e3611441d8adba9504e48961b89b7f50ba233fbf67ee3001985af2362bd",
+  "prepare-renderer-night.py": "138d3aadfd0b39933cc0a382ea8b0094bb26bf455f44f81bff9f77f244a49729",
+  "renderer-night-session.py": "6235e3b11f7fd9d1fe81e50c2fbf0d3e54169e2f95a21a22f9846302df219536",
+  "report-renderer-night.py": "712240110058e4aa1420aeec00116b90cd7d1179b9e8191af6edeef84c658dee",
+  "summarize-power-benchmark.py": "88de5b5c73bb9f7eb2dcb66dd9209d972c37ca87c0e7fcce24cf51e4ec2fcd13",
+  "three-core-open-session.py": "31f02139ba5be1dc8dad154431d317d1617d7b3d5157253e1bd59d036b9257a6"
+}

@@ -1,0 +1,14 @@
+{
+  "verifiedUtc": "2026-10-24T19:43:01.127086+00:00",
+  "sameRunnerSha256": "11a0e62b1f2fa7ba91d0a22c57b06a0297671b53838678b6ca3b8e318e3473f6",
+  "sameManifestExceptRetryLabels": true,
+  "sameConfigExceptManifestHash": true,
+  "sameApksFixturesControlsAndDisplay": true,
+  "baselineSha256": "c5390dce61095ad1a7c51eb4fe4c099a2b177d166587f7689b51e544472c87ec",
+  "oldGeneration": {
+    "guardPid": 27186,
+    "awakePid": 27240,
+    "controllerPid": 9136,
+    "archive": "F:\\Git\\ZivPlayer\\native\\out\\power-threecore-20261025\\repair-r1\\generation0"
+  }
+}

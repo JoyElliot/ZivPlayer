@@ -1,0 +1,30 @@
+{
+  "generatedUtc": "2026-10-25T00:37:38.084564+00:00",
+  "phase": "completed",
+  "formalRuns": 23,
+  "preflightLegs": 9,
+  "completeBlocks": 5,
+  "sameStratumBlocks": 3,
+  "recovery": {
+    "finishedUtc": "2026-10-25T00:36:58Z",
+    "action": "session_recovery",
+    "trigger": "host_requested",
+    "cleanupSucceeded": true,
+    "keptAwake": true,
+    "awakeGuardStopped": true,
+    "originalTimeoutRestored": true,
+    "finalScreenAwake": false
+  },
+  "recoveryVerified": true,
+  "archivedHardwareComponentsVerified": true,
+  "cpuFlags": [],
+  "screenTimeoutMs": "***",
+  "awakeGuardStoppedAfterRecovery": true,
+  "skippedStages": [],
+  "statisticsPolicy": "Unchanged predeclared 1C and 10-percent start strata; complete blocks only; no cross-night pooling.",
+  "automationStatus": "awaiting_agent_completion_audit",
+  "comparisonsCompleted": false,
+  "recoveryOnly": true,
+  "guardGeneration": 1,
+  "continuation": "repair-r2: natural cooling before generation2; 12 formal stages pending plus one full named retry"
+}

@@ -1,0 +1,139 @@
+{
+  "utc": "2026-10-25T18:45:03.101215+00:00",
+  "powerSource": "stratified-report.json",
+  "completedBlockIds": [
+    "n26hevcmva:hevc:b1",
+    "n26hevcmvb:hevc:b1"
+  ],
+  "strictComparison": {
+    "fixture": "hevc-1080p24.mkv",
+    "fixtureSha256": "49fee53a0264f2373cb95a88c506796f68c2229aa985e1d9348d341c53169d14",
+    "mode": "automatic",
+    "surfaceProtocol": "current-app",
+    "measurementCohort": "threecore-20261026-46a0c824d23c-17192b56c846",
+    "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+    "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+    "a": "libmpv@gpu-next",
+    "b": "vlc",
+    "conditionActualDecoders": {
+      "libmpv@gpu-next": [
+        [
+          "mediacodec",
+          false
+        ]
+      ],
+      "vlc": [
+        [
+          "c2.qti.hevc.decoder",
+          false
+        ]
+      ]
+    },
+    "startTemperatureBandsC": [
+      33
+    ],
+    "startBatteryBandsPercent": [
+      80
+    ],
+    "batteryClasses": [
+      "normal"
+    ],
+    "blockCount": 1,
+    "blockIds": [
+      "n26hevcmvb:hevc:b1"
+    ],
+    "meanAMinusBMw": 61.83193339896843,
+    "blockDifferencesMw": [
+      61.83193339896843
+    ],
+    "blockDifferenceStdevMw": null,
+    "conditionMeanPowerMw": {
+      "libmpv@gpu-next": 1284.6657603915805,
+      "vlc": 1222.833826992612
+    }
+  },
+  "individuallyRetainedCrossStratumBlock": {
+    "fixture": "hevc-1080p24.mkv",
+    "fixtureSha256": "49fee53a0264f2373cb95a88c506796f68c2229aa985e1d9348d341c53169d14",
+    "mode": "automatic",
+    "surfaceProtocol": "current-app",
+    "measurementCohort": "threecore-20261026-46a0c824d23c-17192b56c846",
+    "comparisonBlock": "n26hevcmva:hevc:b1",
+    "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+    "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+    "complete": true,
+    "plannedConditions": [
+      "libmpv@gpu-next",
+      "vlc",
+      "vlc",
+      "libmpv@gpu-next"
+    ],
+    "conditions": [
+      "libmpv@gpu-next",
+      "vlc"
+    ],
+    "runLabels": [
+      "n26hevcmva-b1-1-libmpv-gpu-next",
+      "n26hevcmva-b1-2-vlc-gpu-next",
+      "n26hevcmva-b1-3-vlc-gpu-next",
+      "n26hevcmva-b1-4-libmpv-gpu-next"
+    ],
+    "conditionMeanPowerMw": {
+      "libmpv@gpu-next": 1301.904571672551,
+      "vlc": 1235.4486707897036
+    },
+    "a": "libmpv@gpu-next",
+    "b": "vlc",
+    "aMinusBMw": 66.45590088284735,
+    "conditionMeanStartTemperatureC": {
+      "libmpv@gpu-next": 33.25,
+      "vlc": 33.45
+    },
+    "conditionMeanStartBatteryPercent": {
+      "libmpv@gpu-next": 90,
+      "vlc": 89.5
+    },
+    "aggregationEligible": false,
+    "aggregationIssues": [
+      "crosses_10pct_start_battery_strata"
+    ],
+    "conditionActualDecoders": {
+      "libmpv@gpu-next": [
+        [
+          "mediacodec",
+          false
+        ]
+      ],
+      "vlc": [
+        [
+          "c2.qti.hevc.decoder",
+          false
+        ]
+      ]
+    },
+    "startTemperatureBandsC": [
+      33
+    ],
+    "startBatteryBandsPercent": [
+      80,
+      90
+    ],
+    "batteryClasses": [
+      "normal"
+    ],
+    "startTemperaturesC": [
+      33.1,
+      33.5,
+      33.4,
+      33.4
+    ],
+    "startBatteryPercents": [
+      91,
+      90,
+      89,
+      89
+    ]
+  },
+  "scope": "Two complete complementary acquisition blocks; only B is eligible for strict same-stratum estimation. Never pool nights or count 1Hz points as replicates.",
+  "interpretation": "Strict comparison has one block, so no repeat-based uncertainty or stable population ranking is established."
+}

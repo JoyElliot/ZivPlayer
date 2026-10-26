@@ -1,0 +1,20 @@
+{
+  "scope": "Controlled whole-device W; not normal-use or player-only power.",
+  "alwaysOnAndBackgroundEffects": "Unquantified; no assumed subtraction.",
+  "statisticalUnit": "Complete four-leg block; 1Hz points are not independent repeats.",
+  "pooling": "Only same APK/fixture/protocol/cohort/actual decoder/battery category/start 10-percent battery band/start 1C temperature band; never pool nights.",
+  "quality": "Power, temperature, dropped frames, CPU observations and subjective quality are separate; frame hash is not subjective quality proof.",
+  "priorNight": "Historical AVC playback position jump and Surfboard/WeChat state drift have unknown timing/causes; preserve prior evidence, no quantitative correction or transfer of old values.",
+  "deadline": "New finite cutoff protocol; stop actual playback before 07:20, permit silent restoration afterward.",
+  "enabledRestoration": "All selected package enabled states journaled; restore after unsuspend/unstop to preserve default-state values.",
+  "startupControlReassertion": {
+    "evidence": "startup-review-r1/reassertion.json",
+    "packages": [
+      "app-03-***",
+      "app-09-***"
+    ],
+    "onset": "Before any instrumentation or sampling",
+    "cause": "Unknown; no attribution to playback or quantitative subtraction.",
+    "action": "One reassertion of frozen enabled and force-stopped states; no control set or quality threshold changes."
+  }
+}

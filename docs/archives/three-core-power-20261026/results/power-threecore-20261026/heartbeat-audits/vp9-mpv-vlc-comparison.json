@@ -1,0 +1,55 @@
+{
+  "utc": "2026-10-25T19:56:23.630021+00:00",
+  "powerSource": "stratified-report.json",
+  "comparison": {
+    "fixture": "vp9-1080p24.mkv",
+    "fixtureSha256": "68efdd1d14246fec7c8fbebce844418a690567076bfd69fed44003d4ec7cd878",
+    "mode": "automatic",
+    "surfaceProtocol": "current-app",
+    "measurementCohort": "threecore-20261026-46a0c824d23c-17192b56c846",
+    "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+    "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+    "a": "libmpv@gpu-next",
+    "b": "vlc",
+    "conditionActualDecoders": {
+      "libmpv@gpu-next": [
+        [
+          "mediacodec",
+          false
+        ]
+      ],
+      "vlc": [
+        [
+          "c2.qti.vp9.decoder",
+          false
+        ]
+      ]
+    },
+    "startTemperatureBandsC": [
+      33
+    ],
+    "startBatteryBandsPercent": [
+      80
+    ],
+    "batteryClasses": [
+      "normal"
+    ],
+    "blockCount": 2,
+    "blockIds": [
+      "n26vp9mva:vp9:b1",
+      "n26vp9mvb:vp9:b1"
+    ],
+    "meanAMinusBMw": 61.116787079564915,
+    "blockDifferencesMw": [
+      63.611488212622135,
+      58.622085946507696
+    ],
+    "blockDifferenceStdevMw": 3.528040176437047,
+    "conditionMeanPowerMw": {
+      "libmpv@gpu-next": 1280.4493733821423,
+      "vlc": 1219.3325863025775
+    }
+  },
+  "scope": "Two complete same-stratum blocks in this night only; 1Hz points are not independent repetitions.",
+  "interpretation": "Both block differences have the same sign; this is a small controlled-condition sample, not a daily-use or player-only estimate."
+}

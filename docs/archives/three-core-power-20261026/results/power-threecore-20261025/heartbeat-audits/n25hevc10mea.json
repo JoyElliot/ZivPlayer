@@ -1,0 +1,80 @@
+{
+  "verifiedUtc": "2026-10-25T04:48:09.540331+00:00",
+  "auditSha256": "cc8b41d3b475b8e6eccd8f7381ad2bd0297dd37e3ff09016b332f9e89904000a",
+  "archiveSha256": "1c7cfe9d93323064dcda6f881eb3a80b23abcf74f2974eb9fa0897d46a0dbda3",
+  "independentArchiveEvidenceVerified": true,
+  "qualifiedLegs": 4,
+  "completeBlock": true,
+  "codecEndCoverageComplete": true,
+  "codecEndCounts": {
+    "n25hevc10mea-b1-1-libmpv-gpu-next": 1,
+    "n25hevc10mea-b1-2-exo-gpu-next": 1,
+    "n25hevc10mea-b1-3-exo-gpu-next": 1,
+    "n25hevc10mea-b1-4-libmpv-gpu-next": 1
+  },
+  "hardwareComponent": "c2.qti.hevc.decoder",
+  "formalMeasurements": true,
+  "aggregationEligible": true,
+  "aggregationIssues": [],
+  "startTemperatureBandsC": [
+    35
+  ],
+  "startBatteryBandsPercent": [
+    30
+  ],
+  "cpuWithinLeg": [
+    {
+      "label": "n25hevc10mea-b1-1-libmpv-gpu-next",
+      "sampleCount": 241,
+      "processCpuDeltaMs": 139047,
+      "steadyElapsedMs": 240001,
+      "fraction": 0.5793600859996416,
+      "flagAbovePointEight": false
+    },
+    {
+      "label": "n25hevc10mea-b1-4-libmpv-gpu-next",
+      "sampleCount": 241,
+      "processCpuDeltaMs": 138870,
+      "steadyElapsedMs": 240001,
+      "fraction": 0.5786225890725455,
+      "flagAbovePointEight": false
+    }
+  ],
+  "cpuPolicyApplicable": true,
+  "qualityIssues": [],
+  "diagnosticVideoDroppedFrames": 0,
+  "archivedCooldownSeconds": [
+    377,
+    910,
+    675,
+    173
+  ],
+  "archivedStageElapsedSeconds": 3506,
+  "preplayEntryTemperaturesC": [
+    35.0,
+    34.9,
+    34.9,
+    34.9
+  ],
+  "measurementStartTemperaturesC": [
+    35.0,
+    35.1,
+    35.0,
+    35.0
+  ],
+  "measurementStartBatteryPercents": [
+    37,
+    35,
+    34,
+    33
+  ],
+  "endingThreeNonrisingComparisonsVerified": true,
+  "notes": [
+    "Complete ABBA block is in the 35 C / 30-percent start strata; it supplies one block, without stable-ranking or pooled-confidence claims.",
+    "All four codec-end streams have unique matching markers/app PID and QTI HEVC positive Render statistics with Drop 0.",
+    "mpv diagnostic decoder name is generic mediacodec; its exact QTI component is verified in the current-PID codec-end stream.",
+    "mpv CPU fractions use first/last samples within each leg. Neither exceeds 0.8; both legs remain retained.",
+    "All playback entries satisfy 35 C; later 35.1 C first samples follow 90-second warmup and are below the 40 C sampling limit.",
+    "Whole-device awake/background effects remain unquantified. Frame diagnostics do not establish subjective visual quality. No additional ADB queries were issued."
+  ]
+}

@@ -1,0 +1,954 @@
+{
+  "stages": {
+    "n25hevccheck": {
+      "auditSha256": "62830d0901bd726f9535a0a86d7d9d7bd4ae4360204394a6027548222e31a6d6",
+      "preflightPassed": 3,
+      "codecEndCoverageComplete": true,
+      "hardwareComponent": "c2.qti.hevc.decoder",
+      "formalMeasurements": false
+    },
+    "n25hevcmea": {
+      "verifiedUtc": "2026-10-24T17:53:32.257579+00:00",
+      "auditSha256": "ac05549a1fa548800991384ae97554ce9ba9c5500d41f20bbc688ebd405713d8",
+      "archiveSha256": "4b85ae61c2a74fa21d55d58d31554d760fd293ff5d36bbff242be551f281dfab",
+      "independentArchiveEvidenceVerified": true,
+      "qualifiedLegs": 4,
+      "codecEndCoverageComplete": true,
+      "hardwareComponent": "c2.qti.hevc.decoder",
+      "formalMeasurements": true,
+      "aggregationEligible": false,
+      "aggregationIssues": [
+        "crosses_1C_start_temperature_strata"
+      ],
+      "cpuWithinLeg": [
+        {
+          "analysis": "n25hevcmea-b1-1-libmpv-gpu-next.json",
+          "sampleCount": 241,
+          "steadyElapsedMs": 240003,
+          "processCpuDeltaMs": 139406,
+          "fraction": 0.5808510726949246,
+          "flagAbovePointEight": false
+        },
+        {
+          "analysis": "n25hevcmea-b1-4-libmpv-gpu-next.json",
+          "sampleCount": 241,
+          "steadyElapsedMs": 240003,
+          "processCpuDeltaMs": 138922,
+          "fraction": 0.5788344312362762,
+          "flagAbovePointEight": false
+        }
+      ],
+      "notes": [
+        "Wi-Fi remains connected; application byte counters do not prove radio-link silence.",
+        "CPU ratio is computed within each leg using first/last samples; differences between two legs are not this threshold."
+      ]
+    },
+    "n25hevcmeb": {
+      "verifiedUtc": "2026-10-24T19:03:15.622572+00:00",
+      "auditSha256": "fed2cb8ebda23b25c68bab9001076d121d3324fdeec0652c9c315c1afe19320c",
+      "archiveSha256": "c8621295a5792271ce34550e3cbd9fe874a98e960754db1433b1d9c24f030873",
+      "independentArchiveEvidenceVerified": true,
+      "qualifiedLegs": 4,
+      "codecEndCoverageComplete": true,
+      "hardwareComponent": "c2.qti.hevc.decoder",
+      "formalMeasurements": true,
+      "aggregationEligible": true,
+      "aggregationIssues": [],
+      "cpuWithinLeg": [
+        {
+          "label": "b1-2-libmpv",
+          "processCpuDeltaMs": 137808,
+          "steadyElapsedMs": 240002,
+          "fraction": 0.5741952150398747,
+          "flagAbovePointEight": false
+        },
+        {
+          "label": "b1-3-libmpv",
+          "processCpuDeltaMs": 139392,
+          "steadyElapsedMs": 240001,
+          "fraction": 0.5807975800100833,
+          "flagAbovePointEight": false
+        }
+      ],
+      "qualityIssues": [],
+      "diagnosticDroppedFrames": 0,
+      "archivedCooldownSeconds": [
+        582,
+        612,
+        1050,
+        863
+      ],
+      "archivedStageElapsedSeconds": 4476,
+      "notes": [
+        "Extended stage duration is accounted for by archived natural-cooling intervals; no threshold changed.",
+        "Temperature strata remain as declared; first complementary block is retained separately because it crosses strata."
+      ]
+    },
+    "n25hevc10check": {
+      "verifiedUtc": "2026-10-24T19:32:24.546701+00:00",
+      "auditSha256": "c40b46cdb159e24595d13267f2e3570f3bbafb15e5f08562afd7e366eaec13e0",
+      "archiveSha256": "a0137341c66e7592b6437462fdafc02296c142a88c38d27fbd75489e517a8cfc",
+      "independentArchiveEvidenceVerified": true,
+      "status": "failed_thermal_gate",
+      "stopReason": "cooling_deadline_expired",
+      "formalMeasurements": false,
+      "preflightPassed": 0,
+      "instrumentationStarted": false,
+      "temperatureTenths": [
+        352,
+        353
+      ],
+      "requiredMaximumStartTemperatureTenths": 350,
+      "coolingElapsedSeconds": 1208,
+      "stabilityEventuallySatisfied": true,
+      "gateNeverSatisfied": true,
+      "recoveryVerifiedSeparately": true,
+      "retryStage": "n25hevc10checkr1"
+    },
+    "n25hevc10checkr1": {
+      "verifiedUtc": "2026-10-24T19:58:04.846574+00:00",
+      "auditSha256": "ddc30ef80bbc710f4b6e1538d44685c0291bdf25312f3d809e6e7c335e288c7f",
+      "archiveSha256": "80bad0127c9501ee6c554021cf5daf471bcd79d55d607240d374d97c0769e8d7",
+      "preflightPassed": 3,
+      "codecEndCoverageComplete": true,
+      "codecEndCounts": {
+        "n25hevc10checkr1-b1-1-libmpv-gpu-next": 1,
+        "n25hevc10checkr1-b1-2-exo-gpu-next": 1,
+        "n25hevc10checkr1-b1-3-vlc-gpu-next": 1
+      },
+      "hardwareComponent": "c2.qti.hevc.decoder",
+      "formalMeasurements": false,
+      "quality": [
+        {
+          "analysis": "n25hevc10checkr1-b1-1-libmpv-gpu-next.json",
+          "samples": 66,
+          "hardware": true,
+          "software": false,
+          "qualityIssues": [],
+          "thermalStatuses": [
+            0
+          ]
+        },
+        {
+          "analysis": "n25hevc10checkr1-b1-2-exo-gpu-next.json",
+          "samples": 66,
+          "hardware": true,
+          "software": false,
+          "qualityIssues": [],
+          "thermalStatuses": [
+            0
+          ]
+        },
+        {
+          "analysis": "n25hevc10checkr1-b1-3-vlc-gpu-next.json",
+          "samples": 66,
+          "hardware": true,
+          "software": false,
+          "qualityIssues": [],
+          "thermalStatuses": [
+            0
+          ]
+        }
+      ]
+    },
+    "n25hevc10eva": {
+      "verifiedUtc": "2026-10-24T20:50:56.223882+00:00",
+      "auditSha256": "213708a7646644a666ca288da8d9ed5652d764c8c132113d53a827448405c7d7",
+      "archiveSha256": "1235337bc6eb9d3dc3158f548d64054592528612c32662770e572253c3db655f",
+      "independentArchiveEvidenceVerified": true,
+      "qualifiedLegs": 4,
+      "codecEndCoverageComplete": true,
+      "hardwareComponent": "c2.qti.hevc.decoder",
+      "formalMeasurements": true,
+      "aggregationEligible": true,
+      "aggregationIssues": [],
+      "cpuWithinLeg": [],
+      "cpuPolicyApplicable": false,
+      "qualityIssues": [],
+      "diagnosticDroppedFrames": 0,
+      "archivedCooldownSeconds": [
+        189,
+        64,
+        926,
+        63
+      ],
+      "archivedStageElapsedSeconds": 2612,
+      "preplayEntryTemperaturesC": [
+        34.8,
+        35.0,
+        34.9,
+        35.0
+      ],
+      "measurementStartTemperaturesC": [
+        35.0,
+        35.0,
+        35.0,
+        35.5
+      ],
+      "measurementStartBatteryPercents": [
+        76,
+        76,
+        74,
+        73
+      ],
+      "codecEndCounts": {
+        "n25hevc10eva-b1-1-exo-gpu-next": 1,
+        "n25hevc10eva-b1-2-vlc-gpu-next": 1,
+        "n25hevc10eva-b1-3-vlc-gpu-next": 1,
+        "n25hevc10eva-b1-4-exo-gpu-next": 1
+      },
+      "notes": [
+        "Only Exo/VLC legs in this block; the mpv CPU threshold is not applicable.",
+        "Fourth leg entered playback at 35.0 C; measurement began at 35.5 C after 90001 ms warmup. Entry and sampling thresholds are separate.",
+        "One same-stratum block is retained; no stable power ranking or pooled confidence interval is established.",
+        "Power remains whole-device power under controlled awake/background conditions; their effects remain unquantified."
+      ]
+    },
+    "n25hevc10evb": {
+      "verifiedUtc": "2026-10-24T22:01:17.255102+00:00",
+      "auditSha256": "47a9e3274679e7de0b9729498d4fe101df6cf308ea68cfbb76455a3b0ffe9f71",
+      "archiveSha256": "a400c2f5eee3510caa204960f87ea245fe95bc2999d637a94a26311df6efc09c",
+      "independentArchiveEvidenceVerified": true,
+      "qualifiedLegs": 4,
+      "codecEndCoverageComplete": true,
+      "hardwareComponent": "c2.qti.hevc.decoder",
+      "formalMeasurements": true,
+      "aggregationEligible": false,
+      "aggregationIssues": [
+        "crosses_10pct_start_battery_strata"
+      ],
+      "cpuWithinLeg": [],
+      "cpuPolicyApplicable": false,
+      "qualityIssues": [],
+      "diagnosticDroppedFrames": 0,
+      "archivedCooldownSeconds": [
+        1146,
+        989,
+        895,
+        64
+      ],
+      "archivedStageElapsedSeconds": 4462,
+      "preplayEntryTemperaturesC": [
+        35.0,
+        34.9,
+        35.0,
+        35.0
+      ],
+      "measurementStartTemperaturesC": [
+        35.0,
+        35.0,
+        35.0,
+        35.3
+      ],
+      "measurementStartBatteryPercents": [
+        72,
+        70,
+        68,
+        68
+      ],
+      "codecEndCounts": {
+        "n25hevc10evb-b1-1-vlc-gpu-next": 1,
+        "n25hevc10evb-b1-2-exo-gpu-next": 1,
+        "n25hevc10evb-b1-3-exo-gpu-next": 1,
+        "n25hevc10evb-b1-4-vlc-gpu-next": 1
+      },
+      "notes": [
+        "Only Exo/VLC legs; the mpv CPU threshold is not applicable.",
+        "All four playback entries meet the 35.0 C gate; measurement starts follow 90 seconds of warmup.",
+        "Complete block is retained separately because its start battery levels cross the 70-percent stratum boundary. Do not pool with the previous complementary block.",
+        "Whole-device power under controlled awake/background conditions; their effects remain unquantified."
+      ]
+    },
+    "n25avccheck": {
+      "verifiedUtc": "2026-10-24T22:31:08.043375+00:00",
+      "auditSha256": "32e98602977ddc28f94a5a833168e0854cf0e7b18da742d1e84ae9c12f74d270",
+      "archiveSha256": "2384dd3eb372b2b8881c8a5739778cb67c1494114f0b9eb01ede5e36aea3c315",
+      "independentArchiveEvidenceVerified": true,
+      "preflightPassed": 3,
+      "codecEndCoverageComplete": true,
+      "codecEndCounts": {
+        "n25avccheck-b1-1-libmpv-gpu-next": 1,
+        "n25avccheck-b1-2-exo-gpu-next": 1,
+        "n25avccheck-b1-3-vlc-gpu-next": 1
+      },
+      "hardwareComponent": "c2.qti.avc.decoder",
+      "formalMeasurements": false,
+      "qualityIssues": [],
+      "diagnosticVideoDroppedFrames": 0,
+      "cpuWithinLeg": [
+        {
+          "label": "n25avccheck-b1-1-libmpv-gpu-next",
+          "sampleCount": 66,
+          "processCpuDeltaMs": 41232,
+          "steadyElapsedMs": 65003,
+          "fraction": 0.6343091857298894,
+          "flagAbovePointEight": false
+        }
+      ],
+      "archivedCooldownSeconds": [
+        1177,
+        298,
+        63
+      ],
+      "archivedStageElapsedSeconds": 1809,
+      "notes": [
+        "Validation-only preflight legs are not formal power measurements and do not fill formal means.",
+        "All three codec-end traces identify the QTI AVC video decoder; no video software fallback component was observed.",
+        "Exo archive also contains AAC audio component Drop counters 234-237; these are separate from AVC video Drop 0 and do not establish subjective quality.",
+        "VLC trace logs Cannot load libcuda.so.1 before creating and using QTI AVC; no cause is inferred from that message."
+      ]
+    },
+    "n25avceva": {
+      "verifiedUtc": "2026-10-24T23:30:48.130845+00:00",
+      "auditSha256": "0d4bbb967edd5249e7cc0ce5af04088840ad7f60e0f5c03f16791c9592f5f3ed",
+      "archiveSha256": "0e32d7c0e8ae9ce40eb3d050c7a119a6f8b6c3a2ea75b097f47296f4cda67b70",
+      "independentArchiveEvidenceVerified": true,
+      "qualifiedLegs": 4,
+      "codecEndCoverageComplete": true,
+      "hardwareComponent": "c2.qti.avc.decoder",
+      "formalMeasurements": true,
+      "aggregationEligible": true,
+      "aggregationIssues": [],
+      "cpuWithinLeg": [],
+      "cpuPolicyApplicable": false,
+      "qualityIssues": [],
+      "diagnosticVideoDroppedFrames": 0,
+      "archivedCooldownSeconds": [
+        189,
+        722,
+        64,
+        1020
+      ],
+      "archivedStageElapsedSeconds": 3363,
+      "preplayEntryTemperaturesC": [
+        35.0,
+        35.0,
+        35.0,
+        35.0
+      ],
+      "measurementStartTemperaturesC": [
+        35.2,
+        35.0,
+        35.0,
+        35.0
+      ],
+      "measurementStartBatteryPercents": [
+        65,
+        63,
+        63,
+        61
+      ],
+      "codecEndCounts": {
+        "n25avceva-b1-1-exo-gpu-next": 1,
+        "n25avceva-b1-2-vlc-gpu-next": 1,
+        "n25avceva-b1-3-vlc-gpu-next": 1,
+        "n25avceva-b1-4-exo-gpu-next": 1
+      },
+      "notes": [
+        "Only Exo/VLC legs; mpv CPU threshold is not applicable.",
+        "All playback entries meet 35.0 C; measurement temperatures follow 90 seconds warmup.",
+        "One same-stratum block does not establish a stable power ranking or pooled confidence interval.",
+        "Whole-device power under controlled awake/background conditions; effects remain unquantified."
+      ]
+    },
+    "n25avcevb": {
+      "verifiedUtc": "2026-10-25T00:33:35.770082+00:00",
+      "status": "failed_playback_validation",
+      "auditSha256": "8cc65492a0b9f6774db150ce10a11b36941d1087beccf4c49554f6c9be02103d",
+      "archiveSha256": "d56845a631b847e0251870013fb201ad7329b8f9d82ba0489df48135dd69f0c8",
+      "independentArchiveEvidenceVerified": true,
+      "qualifiedLegs": 3,
+      "completeBlock": false,
+      "excludedFromCompleteBlockMeans": true,
+      "failedLabel": "n25avcevb-b1-3-exo-gpu-next",
+      "qualityIssues": [
+        "playback_did_not_advance_at_normal_rate"
+      ],
+      "playbackAdvanceMs": 247895,
+      "steadyElapsedMs": 240085,
+      "observedPositionJumps": [
+        {
+          "fromSecond": 130,
+          "toSecond": 131,
+          "positionDeltaMs": 8996
+        }
+      ],
+      "codecEndCoverageComplete": true,
+      "codecEndCounts": {
+        "n25avcevb-b1-1-vlc-gpu-next": 1,
+        "n25avcevb-b1-2-exo-gpu-next": 1,
+        "n25avcevb-b1-3-exo-gpu-next": 1,
+        "n25avcevb-b1-4-vlc-gpu-next": 1
+      },
+      "hardwareComponent": "c2.qti.avc.decoder",
+      "retryStage": "n25avcevbr1",
+      "notes": [
+        "Do not change the normal-rate gate or patch in one leg. Retry the entire BAAB block with unique labels.",
+        "The cause of the playback position jump is not established by archived evidence."
+      ]
+    },
+    "n25vp9check": {
+      "verifiedUtc": "2026-10-25T01:29:48.571144+00:00",
+      "auditSha256": "ee2f75a1bb05e16116fa62554f44140cf02f50ded5d27fa7d09845ea62df9678",
+      "archiveSha256": "90bc26d42538c4ce068d36b5b450362807f21989d8ff097e9acf279cefac2451",
+      "independentArchiveEvidenceVerified": true,
+      "preflightPassed": 3,
+      "codecEndCoverageComplete": true,
+      "codecEndCounts": {
+        "n25vp9check-b1-1-libmpv-gpu-next": 1,
+        "n25vp9check-b1-2-exo-gpu-next": 1,
+        "n25vp9check-b1-3-vlc-gpu-next": 1
+      },
+      "hardwareComponent": "c2.qti.vp9.decoder",
+      "formalMeasurements": false,
+      "qualityIssues": [],
+      "diagnosticVideoDroppedFrames": 0,
+      "cpuWithinLeg": [
+        {
+          "label": "n25vp9check-b1-1-libmpv-gpu-next",
+          "sampleCount": 66,
+          "processCpuDeltaMs": 42630,
+          "steadyElapsedMs": 65001,
+          "fraction": 0.655836064060553,
+          "flagAbovePointEight": false
+        }
+      ],
+      "archivedCooldownSeconds": [
+        189,
+        63,
+        63
+      ],
+      "preplayEntryTemperaturesC": [
+        34.4,
+        34.4,
+        34.5
+      ],
+      "measurementStartTemperaturesC": [
+        34.4,
+        34.4,
+        34.5
+      ],
+      "measurementStartBatteryPercents": [
+        51,
+        51,
+        50
+      ],
+      "notes": [
+        "Validation-only preflight legs do not count as formal power measurements.",
+        "All three independent codec-end streams identify c2.qti.vp9.decoder with matching app PID and end marker.",
+        "The libmpv analysis decoder field is generic mediacodec; the exact QTI component is established by its PID codec-end stream.",
+        "No video drops or playback quality issues were observed. These checks do not establish subjective visual quality.",
+        "Only local archives were inspected; no additional ADB queries were issued during sampling."
+      ]
+    },
+    "n25avcevbr1": {
+      "verifiedUtc": "2026-10-25T01:30:21.837261+00:00",
+      "auditSha256": "e4f36efd4b9fcf0d74c1c4c0cfb480825ec25bb0161d8a03c0ba40bd6d4425d3",
+      "archiveSha256": "bd6f873fbfd50255faac501ed8b5d2866ff825d57a10b450a51f99ab1a670c4a",
+      "independentArchiveEvidenceVerified": true,
+      "qualifiedLegs": 4,
+      "completeBlock": true,
+      "retryOf": "n25avcevb",
+      "codecEndCoverageComplete": true,
+      "codecEndCounts": {
+        "n25avcevbr1-b1-1-vlc-gpu-next": 1,
+        "n25avcevbr1-b1-2-exo-gpu-next": 1,
+        "n25avcevbr1-b1-3-exo-gpu-next": 1,
+        "n25avcevbr1-b1-4-vlc-gpu-next": 1
+      },
+      "hardwareComponent": "c2.qti.avc.decoder",
+      "formalMeasurements": true,
+      "aggregationEligible": true,
+      "aggregationIssues": [],
+      "startTemperatureBandsC": [
+        34
+      ],
+      "startBatteryBandsPercent": [
+        50
+      ],
+      "cpuWithinLeg": [],
+      "cpuPolicyApplicable": false,
+      "qualityIssues": [],
+      "diagnosticVideoDroppedFrames": 0,
+      "archivedCooldownSeconds": [
+        189,
+        64,
+        64,
+        63
+      ],
+      "archivedStageElapsedSeconds": 1748,
+      "preplayEntryTemperaturesC": [
+        33.8,
+        34.0,
+        34.3,
+        34.3
+      ],
+      "measurementStartTemperaturesC": [
+        34.0,
+        34.3,
+        34.3,
+        34.5
+      ],
+      "measurementStartBatteryPercents": [
+        53,
+        53,
+        52,
+        51
+      ],
+      "notes": [
+        "The complete BAAB retry passed all four legs; the failed original block and its three qualified legs remain archived and excluded from complete-block means.",
+        "Root spot verification found exactly one matching end marker per leg and QTI AVC component statistics with the matching PID.",
+        "This block is in the 34 C / 50-percent start strata; previous AVC Exo/VLC block is in 35 C / 60-percent strata. Retain separately, without pooling the complementary pair.",
+        "No mpv leg is present, so its CPU threshold is not applicable.",
+        "Controlled package snapshots are not timestamped proof of package states throughout every leg. Existing background drift limitation and unquantified residual load remain.",
+        "Whole-device controlled-condition power and frame diagnostics do not establish normal-use player-only power or subjective visual quality."
+      ]
+    },
+    "n25vp9eva": {
+      "verifiedUtc": "2026-10-25T02:09:06.804577+00:00",
+      "auditSha256": "145ea1378f22e31bb1d6b7bed6c3333e76cfff10e3b93bb481b43cb826467273",
+      "archiveSha256": "514d56a9ff265e3af8a0a62a56c3364796f14d03167d81fd654156de09046835",
+      "independentArchiveEvidenceVerified": true,
+      "qualifiedLegs": 4,
+      "completeBlock": true,
+      "codecEndCoverageComplete": true,
+      "codecEndCounts": {
+        "n25vp9eva-b1-1-exo-gpu-next": 1,
+        "n25vp9eva-b1-2-vlc-gpu-next": 1,
+        "n25vp9eva-b1-3-vlc-gpu-next": 1,
+        "n25vp9eva-b1-4-exo-gpu-next": 1
+      },
+      "hardwareComponent": "c2.qti.vp9.decoder",
+      "formalMeasurements": true,
+      "aggregationEligible": false,
+      "aggregationIssues": [
+        "crosses_1C_start_temperature_strata",
+        "crosses_10pct_start_battery_strata"
+      ],
+      "startTemperatureBandsC": [
+        34,
+        35
+      ],
+      "startBatteryBandsPercent": [
+        40,
+        50
+      ],
+      "cpuWithinLeg": [],
+      "cpuPolicyApplicable": false,
+      "qualityIssues": [],
+      "diagnosticVideoDroppedFrames": 0,
+      "archivedCooldownSeconds": [
+        188,
+        63,
+        63,
+        64
+      ],
+      "archivedStageElapsedSeconds": 1748,
+      "preplayEntryTemperaturesC": [
+        34.6,
+        34.7,
+        34.7,
+        34.9
+      ],
+      "measurementStartTemperaturesC": [
+        34.6,
+        34.7,
+        34.7,
+        35.0
+      ],
+      "measurementStartBatteryPercents": [
+        50,
+        49,
+        48,
+        48
+      ],
+      "notes": [
+        "Complete ABBA block is retained separately because it crosses both 1 C and 10-percent start strata.",
+        "Each codec-end stream has a unique matching end marker, matching app PID, and QTI VP9 rendered-frame statistics with Drop 0.",
+        "All four playback entries satisfy the 35 C gate; first measured temperatures follow 90-second warmup.",
+        "Only Exo/VLC legs are present; the mpv CPU threshold does not apply.",
+        "A complete block does not establish subjective visual quality or a stable power ranking.",
+        "The whole-device awake/background-control effects and residual activity remain unquantified. No extra ADB queries were issued."
+      ]
+    },
+    "n25vp9evb": {
+      "verifiedUtc": "2026-10-25T02:36:47.867874+00:00",
+      "auditSha256": "5a969c884e040818218ce8ca9714290120592ae43315462da7e894f848e162cd",
+      "archiveSha256": "812dc249c3bc3f2624dcb7a2e40b9051516450d4f943b73e8796069ab0ce072d",
+      "independentArchiveEvidenceVerified": true,
+      "qualifiedLegs": 4,
+      "completeBlock": true,
+      "codecEndCoverageComplete": true,
+      "codecEndCounts": {
+        "n25vp9evb-b1-1-vlc-gpu-next": 1,
+        "n25vp9evb-b1-2-exo-gpu-next": 1,
+        "n25vp9evb-b1-3-exo-gpu-next": 1,
+        "n25vp9evb-b1-4-vlc-gpu-next": 1
+      },
+      "hardwareComponent": "c2.qti.vp9.decoder",
+      "formalMeasurements": true,
+      "aggregationEligible": true,
+      "aggregationIssues": [],
+      "startTemperatureBandsC": [
+        35
+      ],
+      "startBatteryBandsPercent": [
+        40
+      ],
+      "cpuWithinLeg": [],
+      "cpuPolicyApplicable": false,
+      "qualityIssues": [],
+      "diagnosticVideoDroppedFrames": 0,
+      "archivedCooldownSeconds": [
+        189,
+        174,
+        64,
+        441
+      ],
+      "archivedStageElapsedSeconds": 2236,
+      "preplayEntryTemperaturesC": [
+        34.9,
+        34.9,
+        35.0,
+        34.9
+      ],
+      "measurementStartTemperaturesC": [
+        35.0,
+        35.0,
+        35.3,
+        35.0
+      ],
+      "measurementStartBatteryPercents": [
+        47,
+        46,
+        45,
+        44
+      ],
+      "notes": [
+        "Complete BAAB block is retained in 35 C / 40-percent start strata. The complementary ABBA block crosses strata and remains separate.",
+        "All four codec-end streams contain unique matching markers, matching app PID, and QTI VP9 rendered-frame statistics with zero video drops.",
+        "Third leg entered at 35.0 C and measured first at 35.3 C after 90-second warmup; entry and sampling thresholds are distinct.",
+        "Only Exo/VLC legs are present, so the mpv CPU threshold does not apply.",
+        "One eligible block does not establish a stable ranking or pooled confidence interval.",
+        "Power is controlled-condition whole-device power. Awake/background effects remain unquantified; diagnostics do not establish subjective visual quality.",
+        "Archive-only review and local report generation; no additional ADB queries were issued."
+      ]
+    },
+    "n25hevceva": {
+      "verifiedUtc": "2026-10-25T03:17:54.817259+00:00",
+      "auditSha256": "fadbae6e364ad3df603246c43fef994fdbd79d9cc1b906ac53ea4963a24515c3",
+      "archiveSha256": "90dd981a7423461dce3be5079ca4bf75836c5ba5a8da4fb2a95d2bad82463dc6",
+      "independentArchiveEvidenceVerified": true,
+      "qualifiedLegs": 4,
+      "completeBlock": true,
+      "codecEndCoverageComplete": true,
+      "codecEndCounts": {
+        "n25hevceva-b1-1-exo-gpu-next": 1,
+        "n25hevceva-b1-2-vlc-gpu-next": 1,
+        "n25hevceva-b1-3-vlc-gpu-next": 1,
+        "n25hevceva-b1-4-exo-gpu-next": 1
+      },
+      "hardwareComponent": "c2.qti.hevc.decoder",
+      "formalMeasurements": true,
+      "aggregationEligible": false,
+      "aggregationIssues": [
+        "crosses_1C_start_temperature_strata"
+      ],
+      "startTemperatureBandsC": [
+        34,
+        35
+      ],
+      "startBatteryBandsPercent": [
+        40
+      ],
+      "cpuWithinLeg": [],
+      "cpuPolicyApplicable": false,
+      "qualityIssues": [],
+      "diagnosticVideoDroppedFrames": 0,
+      "archivedCooldownSeconds": [
+        189,
+        425,
+        79,
+        64
+      ],
+      "archivedStageElapsedSeconds": 2126,
+      "preplayEntryTemperaturesC": [
+        35.0,
+        34.9,
+        34.9,
+        34.9
+      ],
+      "measurementStartTemperaturesC": [
+        35.0,
+        35.1,
+        34.9,
+        35.1
+      ],
+      "measurementStartBatteryPercents": [
+        44,
+        42,
+        42,
+        41
+      ],
+      "endingThreeNonrisingComparisonsVerified": true,
+      "notes": [
+        "Complete ABBA block crosses the 1 C start-temperature strata and remains visible separately.",
+        "All four codec-end streams have unique matching markers and QTI HEVC positive Render statistics with Drop 0.",
+        "Cooling requires an ending streak of three nonrising comparisons, not monotonic cooling throughout. Root checked the last four readings of every leg.",
+        "Second leg cooling had earlier small rises; final four readings were 35.0, 34.9, 34.9, 34.9 C at 377, 393, 409, 425 seconds.",
+        "Playback entry temperatures satisfy 35 C; 35.1 C first measured samples after 90-second warmup remain below the 40 C sampling limit. No whole-steady nonrising requirement was introduced.",
+        "Only Exo/VLC legs are present, so the mpv CPU threshold does not apply.",
+        "Whole-device awake/background effects remain unquantified, and diagnostics do not establish subjective visual quality. No additional ADB queries were issued."
+      ]
+    },
+    "n25hevcevb": {
+      "verifiedUtc": "2026-10-25T03:46:47.073723+00:00",
+      "auditSha256": "9328640927a0d570feab36d0afe670a3712a7d56f6316ac8b8d93a8da243c68b",
+      "archiveSha256": "94e768da61de22db941a7e309ea3ffae2ebacbc22f722f00a891e0a223384c1f",
+      "independentArchiveEvidenceVerified": true,
+      "qualifiedLegs": 4,
+      "completeBlock": true,
+      "codecEndCoverageComplete": true,
+      "codecEndCounts": {
+        "n25hevcevb-b1-1-vlc-gpu-next": 1,
+        "n25hevcevb-b1-2-exo-gpu-next": 1,
+        "n25hevcevb-b1-3-exo-gpu-next": 1,
+        "n25hevcevb-b1-4-vlc-gpu-next": 1
+      },
+      "hardwareComponent": "c2.qti.hevc.decoder",
+      "formalMeasurements": true,
+      "aggregationEligible": false,
+      "aggregationIssues": [
+        "crosses_1C_start_temperature_strata",
+        "crosses_10pct_start_battery_strata"
+      ],
+      "startTemperatureBandsC": [
+        34,
+        35
+      ],
+      "startBatteryBandsPercent": [
+        30,
+        40
+      ],
+      "cpuWithinLeg": [],
+      "cpuPolicyApplicable": false,
+      "qualityIssues": [],
+      "diagnosticVideoDroppedFrames": 0,
+      "archivedCooldownSeconds": [
+        361,
+        63,
+        63,
+        283
+      ],
+      "archivedStageElapsedSeconds": 2140,
+      "preplayEntryTemperaturesC": [
+        35.0,
+        34.9,
+        34.9,
+        34.9
+      ],
+      "measurementStartTemperaturesC": [
+        35.0,
+        34.9,
+        35.0,
+        35.1
+      ],
+      "measurementStartBatteryPercents": [
+        40,
+        39,
+        39,
+        38
+      ],
+      "endingThreeNonrisingComparisonsVerified": true,
+      "notes": [
+        "Complete BAAB block crosses both 1 C and 10-percent start strata and remains visible separately.",
+        "All four codec-end streams have unique matching end markers and app PID, QTI HEVC positive Render statistics, and Drop 0.",
+        "All playback entries satisfy the 35 C gate; the final leg measures 35.1 C after 90 seconds warmup, below the 40 C sampling limit.",
+        "Only Exo/VLC legs are present; the mpv CPU threshold does not apply.",
+        "The checksum file stores a raw 64-character digest rather than sha256sum -c file syntax; actual archive digest matches it and audit.json.",
+        "Whole-device awake/background effects remain unquantified. Diagnostics do not establish subjective visual quality; no stable power ranking is asserted.",
+        "Archive-only review and pure local reporting; no additional ADB queries were issued."
+      ]
+    },
+    "n25hevc10mea": {
+      "verifiedUtc": "2026-10-25T04:48:09.540331+00:00",
+      "auditSha256": "cc8b41d3b475b8e6eccd8f7381ad2bd0297dd37e3ff09016b332f9e89904000a",
+      "archiveSha256": "1c7cfe9d93323064dcda6f881eb3a80b23abcf74f2974eb9fa0897d46a0dbda3",
+      "independentArchiveEvidenceVerified": true,
+      "qualifiedLegs": 4,
+      "completeBlock": true,
+      "codecEndCoverageComplete": true,
+      "codecEndCounts": {
+        "n25hevc10mea-b1-1-libmpv-gpu-next": 1,
+        "n25hevc10mea-b1-2-exo-gpu-next": 1,
+        "n25hevc10mea-b1-3-exo-gpu-next": 1,
+        "n25hevc10mea-b1-4-libmpv-gpu-next": 1
+      },
+      "hardwareComponent": "c2.qti.hevc.decoder",
+      "formalMeasurements": true,
+      "aggregationEligible": true,
+      "aggregationIssues": [],
+      "startTemperatureBandsC": [
+        35
+      ],
+      "startBatteryBandsPercent": [
+        30
+      ],
+      "cpuWithinLeg": [
+        {
+          "label": "n25hevc10mea-b1-1-libmpv-gpu-next",
+          "sampleCount": 241,
+          "processCpuDeltaMs": 139047,
+          "steadyElapsedMs": 240001,
+          "fraction": 0.5793600859996416,
+          "flagAbovePointEight": false
+        },
+        {
+          "label": "n25hevc10mea-b1-4-libmpv-gpu-next",
+          "sampleCount": 241,
+          "processCpuDeltaMs": 138870,
+          "steadyElapsedMs": 240001,
+          "fraction": 0.5786225890725455,
+          "flagAbovePointEight": false
+        }
+      ],
+      "cpuPolicyApplicable": true,
+      "qualityIssues": [],
+      "diagnosticVideoDroppedFrames": 0,
+      "archivedCooldownSeconds": [
+        377,
+        910,
+        675,
+        173
+      ],
+      "archivedStageElapsedSeconds": 3506,
+      "preplayEntryTemperaturesC": [
+        35.0,
+        34.9,
+        34.9,
+        34.9
+      ],
+      "measurementStartTemperaturesC": [
+        35.0,
+        35.1,
+        35.0,
+        35.0
+      ],
+      "measurementStartBatteryPercents": [
+        37,
+        35,
+        34,
+        33
+      ],
+      "endingThreeNonrisingComparisonsVerified": true,
+      "notes": [
+        "Complete ABBA block is in the 35 C / 30-percent start strata; it supplies one block, without stable-ranking or pooled-confidence claims.",
+        "All four codec-end streams have unique matching markers/app PID and QTI HEVC positive Render statistics with Drop 0.",
+        "mpv diagnostic decoder name is generic mediacodec; its exact QTI component is verified in the current-PID codec-end stream.",
+        "mpv CPU fractions use first/last samples within each leg. Neither exceeds 0.8; both legs remain retained.",
+        "All playback entries satisfy 35 C; later 35.1 C first samples follow 90-second warmup and are below the 40 C sampling limit.",
+        "Whole-device awake/background effects remain unquantified. Frame diagnostics do not establish subjective visual quality. No additional ADB queries were issued."
+      ]
+    },
+    "n25hevc10meb": {
+      "verifiedUtc": "2026-10-25T05:28:27.929321+00:00",
+      "auditSha256": "d8de07cb150673ff7235cc75d43631725633d300ce52e78867e8403f64d86574",
+      "archiveSha256": "7d8dd6ba88c42b6460655ed763930681fe962959951a023a323ac5c4c7fa66a9",
+      "independentArchiveEvidenceVerified": true,
+      "qualifiedLegs": 4,
+      "completeBlock": true,
+      "codecEndCoverageComplete": true,
+      "codecEndCounts": {
+        "n25hevc10meb-b1-1-exo-gpu-next": 1,
+        "n25hevc10meb-b1-2-libmpv-gpu-next": 1,
+        "n25hevc10meb-b1-3-libmpv-gpu-next": 1,
+        "n25hevc10meb-b1-4-exo-gpu-next": 1
+      },
+      "hardwareComponent": "c2.qti.hevc.decoder",
+      "formalMeasurements": true,
+      "aggregationEligible": false,
+      "aggregationIssues": [
+        "crosses_1C_start_temperature_strata"
+      ],
+      "startTemperatureBandsC": [
+        34,
+        35
+      ],
+      "startBatteryBandsPercent": [
+        30
+      ],
+      "cpuWithinLeg": [
+        {
+          "label": "n25hevc10meb-b1-2-libmpv-gpu-next",
+          "sampleCount": 241,
+          "processCpuDeltaMs": 138763,
+          "steadyElapsedMs": 240002,
+          "fraction": 0.5781743485470955,
+          "flagAbovePointEight": false
+        },
+        {
+          "label": "n25hevc10meb-b1-3-libmpv-gpu-next",
+          "sampleCount": 241,
+          "processCpuDeltaMs": 141185,
+          "steadyElapsedMs": 240002,
+          "fraction": 0.5882659311172407,
+          "flagAbovePointEight": false
+        }
+      ],
+      "cpuPolicyApplicable": true,
+      "qualityIssues": [],
+      "diagnosticVideoDroppedFrames": 0,
+      "archivedCooldownSeconds": [
+        409,
+        64,
+        63,
+        126
+      ],
+      "archivedStageElapsedSeconds": 2031,
+      "preplayEntryTemperaturesC": [
+        34.9,
+        35.0,
+        35.0,
+        34.9
+      ],
+      "measurementStartTemperaturesC": [
+        34.9,
+        35.0,
+        35.5,
+        35.1
+      ],
+      "measurementStartBatteryPercents": [
+        32,
+        31,
+        30,
+        30
+      ],
+      "endingThreeNonrisingComparisonsVerified": true,
+      "notes": [
+        "Complete BAAB block crosses the 1 C start-temperature strata and remains separate.",
+        "Each codec-end stream matches the app PID and unique end marker with QTI HEVC positive Render and Drop 0.",
+        "Root CPU verification uses steady samples only. The scout full JSONL warmup-plus-steady ratios were not accepted as the steady CPU policy values.",
+        "Both mpv steady CPU fractions are below 0.8; neither leg is excluded.",
+        "Entry <=35 C and post-warmup sampling <=40 C are distinct gates; no whole-period monotonic-temperature rule was introduced.",
+        "This was the human-selected final block. No subsequent pending stage was launched."
+      ]
+    }
+  },
+  "lastNotifiedStage": "n25hevc10meb",
+  "updatedUtc": "2026-10-25T05:28:27.929321+00:00",
+  "completedComplementaryGroups": 6,
+  "lastNotifiedRepair": "repair-r2",
+  "acquisitionCoverage": {
+    "currentSessionCompleteBlocks": 12,
+    "currentSessionTargetBlocks": 18,
+    "currentSessionCompletePairs": 6,
+    "currentSessionTargetPairs": 9,
+    "priorSessionCompleteBlocks": 6,
+    "overallCompleteBlocks": 18,
+    "overallTargetBlocks": 24,
+    "overallCompletePairs": 9,
+    "overallTargetPairs": 12,
+    "note": "Coverage only. Power data from different sessions or strata are not pooled."
+  },
+  "selectedCheckpointCompleted": true
+}

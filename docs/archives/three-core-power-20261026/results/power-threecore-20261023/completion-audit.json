@@ -1,0 +1,103 @@
+{
+  "auditedUtc": "2026-10-22T22:46:44.034417+00:00",
+  "phase": "completed",
+  "actualRecoveryVerified": true,
+  "postCompletionDeviceAudit": "post-completion-verification-r3/verification.json",
+  "guardProcessesExited": true,
+  "formalStopExit": {
+    "finishedUtc": "2026-10-22T22:34:00Z",
+    "action": "formal_stop_requested",
+    "ok": true
+  },
+  "recoveryExit": {
+    "finishedUtc": "2026-10-22T22:34:44Z",
+    "action": "deadline_recovery",
+    "trigger": "host_requested",
+    "cleanupSucceeded": true,
+    "keptAwake": true,
+    "awakeGuardStopped": true,
+    "originalTimeoutRestored": true
+  },
+  "qualifiedFormalLegs": 27,
+  "qualifiedLegsInCompleteBlocks": 24,
+  "completeBlocks": 6,
+  "sameStratumBlocks": 4,
+  "incompleteQualifiedLegsExcluded": 3,
+  "preflightLegs": 12,
+  "incompleteBlock": {
+    "fixture": "hevc10-1080p24.mkv",
+    "fixtureSha256": "c338ae9ad3ee0c89a8dc893df6d4c06be9e43d35d873a987f2cfaaaa7c22ba22",
+    "mode": "automatic",
+    "surfaceProtocol": "current-app",
+    "measurementCohort": "threecore-20261023-46a0c824d23c-17192b56c846",
+    "comparisonBlock": "n23hevc10evextra:hevc10:b1",
+    "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+    "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+    "complete": false,
+    "plannedConditions": [
+      "exo",
+      "vlc",
+      "vlc",
+      "exo"
+    ],
+    "conditions": [
+      "exo",
+      "vlc"
+    ],
+    "runLabels": [
+      "n23hevc10evextra-b1-1-exo-gpu-next",
+      "n23hevc10evextra-b1-2-vlc-gpu-next",
+      "n23hevc10evextra-b1-3-vlc-gpu-next"
+    ],
+    "aggregationEligible": false,
+    "aggregationIssues": [
+      "incomplete_or_unqualified_block"
+    ]
+  },
+  "notRunStages": [
+    {
+      "name": "n23avcevextra",
+      "recordedState": "pending",
+      "reason": "not_started_before_night_deadline"
+    },
+    {
+      "name": "n23hevc10mvextra",
+      "recordedState": "pending",
+      "reason": "not_started_before_night_deadline"
+    }
+  ],
+  "independentReviewers": [
+    "/root/hevc10_extra_cutoff_audit_20261023",
+    "/root/final_report_consistency_20261023",
+    "/root/restoration_host_evidence_20261023"
+  ],
+  "guardLogGapResolvedByReadOnlyCapture": [
+    "post-completion-verification-r3/recovery-exit.stdout.txt",
+    "post-completion-verification-r3/formal-exit.stdout.txt",
+    "post-completion-verification-r3/formal-config.stdout.txt",
+    "post-completion-verification-r3/recovery-background-enabled.log.stdout.txt",
+    "post-completion-verification-r3/recovery-background-restored.log.stdout.txt",
+    "post-completion-verification-r3/recovery-background-unstopped.log.stdout.txt"
+  ],
+  "automaticReportPreserved": "completion-audit/automatic-finalizer-report",
+  "automationStatus": "deleted_after_completion",
+  "limitations": [
+    "No cross-night pooling.",
+    "Original user-data tar only retained, not restored or verified item by item.",
+    "Descriptive means are unadjusted; paired inference only from same-stratum complete blocks.",
+    "Power and frame hashes do not establish subjective quality."
+  ],
+  "browserQa": "completion-audit/browser-qa.json",
+  "actualRecoveryJournalMatches": {
+    "suspend": 9,
+    "unstop": 9,
+    "enabled": 4
+  },
+  "controllerStderrReview": "An exit.json read before the recovery guard finished returned missing; the later original recovery exit was captured directly and all actual state checks passed. No repeated restoration was performed.",
+  "automationCompletionReceipt": "automation-completion.json",
+  "completionFinalizedUtc": "2026-10-22T22:49:38.797049+00:00",
+  "completionFinalizedLocal": "2026-10-23T06:49:38.797049+08:00",
+  "completedBeforeUserDeadline": true,
+  "originalWindowsControllerProcessExited": true,
+  "temporaryReportBrowserAndServerClosed": true
+}

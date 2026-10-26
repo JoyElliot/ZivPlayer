@@ -1,0 +1,69 @@
+{
+  "assessedUtc": "2026-10-17T22:17:59.453677+00:00",
+  "stage": "hevc10r2",
+  "qualifiedFormalRuns": 8,
+  "completeBalancedBlocks": 2,
+  "sameStratumComparison": {
+    "blockCount": 1,
+    "conditionMeanPowerMw": {
+      "libmpv@gpu": 1337.0970631823616,
+      "libmpv@gpu-next": 1304.0946477637644
+    },
+    "gpuNextReductionMw": 33.00241541859714,
+    "gpuNextReductionPercent": 2.4682138886798275,
+    "blockDifferencesMw": [
+      33.00241541859714
+    ]
+  },
+  "nonAggregatedBlocks": [
+    {
+      "comparisonBlock": "hevc10r2:hevc10:b2",
+      "gpuNextReductionMw": 63.34447112040084,
+      "gpuNextReductionPercent": 4.644466027543833,
+      "aggregationIssues": [
+        "crosses_10pct_start_battery_strata"
+      ]
+    }
+  ],
+  "quality": "All eight legs confirm hardware mediacodec with aimagereader, actualSoftwareDecoder=false, matching requested renderer at both endpoints, zero dropped and decoderDropped counters, no quality issues, screenInteractive=true and thermalStatus=0. Archived component evidence is c2.qti.hevc.decoder in all eight legs.",
+  "temperatureRangeC": [
+    34.0,
+    34.8
+  ],
+  "playbackAdvanceRangeMs": [
+    239988,
+    240031
+  ],
+  "cpuAnomaly": {
+    "runLabel": "hevc10r2-b2-4-libmpv-gpu",
+    "processCpuMs": 231022,
+    "playbackAdvanceMs": 240015,
+    "description": "Sustained elevated CPU time in this gpu leg, with no accompanying dropped-frame, playback or thermal alarm. Mean power stays within other gpu legs range. Original samples and protocol qualification retained.",
+    "followup": "cpu-anomaly-telemetry.json",
+    "logComparison": "Steady qdgralloc getInterlacedFlag -22 warnings: 5769 in b2-4 versus 5768 in normal b1-2, both about 24.02/s. This shared warning path does not establish a cause for extra CPU time.",
+    "cause": "Not identified from available evidence.",
+    "archiveLogReview": {
+      "archive": "finished-device.tar",
+      "steadyWindowEvidence": "raw/hevc10r2-b2-4-libmpv-gpu-codec-end.txt:3636,9556",
+      "steadyErrorsAndFatals": 0,
+      "decoderReconfigurationDuringSteady": false,
+      "stickyGcInfoLines": [
+        3642,
+        4304,
+        5178,
+        6037,
+        6888,
+        7726,
+        8559,
+        9376
+      ],
+      "pipelineWatcherIgnoredFrameLine": 7173,
+      "preSteadyOnly": "Skipped 49 frames at line 590; FileProvider SecurityException lines 1199-1401. Not steady-window failures.",
+      "control": "Fresh app PID 27045; networkStartBytes=networkEndBytes=0; instrumentation OK (1 test).",
+      "limitation": "No per-thread CPU stack/profile available. These logs do not identify a cause; no claim that GC or the shared driver warning causes the CPU difference."
+    }
+  },
+  "decision": "Continue frozen VP9 and engine reference phases. No evidence requiring gpu-next rollback.",
+  "limitations": "Only one same-stratum HEVC10 block; the second crosses start-battery strata and remains separate. Whole-device battery telemetry from the same new APK, not a dependency-upgrade benefit estimate. No visual-quality validation from power or frame hashes.",
+  "verification": "Independent structured-field review; primary diagnostic endpoint spot-check and extraction of all eight archived hardware component identities; focused archived log comparison of anomalous and normal gpu legs."
+}

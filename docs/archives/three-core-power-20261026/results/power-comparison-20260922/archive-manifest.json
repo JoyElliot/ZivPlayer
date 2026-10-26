@@ -1,0 +1,57 @@
+{
+  "utc": "2026-09-21T23:18:03.211611+00:00",
+  "remoteDirectory": "/data/local/tmp/ziv-power-20260922",
+  "planSha256": "50956dd3fdc51c345c9ff5d92d9fb98229619c6d8312a5af9356acf8d9355cc3",
+  "archives": {
+    "all-app-power-results.tar": {
+      "sha256": "e611fe211a265030b7b1e2e382ba84ea50fa93d9c41e647f70f3be97d22d0216",
+      "bytes": 22715392
+    },
+    "all-device-directories.tar": {
+      "sha256": "a93a5ae960f2b6aa98f00117b734bfc05fb803e6412a6865d1523f6cfd6c9680",
+      "bytes": 239528960
+    }
+  },
+  "localFixtures": {
+    "avc-1080p24.mkv": {
+      "path": "F:\\Git\\ZivPlayer\\native\\out\\power-fixtures\\avc-1080p24.mkv",
+      "sha256": "a6d9a6848aa52e6749a106a0987a13cd8db186008171b45aaca55da94649bb33",
+      "bytes": 276433859
+    },
+    "hevc-1080p24.mkv": {
+      "path": "F:\\Git\\ZivPlayer\\native\\out\\power-fixtures\\hevc-1080p24.mkv",
+      "sha256": "49fee53a0264f2373cb95a88c506796f68c2229aa985e1d9348d341c53169d14",
+      "bytes": 279514400
+    },
+    "hevc10-1080p24.mkv": {
+      "path": "F:\\Git\\ZivPlayer\\native\\out\\power-fixtures\\hevc10-1080p24.mkv",
+      "sha256": "c338ae9ad3ee0c89a8dc893df6d4c06be9e43d35d873a987f2cfaaaa7c22ba22",
+      "bytes": 279258937
+    },
+    "vp9-1080p24.mkv": {
+      "path": "F:\\Git\\ZivPlayer\\native\\out\\power-fixtures\\vp9-1080p24.mkv",
+      "sha256": "68efdd1d14246fec7c8fbebce844418a690567076bfd69fed44003d4ec7cd878",
+      "bytes": 192938968
+    },
+    "av1-1080p24.mkv": {
+      "path": "F:\\Git\\ZivPlayer\\native\\out\\power-fixtures\\av1-1080p24.mkv",
+      "sha256": "ab071388fdf9c3b074b4fd7540d28fdf10ecae65afe635a326e5b1dca62e301d",
+      "bytes": 280854099
+    }
+  },
+  "exit": {
+    "finishedUtc": "2026-09-21T22:48:17Z",
+    "stopReason": "manifest_completed",
+    "runnerExitCode": 0,
+    "cleanupSucceeded": true,
+    "screenTimeout": "600000",
+    "bluetooth": "2",
+    "sleepRequested": true,
+    "sleepVerified": true,
+    "batteryPercent": 64
+  },
+  "guard": {
+    "finishedUtc": "2026-09-21T23:09:53Z",
+    "action": "final_runner_already_restored"
+  }
+}

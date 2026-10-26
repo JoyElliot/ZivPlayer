@@ -1,0 +1,293 @@
+{
+  "generatedUtc": "2026-10-19T00:03:54.995503+00:00",
+  "sessionDate": "2026-10-19",
+  "phase": "completed",
+  "qualifiedFormalRuns": 44,
+  "passedPreflightLegs": 9,
+  "completeBalancedBlocks": 11,
+  "sameStratumBlocks": 6,
+  "crossStratumStandaloneBlocks": 5,
+  "actualHardwareComponentsVerified": 53,
+  "formalTemperatureRangeC": [
+    34.4,
+    35.2
+  ],
+  "samplingEndedUtc": "2026-10-18T22:31:19Z",
+  "automaticRecoveryFinishedUtc": "2026-10-18T22:31:46Z",
+  "finalReportLate": true,
+  "recoveryVerified": true,
+  "userBrightnessPreserved": true,
+  "awakeGuardStoppedAfterUserReturn": true,
+  "screenTimeoutMs": "***",
+  "userDataVerifiedItemByItem": false,
+  "skippedStages": [
+    "avcmv",
+    "hevcmerepeat",
+    "hevcmvrepeat",
+    "hevcevrepeat",
+    "hevc10merepeat",
+    "hevc10mvrepeat",
+    "hevc10evrepeat",
+    "vp9merepeat",
+    "vp9mvrepeat",
+    "vp9evrepeat"
+  ],
+  "comparisons": [
+    {
+      "stage": "hevcme",
+      "codec": "hevc",
+      "conditionMeanPowerMw": {
+        "exo": 1205.3853030908094,
+        "libmpv@gpu-next": 1264.6367861279741
+      },
+      "lowerPowerCondition": "exo",
+      "differenceMw": 59.25148303716469,
+      "relativeDifferencePercent": 4.6852569597140254,
+      "aggregationEligible": false,
+      "aggregationIssues": [
+        "crosses_1C_start_temperature_strata"
+      ],
+      "completeBlockCount": 1
+    },
+    {
+      "stage": "hevcmv",
+      "codec": "hevc",
+      "conditionMeanPowerMw": {
+        "libmpv@gpu-next": 1246.1011589723807,
+        "vlc": 1196.947998325758
+      },
+      "lowerPowerCondition": "vlc",
+      "differenceMw": 49.15316064662284,
+      "relativeDifferencePercent": 3.944556209799039,
+      "aggregationEligible": false,
+      "aggregationIssues": [
+        "crosses_10pct_start_battery_strata"
+      ],
+      "completeBlockCount": 1
+    },
+    {
+      "stage": "hevcev",
+      "codec": "hevc",
+      "conditionMeanPowerMw": {
+        "exo": 1185.4795026915667,
+        "vlc": 1193.9402387628015
+      },
+      "lowerPowerCondition": "exo",
+      "differenceMw": 8.460736071234805,
+      "relativeDifferencePercent": 0.7086398294107321,
+      "aggregationEligible": true,
+      "aggregationIssues": [],
+      "completeBlockCount": 1
+    },
+    {
+      "stage": "hevc10mv",
+      "codec": "hevc10",
+      "conditionMeanPowerMw": {
+        "libmpv@gpu-next": 1269.193069640029,
+        "vlc": 1197.2994619860197
+      },
+      "lowerPowerCondition": "vlc",
+      "differenceMw": 71.89360765400943,
+      "relativeDifferencePercent": 5.664513096845071,
+      "aggregationEligible": true,
+      "aggregationIssues": [],
+      "completeBlockCount": 1
+    },
+    {
+      "stage": "hevc10me",
+      "codec": "hevc10",
+      "conditionMeanPowerMw": {
+        "exo": 1196.1866894046457,
+        "libmpv@gpu-next": 1261.36245666503
+      },
+      "lowerPowerCondition": "exo",
+      "differenceMw": 65.17576726038442,
+      "relativeDifferencePercent": 5.167092687434618,
+      "aggregationEligible": false,
+      "aggregationIssues": [
+        "crosses_1C_start_temperature_strata"
+      ],
+      "completeBlockCount": 1
+    },
+    {
+      "stage": "hevc10ev",
+      "codec": "hevc10",
+      "conditionMeanPowerMw": {
+        "exo": 1178.1526956285218,
+        "vlc": 1203.2272013679108
+      },
+      "lowerPowerCondition": "exo",
+      "differenceMw": 25.074505739388997,
+      "relativeDifferencePercent": 2.083937739346533,
+      "aggregationEligible": false,
+      "aggregationIssues": [
+        "crosses_10pct_start_battery_strata"
+      ],
+      "completeBlockCount": 1
+    },
+    {
+      "stage": "vp9ev",
+      "codec": "vp9",
+      "conditionMeanPowerMw": {
+        "exo": 1157.3636377679563,
+        "vlc": 1162.2043747632038
+      },
+      "lowerPowerCondition": "exo",
+      "differenceMw": 4.8407369952474255,
+      "relativeDifferencePercent": 0.41651340335332276,
+      "aggregationEligible": true,
+      "aggregationIssues": [],
+      "completeBlockCount": 1
+    },
+    {
+      "stage": "vp9me",
+      "codec": "vp9",
+      "conditionMeanPowerMw": {
+        "exo": 1159.333917844722,
+        "libmpv@gpu-next": 1252.4127309825303
+      },
+      "lowerPowerCondition": "exo",
+      "differenceMw": 93.07881313780831,
+      "relativeDifferencePercent": 7.431959994912145,
+      "aggregationEligible": false,
+      "aggregationIssues": [
+        "crosses_1C_start_temperature_strata"
+      ],
+      "completeBlockCount": 1
+    },
+    {
+      "stage": "vp9mv",
+      "codec": "vp9",
+      "conditionMeanPowerMw": {
+        "libmpv@gpu-next": 1240.92798550068,
+        "vlc": 1174.578950519464
+      },
+      "lowerPowerCondition": "vlc",
+      "differenceMw": 66.34903498121616,
+      "relativeDifferencePercent": 5.3467272683391185,
+      "aggregationEligible": true,
+      "aggregationIssues": [],
+      "completeBlockCount": 1
+    },
+    {
+      "stage": "avcev",
+      "codec": "avc",
+      "conditionMeanPowerMw": {
+        "exo": 1173.4491196908634,
+        "vlc": 1177.6398168257633
+      },
+      "lowerPowerCondition": "exo",
+      "differenceMw": 4.190697134899892,
+      "relativeDifferencePercent": 0.3558555914146645,
+      "aggregationEligible": true,
+      "aggregationIssues": [],
+      "completeBlockCount": 1
+    },
+    {
+      "stage": "avcme",
+      "codec": "avc",
+      "conditionMeanPowerMw": {
+        "exo": 1159.271833023267,
+        "libmpv@gpu-next": 1232.8089648784512
+      },
+      "lowerPowerCondition": "exo",
+      "differenceMw": 73.53713185518427,
+      "relativeDifferencePercent": 5.965006254025307,
+      "aggregationEligible": true,
+      "aggregationIssues": [],
+      "completeBlockCount": 1
+    }
+  ],
+  "unresolvedObservations": [
+    "vp9mv final mpv leg CPU224041ms vs138775ms in first leg; mean power differs7.9mW, no reported drops. Cause unknown; evidence retained, no post-hoc exclusion."
+  ],
+  "statisticsBoundary": "Each pair has one full four-leg block. No confidence interval, pooled three-engine average, cross-night pooling, dependency-upgrade attribution or subjective visual-quality conclusion.",
+  "automationStatus": "PAUSED",
+  "evidenceManifest": [
+    {
+      "stage": "hevccheck",
+      "planSha256": "663084e126311b9262161f0c4e840e1e3996d168268c7e1d1023aec6735b671d",
+      "archiveSha256": "8b8a2f20200ddcb7bfa1ea2a5a7ec9aa2f751ab1fad427e13fd0e5a6d2591f69",
+      "auditSha256": "a2f90bc1f5ceb255406ca4326ef416c946851a8f7a2132397278cf6be1c9d3f9"
+    },
+    {
+      "stage": "hevcme",
+      "planSha256": "69628839e98820bd7c07e4e78c53376872c0e3a3f80f2317d6a83ddc84c2dabb",
+      "archiveSha256": "f6df0b92dc3f210e61da650a68f7b28eece78c3f64ddac4f2baa6cc91363665a",
+      "auditSha256": "471dbbedc0d94dd1baf5fcf30272c23dc8bea819640d72a2d04874576031a472"
+    },
+    {
+      "stage": "hevcmv",
+      "planSha256": "d388f925d4c88c26587d912c4b940260dd5bee571588d4ca000514f43bd8b0d3",
+      "archiveSha256": "1ccfb6195d41a5f3ebdab60b52294998739f33cc2a2e7c3f5f762e3132ec99ed",
+      "auditSha256": "86d34750525517c2eac1e0a6b4c04f819eb1f5b7e333de767ddf4eafac6522d7"
+    },
+    {
+      "stage": "hevcev",
+      "planSha256": "96518b26cd47ea55fa52b527c3d21c74a30c36b11c31c92d0758116f1a20e0a2",
+      "archiveSha256": "8b2e7ec1c0978069d0fd31bf04f87aed3bfbd356caae8a53e1948ef9d9b9ec5c",
+      "auditSha256": "a7b40885a33c7ee1d252c9db963cd0b5ae65a8b227b101ad7850d06a1878c5a0"
+    },
+    {
+      "stage": "hevc10check",
+      "planSha256": "2bf8e33f29885461ff6bdd090f3eaaabadc714ae3c4f1b3b13bdb831862e53ce",
+      "archiveSha256": "77b6669ed58333459cdcb9351380e09ea0838d338e8b0efe93d73f7780a145e1",
+      "auditSha256": "cca4bbc2059d4683a5eb0588be0f316daebae690f3c6cf2f619353fdb51b8e5a"
+    },
+    {
+      "stage": "hevc10mv",
+      "planSha256": "0eb2c2ef6e29e59afb9a0305341f42810993da307d8fab9b336cecd042285f42",
+      "archiveSha256": "657de84fb37008386c159093d971b38a81385f463c1e7d6c239d372b4edc23e8",
+      "auditSha256": "0d44e96de9528ed8495895cdaf58055672b6bba7c3130b1cf8deb12ff2eacfb7"
+    },
+    {
+      "stage": "hevc10me",
+      "planSha256": "5591bcd82d2b17ad4f992ab83d6459aed9f28dad090ba30b31e7c7c80884b54d",
+      "archiveSha256": "2f43bbb7c7ca41df6adb4dee9a31155bd908dae64bb076b3c097ac372ae6e0fc",
+      "auditSha256": "a898c92f456b9ed99176191a2c19aee208141963d2f267856ffcfdca58f785dc"
+    },
+    {
+      "stage": "hevc10ev",
+      "planSha256": "453f9be5b45de5676fac14180976648aa1c437a067cb49209e9615a32229e976",
+      "archiveSha256": "8b076a8b1cc88c1f7988f781ec17e3e31f2afb277358e8781789f9727fbc1fff",
+      "auditSha256": "680bec5fea8ec61406bf2ae44a864fbea7c5f0813b54ae48290604cd11cb7f12"
+    },
+    {
+      "stage": "vp9check",
+      "planSha256": "b241c16cc3fe122be49529df8d66bf191d756e05378579376083f1cfd052d9e7",
+      "archiveSha256": "d63aac804131288b2b90d7b68b014496bcc7ed4164d77071c5bb5e3d2e6b0258",
+      "auditSha256": "1a2ca00843f7e070c6b1ba2c81733ed017b4ba623fdfc2248c02be9df0d9d6e0"
+    },
+    {
+      "stage": "vp9ev",
+      "planSha256": "e8e17734b5f1da6d4b2d1e531b6a6e58c32f7e716e980274ec0217a463f53d2b",
+      "archiveSha256": "cb57f43dd27f1023ab573ab4afaad6b44a184a0536a5548bd83e8b315afd970b",
+      "auditSha256": "0e755ac9e87194f6f22912dc1cc74fedfb084deeadf5a3fc937139fcc62ea862"
+    },
+    {
+      "stage": "vp9me",
+      "planSha256": "9363b5735c68d2cecd8790086261b8b8c1857623499f4806c1142557630771bc",
+      "archiveSha256": "d1bd1d2485fe9d245a00f447100932599d587f5b43ecf5ad97cfee52a76abbe3",
+      "auditSha256": "587785e58154651d4f0ba7db7ebf83d3572411acd265f6c5a280bf4ac8c5f47b"
+    },
+    {
+      "stage": "vp9mv",
+      "planSha256": "0c8c5a26fa092bdd4c9a7f85efae7e7dd566b586545f5fbf4486c5561544c13f",
+      "archiveSha256": "75ac90a5d54c4ef6dfe19f87d829e61c7e5425fb342787d9e38af23234f72394",
+      "auditSha256": "604aeb731603c9d42c71b46a3eab267a7af39d1f412e6b0adf5fc0d5ae456a8f"
+    },
+    {
+      "stage": "avcev",
+      "planSha256": "c241cbc2250be8cdeeb2efbe6ac67bd27560fa36e1317be6320fc4089ac98b84",
+      "archiveSha256": "7680854713bba90b53ca1b88e03be6f9718984a902a71e200ab591b2415665d0",
+      "auditSha256": "05bec078c99235c453c400bcb5fbeb4588e80d8e356daf2cc191c81b297ca104"
+    },
+    {
+      "stage": "avcme",
+      "planSha256": "ae3d13def84445b328853d008a4a9f9f072d3d8f461eca0e1949eca13a7a5fd2",
+      "archiveSha256": "e7004b4e06c39a1871ff358086c60b0d73e69ceb2b37ace51c66f6161fc21ff8",
+      "auditSha256": "fa8139700d930500e26aa58001502f1dac85c64c9cabf0fe557170a1244afc36"
+    }
+  ],
+  "completedUtc": "2026-10-19T00:04:23.931725+00:00"
+}

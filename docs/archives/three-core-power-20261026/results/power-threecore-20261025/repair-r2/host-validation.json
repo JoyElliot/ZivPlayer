@@ -1,0 +1,9 @@
+{
+  "syntaxPassed": true,
+  "retryWholeBlockProtocolEquivalent": true,
+  "runnerSha256": "11a0e62b1f2fa7ba91d0a22c57b06a0297671b53838678b6ca3b8e318e3473f6",
+  "completeBlocksPreserved": 5,
+  "failedBlockPreserved": "n25avcevb",
+  "retry": "n25avcevbr1",
+  "baselineUnchanged": true
+}

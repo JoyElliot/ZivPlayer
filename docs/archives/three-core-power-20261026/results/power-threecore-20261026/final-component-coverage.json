@@ -1,0 +1,140 @@
+[
+  {
+    "stage": "n26avccheck",
+    "expectedLabels": [
+      "n26avccheck-b1-1-libmpv-gpu-next",
+      "n26avccheck-b1-2-exo-gpu-next",
+      "n26avccheck-b1-3-vlc-gpu-next"
+    ],
+    "observedLabels": [
+      "n26avccheck-b1-1-libmpv-gpu-next",
+      "n26avccheck-b1-2-exo-gpu-next",
+      "n26avccheck-b1-3-vlc-gpu-next"
+    ],
+    "complete": true
+  },
+  {
+    "stage": "n26avcmva",
+    "expectedLabels": [
+      "n26avcmva-b1-1-libmpv-gpu-next",
+      "n26avcmva-b1-2-vlc-gpu-next",
+      "n26avcmva-b1-3-vlc-gpu-next",
+      "n26avcmva-b1-4-libmpv-gpu-next"
+    ],
+    "observedLabels": [
+      "n26avcmva-b1-1-libmpv-gpu-next",
+      "n26avcmva-b1-2-vlc-gpu-next",
+      "n26avcmva-b1-3-vlc-gpu-next",
+      "n26avcmva-b1-4-libmpv-gpu-next"
+    ],
+    "complete": true
+  },
+  {
+    "stage": "n26avcmvb",
+    "expectedLabels": [
+      "n26avcmvb-b1-1-vlc-gpu-next",
+      "n26avcmvb-b1-2-libmpv-gpu-next",
+      "n26avcmvb-b1-3-libmpv-gpu-next",
+      "n26avcmvb-b1-4-vlc-gpu-next"
+    ],
+    "observedLabels": [
+      "n26avcmvb-b1-1-vlc-gpu-next",
+      "n26avcmvb-b1-2-libmpv-gpu-next",
+      "n26avcmvb-b1-3-libmpv-gpu-next",
+      "n26avcmvb-b1-4-vlc-gpu-next"
+    ],
+    "complete": true
+  },
+  {
+    "stage": "n26hevccheck",
+    "expectedLabels": [
+      "n26hevccheck-b1-1-libmpv-gpu-next",
+      "n26hevccheck-b1-2-exo-gpu-next",
+      "n26hevccheck-b1-3-vlc-gpu-next"
+    ],
+    "observedLabels": [
+      "n26hevccheck-b1-1-libmpv-gpu-next",
+      "n26hevccheck-b1-2-exo-gpu-next",
+      "n26hevccheck-b1-3-vlc-gpu-next"
+    ],
+    "complete": true
+  },
+  {
+    "stage": "n26hevcmva",
+    "expectedLabels": [
+      "n26hevcmva-b1-1-libmpv-gpu-next",
+      "n26hevcmva-b1-2-vlc-gpu-next",
+      "n26hevcmva-b1-3-vlc-gpu-next",
+      "n26hevcmva-b1-4-libmpv-gpu-next"
+    ],
+    "observedLabels": [
+      "n26hevcmva-b1-1-libmpv-gpu-next",
+      "n26hevcmva-b1-2-vlc-gpu-next",
+      "n26hevcmva-b1-3-vlc-gpu-next",
+      "n26hevcmva-b1-4-libmpv-gpu-next"
+    ],
+    "complete": true
+  },
+  {
+    "stage": "n26hevcmvb",
+    "expectedLabels": [
+      "n26hevcmvb-b1-1-vlc-gpu-next",
+      "n26hevcmvb-b1-2-libmpv-gpu-next",
+      "n26hevcmvb-b1-3-libmpv-gpu-next",
+      "n26hevcmvb-b1-4-vlc-gpu-next"
+    ],
+    "observedLabels": [
+      "n26hevcmvb-b1-1-vlc-gpu-next",
+      "n26hevcmvb-b1-2-libmpv-gpu-next",
+      "n26hevcmvb-b1-3-libmpv-gpu-next",
+      "n26hevcmvb-b1-4-vlc-gpu-next"
+    ],
+    "complete": true
+  },
+  {
+    "stage": "n26vp9check",
+    "expectedLabels": [
+      "n26vp9check-b1-1-libmpv-gpu-next",
+      "n26vp9check-b1-2-exo-gpu-next",
+      "n26vp9check-b1-3-vlc-gpu-next"
+    ],
+    "observedLabels": [
+      "n26vp9check-b1-1-libmpv-gpu-next",
+      "n26vp9check-b1-2-exo-gpu-next",
+      "n26vp9check-b1-3-vlc-gpu-next"
+    ],
+    "complete": true
+  },
+  {
+    "stage": "n26vp9mva",
+    "expectedLabels": [
+      "n26vp9mva-b1-1-libmpv-gpu-next",
+      "n26vp9mva-b1-2-vlc-gpu-next",
+      "n26vp9mva-b1-3-vlc-gpu-next",
+      "n26vp9mva-b1-4-libmpv-gpu-next"
+    ],
+    "observedLabels": [
+      "n26vp9mva-b1-1-libmpv-gpu-next",
+      "n26vp9mva-b1-2-vlc-gpu-next",
+      "n26vp9mva-b1-3-vlc-gpu-next",
+      "n26vp9mva-b1-4-libmpv-gpu-next"
+    ],
+    "complete": true
+  },
+  {
+    "stage": "n26vp9mvb",
+    "expectedLabels": [
+      "n26vp9mvb-b1-1-vlc-gpu-next",
+      "n26vp9mvb-b1-2-libmpv-gpu-next",
+      "n26vp9mvb-b1-3-libmpv-gpu-next",
+      "n26vp9mvb-b1-4-vlc-gpu-next"
+    ],
+    "observedLabels": [
+      "n26vp9mvb-b1-1-vlc-gpu-next",
+      "n26vp9mvb-b1-2-libmpv-gpu-next",
+      "n26vp9mvb-b1-3-libmpv-gpu-next",
+      "n26vp9mvb-b1-4-vlc-gpu-next"
+    ],
+    "complete": true
+  }
+]

@@ -1,0 +1,60 @@
+{
+  "measurement": "Whole-device battery-side current-times-voltage integration; no external power meter",
+  "dischargeSignCalibration": 1,
+  "counterNote": "Raw charge counter kept without assuming API microamp-hour units; no inferred scale is silently applied.",
+  "uncertaintyNote": "P05/P95 describe 1-second power samples, not a confidence interval. Engine summaries use independent leg means.",
+  "balancedComparisonNote": "Planned blocks require all four qualified legs in their declared positions. Order sensitivity is a descriptive drift check, not a confidence interval.",
+  "unreadableJsonFiles": [],
+  "failedReports": [],
+  "runs": [
+    {
+      "runLabel": "detach01-avc-automatic-1-exo",
+      "fixture": "avc-1080p24.mkv",
+      "engine": "exo",
+      "surfaceProtocol": "matched-1080p",
+      "measurementCohort": "phone-detach-validation-20260913-low-battery",
+      "controlProtocolVersion": 2,
+      "comparisonBlock": "detach01:validation",
+      "plannedOrdinal": 1,
+      "plannedOrder": [
+        "exo",
+        "libmpv",
+        "libmpv",
+        "exo"
+      ],
+      "surfaceBufferWidth": 1920,
+      "surfaceBufferHeight": 1080,
+      "startedUtc": "2026-09-12T17:58:04Z",
+      "mode": "automatic",
+      "actualDecoder": "c2.qti.avc.decoder",
+      "actualSoftwareDecoder": false,
+      "fixtureSha256": "a6d9a6848aa52e6749a106a0987a13cd8db186008171b45aaca55da94649bb33",
+      "seconds": 240.0,
+      "meanPowerMw": 1276.6636112895828,
+      "medianPowerMw": 1221.469,
+      "integratedEnergyMwh": 85.11090741930552,
+      "integratedChargeMah": 19.58963527777777,
+      "rawChargeCounterDrop": 18,
+      "rawCounterDropPerIntegratedMah": 0.9188532478917036,
+      "temperatureStartC": 34.0,
+      "temperatureEndC": 33.9,
+      "temperatureMinC": 33.9,
+      "temperatureMaxC": 34.0,
+      "batteryStartPercent": 92,
+      "batteryEndPercent": 91,
+      "processCpuMs": 145972,
+      "playbackAdvanceMs": 239994,
+      "refreshRateStart": 120.00001,
+      "refreshRateEnd": 120.00001,
+      "samplePowerP05Mw": 1117.179,
+      "samplePowerP95Mw": 1584.4815,
+      "qualified": false,
+      "issues": [
+        "functional_validation_only",
+        "fixture_not_matched_to_staged_manifest"
+      ],
+      "smokeOnly": true
+    }
+  ],
+  "comparisons": []
+}

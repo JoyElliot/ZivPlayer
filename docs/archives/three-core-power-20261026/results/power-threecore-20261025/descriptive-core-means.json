@@ -1,0 +1,64 @@
+{
+  "source": "stratified-report.json complete blocks only",
+  "values": {
+    "avc": {
+      "exo": {
+        "meanPowerMw": 1240.587870654054,
+        "completeBlockCount": 2,
+        "formalLegCount": 4
+      },
+      "vlc": {
+        "meanPowerMw": 1250.8969370127543,
+        "completeBlockCount": 2,
+        "formalLegCount": 4
+      }
+    },
+    "hevc": {
+      "exo": {
+        "meanPowerMw": 1237.5508917977627,
+        "completeBlockCount": 4,
+        "formalLegCount": 8
+      },
+      "libmpv@gpu-next": {
+        "meanPowerMw": 1299.0787850820611,
+        "completeBlockCount": 2,
+        "formalLegCount": 4
+      },
+      "vlc": {
+        "meanPowerMw": 1253.7223602413064,
+        "completeBlockCount": 2,
+        "formalLegCount": 4
+      }
+    },
+    "hevc10": {
+      "exo": {
+        "meanPowerMw": 1251.5638124147802,
+        "completeBlockCount": 4,
+        "formalLegCount": 8
+      },
+      "vlc": {
+        "meanPowerMw": 1246.3811145208156,
+        "completeBlockCount": 2,
+        "formalLegCount": 4
+      },
+      "libmpv@gpu-next": {
+        "meanPowerMw": 1312.2273198779494,
+        "completeBlockCount": 2,
+        "formalLegCount": 4
+      }
+    },
+    "vp9": {
+      "exo": {
+        "meanPowerMw": 1245.5197783022345,
+        "completeBlockCount": 2,
+        "formalLegCount": 4
+      },
+      "vlc": {
+        "meanPowerMw": 1206.79754791126,
+        "completeBlockCount": 2,
+        "formalLegCount": 4
+      }
+    }
+  },
+  "scope": "Raw arithmetic descriptive means, unequal temperature/battery strata are not adjusted; never a paired or causal estimate."
+}

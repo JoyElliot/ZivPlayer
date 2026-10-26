@@ -1,0 +1,34 @@
+{
+  "commit": "c84ef1eda4f14f8b57a5b266b51c843cf51ed28b",
+  "verification": "Independent read-only fixed-source audit using Invoke-WebRequest; SHA256 of returned UTF-8 content",
+  "sources": [
+    {
+      "path": "include/vlc/libvlc_media_player.h",
+      "sha256Utf8": "d5af00fee35ef245c6af7997b48a2312b531850eecd0afd3b7dc3ff71ec00f5b",
+      "lines": "3100-3131",
+      "finding": "Public time point has no input/output source marker; callbacks can come from demux/input or audio/video output; system_date can be past/future and INT64_MAX denotes paused.",
+      "url": "https://github.com/videolan/vlc/blob/c84ef1eda4f14f8b57a5b266b51c843cf51ed28b/include/vlc/libvlc_media_player.h"
+    },
+    {
+      "path": "src/player/timer.c",
+      "sha256Utf8": "413a5a205f642ffecbd8fc59177802271a7569b5c5f164559c3eaf6b029410c7",
+      "lines": "301-424,470-540",
+      "finding": "Internal best_source selects master ES, another ES, then input. Source identity is internal and not present in public callbacks.",
+      "url": "https://github.com/videolan/vlc/blob/c84ef1eda4f14f8b57a5b266b51c843cf51ed28b/src/player/timer.c"
+    },
+    {
+      "path": "lib/media_player.c",
+      "sha256Utf8": "bc8ed1cf68be9db8b7f7a4784d8d8322530392eca54b00ddc27a441db6edb96c",
+      "lines": "2408-2465",
+      "finding": "Public wrapper converts the time point and suppresses updates while seeking; it does not expose source identity.",
+      "url": "https://github.com/videolan/vlc/blob/c84ef1eda4f14f8b57a5b266b51c843cf51ed28b/lib/media_player.c"
+    }
+  ],
+  "deviceEvidence": [
+    "vlc-v29-bridge-background-timing-01",
+    "vlc-v29-clock-jump-repro-01",
+    "vlc-v30-background-clock-final-02",
+    "vlc-v30-background-clock-final-03"
+  ],
+  "decision": "After a no-Surface logical seek, recreate clocks for the next background play from the acknowledged position. Do not infer physical output from watch_time alone."
+}

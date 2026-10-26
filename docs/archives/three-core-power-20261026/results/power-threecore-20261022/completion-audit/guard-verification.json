@@ -1,0 +1,28 @@
+{
+  "verifiedUtc": "2026-10-21T22:37:29.628380+00:00",
+  "awakeGuard": {
+    "pid": 17914,
+    "uid": 2000,
+    "identityMatches": true,
+    "identity": {
+      "pgid": 17914,
+      "sid": 17914,
+      "startTicks": 22492116,
+      "status": "S"
+    },
+    "cmdlineVerified": true,
+    "stillRunning": true
+  },
+  "recoveryGuard": {
+    "pid": 26638,
+    "exited": true,
+    "ownerMatches": true,
+    "exitMatchesHostRecord": true
+  },
+  "lastRunnerExited": true,
+  "noWindowsRepeatController": true,
+  "screenTimeoutMs": "***",
+  "brightnessWritesDuringThisAudit": false,
+  "evidence": "guard-and-settings-raw.txt",
+  "scope": "Point-in-time guard identity at completion; continued operation until user return is a retained policy, not proof of future liveness."
+}

@@ -1,0 +1,31 @@
+{
+  "closedUtc": "2026-10-25T05:29:47.813562+00:00",
+  "currentSessionCompleteBlocks": 12,
+  "completeBlockFormalLegs": 48,
+  "qualifiedIncompleteLegsExcluded": 3,
+  "preflightLegs": 12,
+  "overallCompleteComparisons": 9,
+  "overallCompleteBlocks": 18,
+  "remainingComparisons": 3,
+  "remainingBlocks": 6,
+  "recoveryVerified": true,
+  "windowsControllerGone": true,
+  "retiredProcessIdentitiesVerified": 9,
+  "automationId": "zivplayer-10-25",
+  "automationDeleteStatus": "deleted",
+  "automationConfigAbsent": true,
+  "phoneQueriesFinishedAfterReadOnlyFinalVerification": true,
+  "newSessionMustNotStartAutomatically": true,
+  "fileSha256": {
+    "final-verification/verification.json": "04e9de628981e8549b676565ffaaeff56c27bb241686024148265f1b6216d71b",
+    "final-component-coverage.json": "da5acf8bb5ab2ea7111d8d54856c3714a8935a2f77bb2cce9b1bfee623ad2d12",
+    "final-hardware-components.json": "8be23dae5d75d16cd3a8dc7c13a9ea1d7857c41ce483aafa180d9ef75098784d",
+    "final-quality-observations.json": "ab7216dc71e1edcd541ac1277f24a8ccc7ff71981de6b176e0c61feb82f7bf8d",
+    "cpu-observations.json": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f",
+    "completion-summary.json": "85840b37536369ba8f6dd1b09edd84b123240f3cdc309cdf91d90ea9bd6d4a26",
+    "morning-report.html": "46bf565e5e8f999d4d3c71cdcc9b75f97ee3872c0a24686a04019a8c40f78d4d",
+    "descriptive-core-means.json": "afcb403a7301843ca3432b37969f9c9b327f7a16dad1add660c27700b13fad14",
+    "stop-checkpoint-plan.json": "789d609354546e6ce553b7a06e1f93b0732cff2f8a02b71ab61eb772ebe21c49",
+    "checkpoint-final-review/wechat-correction.json": "bdb150ff6d12b53641d0e7f6a8b74b537ba7166912cbd4b512385fa2455bdcad"
+  }
+}

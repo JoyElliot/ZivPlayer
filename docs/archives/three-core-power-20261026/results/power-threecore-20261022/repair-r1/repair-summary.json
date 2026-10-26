@@ -1,0 +1,120 @@
+{
+  "repairedUtc": "2026-10-21T17:28:49.302995+00:00",
+  "reviewStage": "vp9check",
+  "auditSha256": "f0b422196eecc907ccb9e147e86955ac0c69137862ba71d14d351be8fa928764",
+  "failureArchiveSha256": "a40662772f90d8468079c15e95d08ad079595d90ca185de5d5448a8226b4bdff",
+  "existingCollisionArchiveSha256": "515c5ddc6224c875d4996d7fdd5de503b91332b8fc1c9f791614068849ddb745",
+  "cause": "App-private power-results labels are global across nights; vp9check label already belongs to threecore-20261019. Runner correctly refused overwrite before sampling.",
+  "action": "Keep prior results, failed stage, all original frozen plans and both AVC blocks. Register new n22r1-prefixed stage directories/labels for failed preflight and every unstarted stage. Protocol/cohort/APK/deadlines unchanged.",
+  "entries": [
+    {
+      "originalStage": "vp9check",
+      "newStage": "n22r1vp9check",
+      "originalPlanSha256": "4fc39261935b1b5c7b6253d421cd3b75b1c704bd279edd0129fb859318bd8a9a",
+      "newPlanSha256": "8689303501f4654da6da81db28315ed6fc4e85e5f5f7dd7cfb07e8b1db53a928"
+    },
+    {
+      "originalStage": "vp9mva",
+      "newStage": "n22r1vp9mva",
+      "originalPlanSha256": "1451907fa0c6252f1abbd007c50ec431159723521a42bcd443503db9604589e2",
+      "newPlanSha256": "679da276b4d242ba2190e0124d3c95bf5f64f551bdb7df9b94a95369201a1adf"
+    },
+    {
+      "originalStage": "vp9mvb",
+      "newStage": "n22r1vp9mvb",
+      "originalPlanSha256": "faf97b1ec2ec0ccda3ed372a911da4da0c784085e12f1939e9ac82e0489ff94a",
+      "newPlanSha256": "b58dbead56eb7a8feb639c9461e72c589a78aab8324f8e3958ff457ebaa86fea"
+    },
+    {
+      "originalStage": "hevccheck",
+      "newStage": "n22r1hevccheck",
+      "originalPlanSha256": "80420a86edc8698ae394f04536cd9e7f757c60bd04af37d73646d7630e767b27",
+      "newPlanSha256": "ad140a59933b7522dfc5e01386c3f02170963ce9b9fdf424ebc32a4a91ec8b32"
+    },
+    {
+      "originalStage": "hevcmea",
+      "newStage": "n22r1hevcmea",
+      "originalPlanSha256": "db3032b584e28ca07acdfbe260ce9aa6850481732743cfe5d005ac1b1597c5e5",
+      "newPlanSha256": "bf88af81628cfedd1f40e97efa439d9cf6112191e4db3c4f89b5a734ab721c08"
+    },
+    {
+      "originalStage": "hevcmeb",
+      "newStage": "n22r1hevcmeb",
+      "originalPlanSha256": "df191b1d3ed0c033ad2181f60e64e63ac96ad5c7cd37f63ce4c3fbe3f2d64bbf",
+      "newPlanSha256": "87a0d59685a4ee1908f9861df873da511e064a6c7af2319d4afbefdbcf48edad"
+    },
+    {
+      "originalStage": "hevc10check",
+      "newStage": "n22r1hevc10check",
+      "originalPlanSha256": "676d60252517871418d0bb040d79159779459c9e0a9ecbf876c78255cf368e00",
+      "newPlanSha256": "91a9fb9d27d216e043425dcb46ce75a4da990a8dd6b00d5c9a1fb00b17e6634b"
+    },
+    {
+      "originalStage": "hevc10mea",
+      "newStage": "n22r1hevc10mea",
+      "originalPlanSha256": "ef0d622d84ca8dddc1b14997fc14581116fee326ed66c61422a49e4905b3949b",
+      "newPlanSha256": "c0a5ddbb43276ba2e4c91875a7786fadc6f7be85e783c349c09f6f354c06c73b"
+    },
+    {
+      "originalStage": "hevc10meb",
+      "newStage": "n22r1hevc10meb",
+      "originalPlanSha256": "58d5d3cf73083ed8cd98f4c8dc78cdbd298c04963d8172b6c7d973431b5e05db",
+      "newPlanSha256": "9e9dc170475960dd6243556a02e5d37776d5d9bbc6643d24c7ade5056735ccaf"
+    },
+    {
+      "originalStage": "vp9mea",
+      "newStage": "n22r1vp9mea",
+      "originalPlanSha256": "0df88debd87ec2dd52858b4aa272c0cdbfc1c4f6620400d06fe659d13e1b5c9e",
+      "newPlanSha256": "28502913e86ec0f64d96c855ddcf1628f4b958c545af23aa43133576cb108a24"
+    },
+    {
+      "originalStage": "vp9meb",
+      "newStage": "n22r1vp9meb",
+      "originalPlanSha256": "29e61e00862c38467bac910c7677191639f1d89c0b7c08da3886f07cae98e00a",
+      "newPlanSha256": "5025df1db9770d4c04ae4ba4d595b368f621237f031b5efe798c19f389f938db"
+    },
+    {
+      "originalStage": "hevcmva",
+      "newStage": "n22r1hevcmva",
+      "originalPlanSha256": "704c966106e74d4224a0c83c5ac027082630bd41e6998b94c15f946c2a31b75c",
+      "newPlanSha256": "09d8c54c28cfe9bb6143fb411e88a686691fc5b9f81a3ef25c06b4d041338b33"
+    },
+    {
+      "originalStage": "hevcmvb",
+      "newStage": "n22r1hevcmvb",
+      "originalPlanSha256": "3bda4d7e0dc7a271f66467225a857081410fdee10d70e323db55c970c9ad5a38",
+      "newPlanSha256": "80ed0373cf4d8b68af45f84d137ee0862386c89385027ea90940d3593f7e1e3a"
+    },
+    {
+      "originalStage": "hevc10eva",
+      "newStage": "n22r1hevc10eva",
+      "originalPlanSha256": "80cfe28f21e8764eaf4ca1ef92b25c8c56f7c622e251cb67ec2245492c51b4f0",
+      "newPlanSha256": "b7c054ea89c20cb7c5be371457012d488ababd92860d53cb726402527dc1b08a"
+    },
+    {
+      "originalStage": "hevc10evb",
+      "newStage": "n22r1hevc10evb",
+      "originalPlanSha256": "ea7c1e104e6ea831273a493592d58a98477279176042690bc8b532b09b39b214",
+      "newPlanSha256": "1c8434a012cd9b7345e9a65ad59b24610777725c8ecd168a101e0401a014868a"
+    },
+    {
+      "originalStage": "vp9mvextra",
+      "newStage": "n22r1vp9mvextra",
+      "originalPlanSha256": "313174784091e1165306671ade343d5c38edccd3de42253e046fda8ce685a735",
+      "newPlanSha256": "833061e35d6e74d50248b59040d3790ca97a7960495428396db91c701b698b94"
+    },
+    {
+      "originalStage": "avcmvextra",
+      "newStage": "n22r1avcmvextra",
+      "originalPlanSha256": "dbba50d675ac718d026f57353866f350a72d86a2a5c17ce176fbc98fc78da860",
+      "newPlanSha256": "31d823db1b4e3493d295636e2a373d1375e5a9b1b429af4d581c1111610099e9"
+    },
+    {
+      "originalStage": "hevc10meextra",
+      "newStage": "n22r1hevc10meextra",
+      "originalPlanSha256": "6ca41aac2d9e05e22b46fccab4cde81a2581741a290cab0df6a02e8604cc59e1",
+      "newPlanSha256": "0dccba613dff6aa125378d2eeefd9568c7fceeb12bdee667b5595f53a9443e94"
+    }
+  ],
+  "continueExperiment": true
+}

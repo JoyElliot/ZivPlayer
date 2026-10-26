@@ -1,0 +1,54 @@
+{
+  "verifiedUtc": "2026-10-25T01:29:48.571144+00:00",
+  "auditSha256": "ee2f75a1bb05e16116fa62554f44140cf02f50ded5d27fa7d09845ea62df9678",
+  "archiveSha256": "90bc26d42538c4ce068d36b5b450362807f21989d8ff097e9acf279cefac2451",
+  "independentArchiveEvidenceVerified": true,
+  "preflightPassed": 3,
+  "codecEndCoverageComplete": true,
+  "codecEndCounts": {
+    "n25vp9check-b1-1-libmpv-gpu-next": 1,
+    "n25vp9check-b1-2-exo-gpu-next": 1,
+    "n25vp9check-b1-3-vlc-gpu-next": 1
+  },
+  "hardwareComponent": "c2.qti.vp9.decoder",
+  "formalMeasurements": false,
+  "qualityIssues": [],
+  "diagnosticVideoDroppedFrames": 0,
+  "cpuWithinLeg": [
+    {
+      "label": "n25vp9check-b1-1-libmpv-gpu-next",
+      "sampleCount": 66,
+      "processCpuDeltaMs": 42630,
+      "steadyElapsedMs": 65001,
+      "fraction": 0.655836064060553,
+      "flagAbovePointEight": false
+    }
+  ],
+  "archivedCooldownSeconds": [
+    189,
+    63,
+    63
+  ],
+  "preplayEntryTemperaturesC": [
+    34.4,
+    34.4,
+    34.5
+  ],
+  "measurementStartTemperaturesC": [
+    34.4,
+    34.4,
+    34.5
+  ],
+  "measurementStartBatteryPercents": [
+    51,
+    51,
+    50
+  ],
+  "notes": [
+    "Validation-only preflight legs do not count as formal power measurements.",
+    "All three independent codec-end streams identify c2.qti.vp9.decoder with matching app PID and end marker.",
+    "The libmpv analysis decoder field is generic mediacodec; the exact QTI component is established by its PID codec-end stream.",
+    "No video drops or playback quality issues were observed. These checks do not establish subjective visual quality.",
+    "Only local archives were inspected; no additional ADB queries were issued during sampling."
+  ]
+}

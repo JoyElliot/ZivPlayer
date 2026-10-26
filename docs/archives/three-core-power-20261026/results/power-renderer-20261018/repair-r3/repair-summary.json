@@ -1,0 +1,25 @@
+{
+  "utc": "2026-10-17T18:35:47.719704+00:00",
+  "initialFailure": "cooling gate 34.5 C below observed awake idle 35.5 C; no playback samples",
+  "changes": [
+    "36 C non-rising entry gate; 40 C sample ceiling unchanged",
+    "No repeated Home key during cooldown; log each cooling reading",
+    "9 nonessential background packages force-stopped; minigame, health, voiceassist disabled to prevent MIUI restart",
+    "Deadline guard restores original enabled state, unsuspends only this night list, and unstops only prior-stopped=false list",
+    "Independent awake guard retained throughout; timeout 86400000 ms"
+  ],
+  "recovery": {
+    "guardPid": 17892,
+    "guardRevision": 3,
+    "awakeGuardPid": 16825,
+    "hardStopLocal": "2026-10-18T09:15:00+08:00",
+    "recoveryDeadlineLocal": "2026-10-18T09:30:00+08:00"
+  },
+  "pitfallsResolved": [
+    "Package state parsing anchored to actual installed User 0 line, excluding preferred-activities headers",
+    "ADB CRLF output normalized before writing sourced Android shell config"
+  ],
+  "samplingAttempt": "hwpreflightr2 then seven hardware ABBA/BAAB stages; AV1 optional",
+  "controllerPid": 24356,
+  "verification": "19 summary and 2 collection tests passed; all pending frozen hashes and guard journal hashes verified before launch"
+}

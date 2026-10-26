@@ -1,0 +1,229 @@
+{
+  "updatedUtc": "2026-10-23T18:21:13.681585+00:00",
+  "phase": "completed",
+  "activeStage": null,
+  "qualifiedRuns": 0,
+  "completeBlocks": 0,
+  "stages": [
+    {
+      "name": "n24hevccheck",
+      "plan": "F:\\Git\\ZivPlayer\\native\\out\\power-threecore-20261024\\n24hevccheck\\run-plan.json",
+      "planSha256": "8462815ab9045f2f0264b92b8ba5c05d3a1f7e7b64bbd1b7355612c92e89383b",
+      "status": "pending",
+      "preflight": true,
+      "codec": "hevc",
+      "optional": false,
+      "nominalSeconds": 660
+    },
+    {
+      "name": "n24hevcmea",
+      "plan": "F:\\Git\\ZivPlayer\\native\\out\\power-threecore-20261024\\n24hevcmea\\run-plan.json",
+      "planSha256": "4e6a7c4fff531f852052f1b2dfa80bc09d9010cebd5b2a75dc41b095b86f2e7c",
+      "status": "pending",
+      "preflight": false,
+      "codec": "hevc",
+      "optional": false,
+      "nominalSeconds": 1800
+    },
+    {
+      "name": "n24hevcmeb",
+      "plan": "F:\\Git\\ZivPlayer\\native\\out\\power-threecore-20261024\\n24hevcmeb\\run-plan.json",
+      "planSha256": "9404f75de32db03157169fedaed3423c463fdefdb23025720026dafbb267d80b",
+      "status": "pending",
+      "preflight": false,
+      "codec": "hevc",
+      "optional": false,
+      "nominalSeconds": 1800
+    },
+    {
+      "name": "n24hevc10check",
+      "plan": "F:\\Git\\ZivPlayer\\native\\out\\power-threecore-20261024\\n24hevc10check\\run-plan.json",
+      "planSha256": "6c74b9fcbe22bc6931c8df192e00dfed73484549fedb21eddbb39143a8970f43",
+      "status": "pending",
+      "preflight": true,
+      "codec": "hevc10",
+      "optional": false,
+      "nominalSeconds": 660
+    },
+    {
+      "name": "n24hevc10eva",
+      "plan": "F:\\Git\\ZivPlayer\\native\\out\\power-threecore-20261024\\n24hevc10eva\\run-plan.json",
+      "planSha256": "e5335dde11ed087cf26b4805a7f0b1cb3081e1630675eca225bb52261f4e426e",
+      "status": "pending",
+      "preflight": false,
+      "codec": "hevc10",
+      "optional": false,
+      "nominalSeconds": 1800
+    },
+    {
+      "name": "n24hevc10evb",
+      "plan": "F:\\Git\\ZivPlayer\\native\\out\\power-threecore-20261024\\n24hevc10evb\\run-plan.json",
+      "planSha256": "d7ea405dd1d51aa8b71be1764013a30d0f6b5ff2c613762c587d2ebb96e846fd",
+      "status": "pending",
+      "preflight": false,
+      "codec": "hevc10",
+      "optional": false,
+      "nominalSeconds": 1800
+    },
+    {
+      "name": "n24avccheck",
+      "plan": "F:\\Git\\ZivPlayer\\native\\out\\power-threecore-20261024\\n24avccheck\\run-plan.json",
+      "planSha256": "68bd5567ebf228c0f094cca9b0d0856edb0a3106a39f645b64b6ab45991e3e8b",
+      "status": "pending",
+      "preflight": true,
+      "codec": "avc",
+      "optional": false,
+      "nominalSeconds": 660
+    },
+    {
+      "name": "n24avceva",
+      "plan": "F:\\Git\\ZivPlayer\\native\\out\\power-threecore-20261024\\n24avceva\\run-plan.json",
+      "planSha256": "446bddb950e4b92e87e6bbb55aa150376ffe82c9c581f080d43d4770e9c8c0da",
+      "status": "pending",
+      "preflight": false,
+      "codec": "avc",
+      "optional": false,
+      "nominalSeconds": 1800
+    },
+    {
+      "name": "n24avcevb",
+      "plan": "F:\\Git\\ZivPlayer\\native\\out\\power-threecore-20261024\\n24avcevb\\run-plan.json",
+      "planSha256": "07f48ceb25479e8f246f085b9d66326726cb28913cf0377fa03811bdeeac679c",
+      "status": "pending",
+      "preflight": false,
+      "codec": "avc",
+      "optional": false,
+      "nominalSeconds": 1800
+    },
+    {
+      "name": "n24vp9check",
+      "plan": "F:\\Git\\ZivPlayer\\native\\out\\power-threecore-20261024\\n24vp9check\\run-plan.json",
+      "planSha256": "4e2d12530d35bc29d0f84bcb6b01a52153892144b0e6e4e8ef9a22054f6939e6",
+      "status": "pending",
+      "preflight": true,
+      "codec": "vp9",
+      "optional": false,
+      "nominalSeconds": 660
+    },
+    {
+      "name": "n24vp9eva",
+      "plan": "F:\\Git\\ZivPlayer\\native\\out\\power-threecore-20261024\\n24vp9eva\\run-plan.json",
+      "planSha256": "ec2194f4c191ade93df6bc4a003044a553bdebf093ec3ec26c711bb757564a1a",
+      "status": "pending",
+      "preflight": false,
+      "codec": "vp9",
+      "optional": false,
+      "nominalSeconds": 1800
+    },
+    {
+      "name": "n24vp9evb",
+      "plan": "F:\\Git\\ZivPlayer\\native\\out\\power-threecore-20261024\\n24vp9evb\\run-plan.json",
+      "planSha256": "25d9219af5d8b5990b73bc4708cf282a088411059d7b9b54e856cdf3a1b0de87",
+      "status": "pending",
+      "preflight": false,
+      "codec": "vp9",
+      "optional": false,
+      "nominalSeconds": 1800
+    },
+    {
+      "name": "n24hevceva",
+      "plan": "F:\\Git\\ZivPlayer\\native\\out\\power-threecore-20261024\\n24hevceva\\run-plan.json",
+      "planSha256": "2d6b89b1d76c1b0f3fa41acde34f77c13677b92968e56c0abe1b296e729c7133",
+      "status": "pending",
+      "preflight": false,
+      "codec": "hevc",
+      "optional": false,
+      "nominalSeconds": 1800
+    },
+    {
+      "name": "n24hevcevb",
+      "plan": "F:\\Git\\ZivPlayer\\native\\out\\power-threecore-20261024\\n24hevcevb\\run-plan.json",
+      "planSha256": "dd243ed8e8730abd3449d1875a2365d76f99f3acfab2aeca15459d03dade8b86",
+      "status": "pending",
+      "preflight": false,
+      "codec": "hevc",
+      "optional": false,
+      "nominalSeconds": 1800
+    },
+    {
+      "name": "n24hevc10mea",
+      "plan": "F:\\Git\\ZivPlayer\\native\\out\\power-threecore-20261024\\n24hevc10mea\\run-plan.json",
+      "planSha256": "7cd5bd97f5f6866995ea88e0ab7e804e3600efe0f53f7c588577adcf2c9dbdd6",
+      "status": "pending",
+      "preflight": false,
+      "codec": "hevc10",
+      "optional": false,
+      "nominalSeconds": 1800
+    },
+    {
+      "name": "n24hevc10meb",
+      "plan": "F:\\Git\\ZivPlayer\\native\\out\\power-threecore-20261024\\n24hevc10meb\\run-plan.json",
+      "planSha256": "9223c032c8db75f10d8e8a6eabb1e19eda9aa93543b250c464a5dcf097d4d0b3",
+      "status": "pending",
+      "preflight": false,
+      "codec": "hevc10",
+      "optional": false,
+      "nominalSeconds": 1800
+    },
+    {
+      "name": "n24avcmva",
+      "plan": "F:\\Git\\ZivPlayer\\native\\out\\power-threecore-20261024\\n24avcmva\\run-plan.json",
+      "planSha256": "7723b3c40163ff8b68900fe09aa48a9fb9333e119097c4a504304292862c4c7d",
+      "status": "pending",
+      "preflight": false,
+      "codec": "avc",
+      "optional": false,
+      "nominalSeconds": 1800
+    },
+    {
+      "name": "n24avcmvb",
+      "plan": "F:\\Git\\ZivPlayer\\native\\out\\power-threecore-20261024\\n24avcmvb\\run-plan.json",
+      "planSha256": "64e3a31f3cf2134c8ad35f6b2b49705de3cbde7ee7ec311ba0a61e2333f44519",
+      "status": "pending",
+      "preflight": false,
+      "codec": "avc",
+      "optional": false,
+      "nominalSeconds": 1800
+    },
+    {
+      "name": "n24hevcmva",
+      "plan": "F:\\Git\\ZivPlayer\\native\\out\\power-threecore-20261024\\n24hevcmva\\run-plan.json",
+      "planSha256": "e9f5a6349632020f9c0a14d2232182d7fdd30373950e49b8ecbe02536dc8ba62",
+      "status": "pending",
+      "preflight": false,
+      "codec": "hevc",
+      "optional": false,
+      "nominalSeconds": 1800
+    },
+    {
+      "name": "n24hevcmvb",
+      "plan": "F:\\Git\\ZivPlayer\\native\\out\\power-threecore-20261024\\n24hevcmvb\\run-plan.json",
+      "planSha256": "92568b4799687333a9c8213c63078f0f1e59e187ce46419615655b5ed59e9747",
+      "status": "pending",
+      "preflight": false,
+      "codec": "hevc",
+      "optional": false,
+      "nominalSeconds": 1800
+    },
+    {
+      "name": "n24vp9mva",
+      "plan": "F:\\Git\\ZivPlayer\\native\\out\\power-threecore-20261024\\n24vp9mva\\run-plan.json",
+      "planSha256": "0ebeff2c12f6cf587d72bbed1283a2859bea3c161b139264611768f950b96a6f",
+      "status": "pending",
+      "preflight": false,
+      "codec": "vp9",
+      "optional": false,
+      "nominalSeconds": 1800
+    },
+    {
+      "name": "n24vp9mvb",
+      "plan": "F:\\Git\\ZivPlayer\\native\\out\\power-threecore-20261024\\n24vp9mvb\\run-plan.json",
+      "planSha256": "c8bfc21daf7843bf109505ffd08d59e65afee3b9a6f226d594d1c776c5e39ac2",
+      "status": "pending",
+      "preflight": false,
+      "codec": "vp9",
+      "optional": false,
+      "nominalSeconds": 1800
+    }
+  ]
+}

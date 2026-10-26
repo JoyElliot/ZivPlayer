@@ -1,0 +1,26 @@
+{
+  "generatedUtc": "2026-10-24T19:23:52.688441+00:00",
+  "phase": "completed",
+  "formalRuns": 8,
+  "preflightLegs": 3,
+  "completeBlocks": 2,
+  "sameStratumBlocks": 1,
+  "recovery": {
+    "finishedUtc": "2026-10-24T19:16:35Z",
+    "action": "session_recovery",
+    "trigger": "runner_stopped",
+    "cleanupSucceeded": true,
+    "keptAwake": true,
+    "awakeGuardStopped": true,
+    "originalTimeoutRestored": true,
+    "finalScreenAwake": false
+  },
+  "recoveryVerified": true,
+  "archivedHardwareComponentsVerified": true,
+  "cpuFlags": [],
+  "screenTimeoutMs": "***",
+  "awakeGuardStoppedAfterRecovery": true,
+  "skippedStages": [],
+  "statisticsPolicy": "Unchanged predeclared 1C and 10-percent start strata; complete blocks only; no cross-night pooling.",
+  "automationStatus": "awaiting_agent_completion_audit"
+}

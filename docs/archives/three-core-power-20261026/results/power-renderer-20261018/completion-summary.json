@@ -1,0 +1,18 @@
+{
+  "completedUtc": "2026-10-18T02:22:46.007067+00:00",
+  "formalRuns": 56,
+  "completeBalancedBlocks": 14,
+  "passedPreflightLegs": 4,
+  "rendererDecision": "Keep gpu-next; all 10 renderer blocks favor lower gpu-next power. No causal dependency-upgrade claim.",
+  "temperatureRangeC": [
+    34.0,
+    34.8
+  ],
+  "recoveryVerified": true,
+  "verificationFile": "recovery-verification-20261018-1019/verification.json",
+  "automationStatus": "PAUSED",
+  "awakeGuardRetained": true,
+  "av1Software": "Skipped: insufficient time for a complete balanced phase.",
+  "report": "morning-report.html",
+  "stratifiedReport": "stratified-report.json"
+}

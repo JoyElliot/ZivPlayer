@@ -1,0 +1,1419 @@
+{
+  "updatedUtc": "2026-10-18T02:18:28.437093+00:00",
+  "phase": "completed",
+  "qualifiedFormalRuns": 56,
+  "passedPreflightLegs": 4,
+  "blocks": [
+    {
+      "fixture": "avc-1080p24.mkv",
+      "fixtureSha256": "a6d9a6848aa52e6749a106a0987a13cd8db186008171b45aaca55da94649bb33",
+      "mode": "automatic",
+      "surfaceProtocol": "current-app",
+      "measurementCohort": "renderer-20261018-hw-priority-46a0c824d23c-17192b56c846-r2-idle-controls",
+      "comparisonBlock": "avcmainar2:avc:b1",
+      "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+      "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+      "complete": true,
+      "plannedConditions": [
+        "libmpv@gpu-next",
+        "libmpv@gpu",
+        "libmpv@gpu",
+        "libmpv@gpu-next"
+      ],
+      "conditions": [
+        "libmpv@gpu",
+        "libmpv@gpu-next"
+      ],
+      "runLabels": [
+        "avcmainar2-b1-1-libmpv-gpu-next",
+        "avcmainar2-b1-2-libmpv-gpu",
+        "avcmainar2-b1-3-libmpv-gpu",
+        "avcmainar2-b1-4-libmpv-gpu-next"
+      ],
+      "conditionMeanPowerMw": {
+        "libmpv@gpu": 1344.8745478672568,
+        "libmpv@gpu-next": 1288.0182143386905
+      },
+      "a": "libmpv@gpu",
+      "b": "libmpv@gpu-next",
+      "aMinusBMw": 56.85633352856621,
+      "conditionMeanStartTemperatureC": {
+        "libmpv@gpu": 34.349999999999994,
+        "libmpv@gpu-next": 34.349999999999994
+      },
+      "conditionMeanStartBatteryPercent": {
+        "libmpv@gpu": 76.5,
+        "libmpv@gpu-next": 76.5
+      },
+      "aggregationEligible": true,
+      "aggregationIssues": [],
+      "conditionActualDecoders": {
+        "libmpv@gpu": [
+          [
+            "mediacodec",
+            false
+          ]
+        ],
+        "libmpv@gpu-next": [
+          [
+            "mediacodec",
+            false
+          ]
+        ]
+      },
+      "startTemperatureBandsC": [
+        34
+      ],
+      "startBatteryBandsPercent": [
+        70
+      ],
+      "batteryClasses": [
+        "normal"
+      ],
+      "startTemperaturesC": [
+        34.3,
+        34.3,
+        34.4,
+        34.4
+      ],
+      "startBatteryPercents": [
+        77,
+        77,
+        76,
+        76
+      ]
+    },
+    {
+      "fixture": "avc-1080p24.mkv",
+      "fixtureSha256": "a6d9a6848aa52e6749a106a0987a13cd8db186008171b45aaca55da94649bb33",
+      "mode": "automatic",
+      "surfaceProtocol": "current-app",
+      "measurementCohort": "renderer-20261018-hw-priority-46a0c824d23c-17192b56c846-r2-idle-controls",
+      "comparisonBlock": "avcmainar2:avc:b2",
+      "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+      "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+      "complete": true,
+      "plannedConditions": [
+        "libmpv@gpu",
+        "libmpv@gpu-next",
+        "libmpv@gpu-next",
+        "libmpv@gpu"
+      ],
+      "conditions": [
+        "libmpv@gpu",
+        "libmpv@gpu-next"
+      ],
+      "runLabels": [
+        "avcmainar2-b2-1-libmpv-gpu",
+        "avcmainar2-b2-2-libmpv-gpu-next",
+        "avcmainar2-b2-3-libmpv-gpu-next",
+        "avcmainar2-b2-4-libmpv-gpu"
+      ],
+      "conditionMeanPowerMw": {
+        "libmpv@gpu": 1350.8464163163508,
+        "libmpv@gpu-next": 1271.1359761291283
+      },
+      "a": "libmpv@gpu",
+      "b": "libmpv@gpu-next",
+      "aMinusBMw": 79.7104401872225,
+      "conditionMeanStartTemperatureC": {
+        "libmpv@gpu": 34.4,
+        "libmpv@gpu-next": 34.4
+      },
+      "conditionMeanStartBatteryPercent": {
+        "libmpv@gpu": 74,
+        "libmpv@gpu-next": 74.5
+      },
+      "aggregationEligible": true,
+      "aggregationIssues": [],
+      "conditionActualDecoders": {
+        "libmpv@gpu": [
+          [
+            "mediacodec",
+            false
+          ]
+        ],
+        "libmpv@gpu-next": [
+          [
+            "mediacodec",
+            false
+          ]
+        ]
+      },
+      "startTemperatureBandsC": [
+        34
+      ],
+      "startBatteryBandsPercent": [
+        70
+      ],
+      "batteryClasses": [
+        "normal"
+      ],
+      "startTemperaturesC": [
+        34.4,
+        34.4,
+        34.4,
+        34.4
+      ],
+      "startBatteryPercents": [
+        75,
+        75,
+        74,
+        73
+      ]
+    },
+    {
+      "fixture": "avc-1080p24.mkv",
+      "fixtureSha256": "a6d9a6848aa52e6749a106a0987a13cd8db186008171b45aaca55da94649bb33",
+      "mode": "automatic",
+      "surfaceProtocol": "current-app",
+      "measurementCohort": "renderer-20261018-hw-priority-46a0c824d23c-17192b56c846-r2-idle-controls",
+      "comparisonBlock": "avcmainbr2:avc:b1",
+      "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+      "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+      "complete": true,
+      "plannedConditions": [
+        "libmpv@gpu-next",
+        "libmpv@gpu",
+        "libmpv@gpu",
+        "libmpv@gpu-next"
+      ],
+      "conditions": [
+        "libmpv@gpu",
+        "libmpv@gpu-next"
+      ],
+      "runLabels": [
+        "avcmainbr2-b1-1-libmpv-gpu-next",
+        "avcmainbr2-b1-2-libmpv-gpu",
+        "avcmainbr2-b1-3-libmpv-gpu",
+        "avcmainbr2-b1-4-libmpv-gpu-next"
+      ],
+      "conditionMeanPowerMw": {
+        "libmpv@gpu": 1333.846816005493,
+        "libmpv@gpu-next": 1296.5502149159097
+      },
+      "a": "libmpv@gpu",
+      "b": "libmpv@gpu-next",
+      "aMinusBMw": 37.29660108958342,
+      "conditionMeanStartTemperatureC": {
+        "libmpv@gpu": 34.7,
+        "libmpv@gpu-next": 34.6
+      },
+      "conditionMeanStartBatteryPercent": {
+        "libmpv@gpu": 71.5,
+        "libmpv@gpu-next": 72
+      },
+      "aggregationEligible": true,
+      "aggregationIssues": [],
+      "conditionActualDecoders": {
+        "libmpv@gpu": [
+          [
+            "mediacodec",
+            false
+          ]
+        ],
+        "libmpv@gpu-next": [
+          [
+            "mediacodec",
+            false
+          ]
+        ]
+      },
+      "startTemperatureBandsC": [
+        34
+      ],
+      "startBatteryBandsPercent": [
+        70
+      ],
+      "batteryClasses": [
+        "normal"
+      ],
+      "startTemperaturesC": [
+        34.5,
+        34.6,
+        34.8,
+        34.7
+      ],
+      "startBatteryPercents": [
+        73,
+        72,
+        71,
+        71
+      ]
+    },
+    {
+      "fixture": "avc-1080p24.mkv",
+      "fixtureSha256": "a6d9a6848aa52e6749a106a0987a13cd8db186008171b45aaca55da94649bb33",
+      "mode": "automatic",
+      "surfaceProtocol": "current-app",
+      "measurementCohort": "renderer-20261018-hw-priority-46a0c824d23c-17192b56c846-r2-idle-controls",
+      "comparisonBlock": "avcmainbr2:avc:b2",
+      "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+      "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+      "complete": true,
+      "plannedConditions": [
+        "libmpv@gpu",
+        "libmpv@gpu-next",
+        "libmpv@gpu-next",
+        "libmpv@gpu"
+      ],
+      "conditions": [
+        "libmpv@gpu",
+        "libmpv@gpu-next"
+      ],
+      "runLabels": [
+        "avcmainbr2-b2-1-libmpv-gpu",
+        "avcmainbr2-b2-2-libmpv-gpu-next",
+        "avcmainbr2-b2-3-libmpv-gpu-next",
+        "avcmainbr2-b2-4-libmpv-gpu"
+      ],
+      "conditionMeanPowerMw": {
+        "libmpv@gpu": 1329.168621041606,
+        "libmpv@gpu-next": 1301.9217058458294
+      },
+      "a": "libmpv@gpu",
+      "b": "libmpv@gpu-next",
+      "aMinusBMw": 27.246915195776637,
+      "conditionMeanStartTemperatureC": {
+        "libmpv@gpu": 34.75,
+        "libmpv@gpu-next": 34.7
+      },
+      "conditionMeanStartBatteryPercent": {
+        "libmpv@gpu": 69,
+        "libmpv@gpu-next": 69.5
+      },
+      "aggregationEligible": false,
+      "aggregationIssues": [
+        "crosses_10pct_start_battery_strata"
+      ],
+      "conditionActualDecoders": {
+        "libmpv@gpu": [
+          [
+            "mediacodec",
+            false
+          ]
+        ],
+        "libmpv@gpu-next": [
+          [
+            "mediacodec",
+            false
+          ]
+        ]
+      },
+      "startTemperatureBandsC": [
+        34
+      ],
+      "startBatteryBandsPercent": [
+        60,
+        70
+      ],
+      "batteryClasses": [
+        "normal"
+      ],
+      "startTemperaturesC": [
+        34.7,
+        34.7,
+        34.7,
+        34.8
+      ],
+      "startBatteryPercents": [
+        70,
+        70,
+        69,
+        68
+      ]
+    },
+    {
+      "fixture": "hevc-1080p24.mkv",
+      "fixtureSha256": "49fee53a0264f2373cb95a88c506796f68c2229aa985e1d9348d341c53169d14",
+      "mode": "automatic",
+      "surfaceProtocol": "current-app",
+      "measurementCohort": "renderer-20261018-hw-priority-46a0c824d23c-17192b56c846-r2-idle-controls",
+      "comparisonBlock": "hevcr2:hevc:b1",
+      "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+      "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+      "complete": true,
+      "plannedConditions": [
+        "libmpv@gpu-next",
+        "libmpv@gpu",
+        "libmpv@gpu",
+        "libmpv@gpu-next"
+      ],
+      "conditions": [
+        "libmpv@gpu",
+        "libmpv@gpu-next"
+      ],
+      "runLabels": [
+        "hevcr2-b1-1-libmpv-gpu-next",
+        "hevcr2-b1-2-libmpv-gpu",
+        "hevcr2-b1-3-libmpv-gpu",
+        "hevcr2-b1-4-libmpv-gpu-next"
+      ],
+      "conditionMeanPowerMw": {
+        "libmpv@gpu": 1351.1490867916832,
+        "libmpv@gpu-next": 1323.9470339534337
+      },
+      "a": "libmpv@gpu",
+      "b": "libmpv@gpu-next",
+      "aMinusBMw": 27.20205283824953,
+      "conditionMeanStartTemperatureC": {
+        "libmpv@gpu": 34.6,
+        "libmpv@gpu-next": 34.650000000000006
+      },
+      "conditionMeanStartBatteryPercent": {
+        "libmpv@gpu": 66.5,
+        "libmpv@gpu-next": 67
+      },
+      "aggregationEligible": true,
+      "aggregationIssues": [],
+      "conditionActualDecoders": {
+        "libmpv@gpu": [
+          [
+            "mediacodec",
+            false
+          ]
+        ],
+        "libmpv@gpu-next": [
+          [
+            "mediacodec",
+            false
+          ]
+        ]
+      },
+      "startTemperatureBandsC": [
+        34
+      ],
+      "startBatteryBandsPercent": [
+        60
+      ],
+      "batteryClasses": [
+        "normal"
+      ],
+      "startTemperaturesC": [
+        34.6,
+        34.5,
+        34.7,
+        34.7
+      ],
+      "startBatteryPercents": [
+        68,
+        67,
+        66,
+        66
+      ]
+    },
+    {
+      "fixture": "hevc-1080p24.mkv",
+      "fixtureSha256": "49fee53a0264f2373cb95a88c506796f68c2229aa985e1d9348d341c53169d14",
+      "mode": "automatic",
+      "surfaceProtocol": "current-app",
+      "measurementCohort": "renderer-20261018-hw-priority-46a0c824d23c-17192b56c846-r2-idle-controls",
+      "comparisonBlock": "hevcr2:hevc:b2",
+      "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+      "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+      "complete": true,
+      "plannedConditions": [
+        "libmpv@gpu",
+        "libmpv@gpu-next",
+        "libmpv@gpu-next",
+        "libmpv@gpu"
+      ],
+      "conditions": [
+        "libmpv@gpu",
+        "libmpv@gpu-next"
+      ],
+      "runLabels": [
+        "hevcr2-b2-1-libmpv-gpu",
+        "hevcr2-b2-2-libmpv-gpu-next",
+        "hevcr2-b2-3-libmpv-gpu-next",
+        "hevcr2-b2-4-libmpv-gpu"
+      ],
+      "conditionMeanPowerMw": {
+        "libmpv@gpu": 1337.4419247509545,
+        "libmpv@gpu-next": 1299.4542958844181
+      },
+      "a": "libmpv@gpu",
+      "b": "libmpv@gpu-next",
+      "aMinusBMw": 37.9876288665364,
+      "conditionMeanStartTemperatureC": {
+        "libmpv@gpu": 34.5,
+        "libmpv@gpu-next": 34.45
+      },
+      "conditionMeanStartBatteryPercent": {
+        "libmpv@gpu": 64,
+        "libmpv@gpu-next": 64.5
+      },
+      "aggregationEligible": true,
+      "aggregationIssues": [],
+      "conditionActualDecoders": {
+        "libmpv@gpu": [
+          [
+            "mediacodec",
+            false
+          ]
+        ],
+        "libmpv@gpu-next": [
+          [
+            "mediacodec",
+            false
+          ]
+        ]
+      },
+      "startTemperatureBandsC": [
+        34
+      ],
+      "startBatteryBandsPercent": [
+        60
+      ],
+      "batteryClasses": [
+        "normal"
+      ],
+      "startTemperaturesC": [
+        34.7,
+        34.6,
+        34.3,
+        34.3
+      ],
+      "startBatteryPercents": [
+        65,
+        65,
+        64,
+        63
+      ]
+    },
+    {
+      "fixture": "hevc10-1080p24.mkv",
+      "fixtureSha256": "c338ae9ad3ee0c89a8dc893df6d4c06be9e43d35d873a987f2cfaaaa7c22ba22",
+      "mode": "automatic",
+      "surfaceProtocol": "current-app",
+      "measurementCohort": "renderer-20261018-hw-priority-46a0c824d23c-17192b56c846-r2-idle-controls",
+      "comparisonBlock": "hevc10r2:hevc10:b1",
+      "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+      "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+      "complete": true,
+      "plannedConditions": [
+        "libmpv@gpu-next",
+        "libmpv@gpu",
+        "libmpv@gpu",
+        "libmpv@gpu-next"
+      ],
+      "conditions": [
+        "libmpv@gpu",
+        "libmpv@gpu-next"
+      ],
+      "runLabels": [
+        "hevc10r2-b1-1-libmpv-gpu-next",
+        "hevc10r2-b1-2-libmpv-gpu",
+        "hevc10r2-b1-3-libmpv-gpu",
+        "hevc10r2-b1-4-libmpv-gpu-next"
+      ],
+      "conditionMeanPowerMw": {
+        "libmpv@gpu": 1337.0970631823616,
+        "libmpv@gpu-next": 1304.0946477637644
+      },
+      "a": "libmpv@gpu",
+      "b": "libmpv@gpu-next",
+      "aMinusBMw": 33.00241541859714,
+      "conditionMeanStartTemperatureC": {
+        "libmpv@gpu": 34.1,
+        "libmpv@gpu-next": 34.25
+      },
+      "conditionMeanStartBatteryPercent": {
+        "libmpv@gpu": 61.5,
+        "libmpv@gpu-next": 62
+      },
+      "aggregationEligible": true,
+      "aggregationIssues": [],
+      "conditionActualDecoders": {
+        "libmpv@gpu": [
+          [
+            "mediacodec",
+            false
+          ]
+        ],
+        "libmpv@gpu-next": [
+          [
+            "mediacodec",
+            false
+          ]
+        ]
+      },
+      "startTemperatureBandsC": [
+        34
+      ],
+      "startBatteryBandsPercent": [
+        60
+      ],
+      "batteryClasses": [
+        "normal"
+      ],
+      "startTemperaturesC": [
+        34.3,
+        34.0,
+        34.2,
+        34.2
+      ],
+      "startBatteryPercents": [
+        63,
+        62,
+        61,
+        61
+      ]
+    },
+    {
+      "fixture": "hevc10-1080p24.mkv",
+      "fixtureSha256": "c338ae9ad3ee0c89a8dc893df6d4c06be9e43d35d873a987f2cfaaaa7c22ba22",
+      "mode": "automatic",
+      "surfaceProtocol": "current-app",
+      "measurementCohort": "renderer-20261018-hw-priority-46a0c824d23c-17192b56c846-r2-idle-controls",
+      "comparisonBlock": "hevc10r2:hevc10:b2",
+      "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+      "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+      "complete": true,
+      "plannedConditions": [
+        "libmpv@gpu",
+        "libmpv@gpu-next",
+        "libmpv@gpu-next",
+        "libmpv@gpu"
+      ],
+      "conditions": [
+        "libmpv@gpu",
+        "libmpv@gpu-next"
+      ],
+      "runLabels": [
+        "hevc10r2-b2-1-libmpv-gpu",
+        "hevc10r2-b2-2-libmpv-gpu-next",
+        "hevc10r2-b2-3-libmpv-gpu-next",
+        "hevc10r2-b2-4-libmpv-gpu"
+      ],
+      "conditionMeanPowerMw": {
+        "libmpv@gpu": 1363.8698344382067,
+        "libmpv@gpu-next": 1300.5253633178058
+      },
+      "a": "libmpv@gpu",
+      "b": "libmpv@gpu-next",
+      "aMinusBMw": 63.34447112040084,
+      "conditionMeanStartTemperatureC": {
+        "libmpv@gpu": 34.4,
+        "libmpv@gpu-next": 34.1
+      },
+      "conditionMeanStartBatteryPercent": {
+        "libmpv@gpu": 59,
+        "libmpv@gpu-next": 59.5
+      },
+      "aggregationEligible": false,
+      "aggregationIssues": [
+        "crosses_10pct_start_battery_strata"
+      ],
+      "conditionActualDecoders": {
+        "libmpv@gpu": [
+          [
+            "mediacodec",
+            false
+          ]
+        ],
+        "libmpv@gpu-next": [
+          [
+            "mediacodec",
+            false
+          ]
+        ]
+      },
+      "startTemperatureBandsC": [
+        34
+      ],
+      "startBatteryBandsPercent": [
+        50,
+        60
+      ],
+      "batteryClasses": [
+        "normal"
+      ],
+      "startTemperaturesC": [
+        34.0,
+        34.0,
+        34.2,
+        34.8
+      ],
+      "startBatteryPercents": [
+        60,
+        60,
+        59,
+        58
+      ]
+    },
+    {
+      "fixture": "vp9-1080p24.mkv",
+      "fixtureSha256": "68efdd1d14246fec7c8fbebce844418a690567076bfd69fed44003d4ec7cd878",
+      "mode": "automatic",
+      "surfaceProtocol": "current-app",
+      "measurementCohort": "renderer-20261018-hw-priority-46a0c824d23c-17192b56c846-r2-idle-controls",
+      "comparisonBlock": "vp9r2:vp9:b1",
+      "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+      "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+      "complete": true,
+      "plannedConditions": [
+        "libmpv@gpu-next",
+        "libmpv@gpu",
+        "libmpv@gpu",
+        "libmpv@gpu-next"
+      ],
+      "conditions": [
+        "libmpv@gpu",
+        "libmpv@gpu-next"
+      ],
+      "runLabels": [
+        "vp9r2-b1-1-libmpv-gpu-next",
+        "vp9r2-b1-2-libmpv-gpu",
+        "vp9r2-b1-3-libmpv-gpu",
+        "vp9r2-b1-4-libmpv-gpu-next"
+      ],
+      "conditionMeanPowerMw": {
+        "libmpv@gpu": 1341.7567176763796,
+        "libmpv@gpu-next": 1321.1188173900628
+      },
+      "a": "libmpv@gpu",
+      "b": "libmpv@gpu-next",
+      "aMinusBMw": 20.637900286316835,
+      "conditionMeanStartTemperatureC": {
+        "libmpv@gpu": 34.4,
+        "libmpv@gpu-next": 34.599999999999994
+      },
+      "conditionMeanStartBatteryPercent": {
+        "libmpv@gpu": 56.5,
+        "libmpv@gpu-next": 57
+      },
+      "aggregationEligible": true,
+      "aggregationIssues": [],
+      "conditionActualDecoders": {
+        "libmpv@gpu": [
+          [
+            "mediacodec",
+            false
+          ]
+        ],
+        "libmpv@gpu-next": [
+          [
+            "mediacodec",
+            false
+          ]
+        ]
+      },
+      "startTemperatureBandsC": [
+        34
+      ],
+      "startBatteryBandsPercent": [
+        50
+      ],
+      "batteryClasses": [
+        "normal"
+      ],
+      "startTemperaturesC": [
+        34.8,
+        34.4,
+        34.4,
+        34.4
+      ],
+      "startBatteryPercents": [
+        58,
+        57,
+        56,
+        56
+      ]
+    },
+    {
+      "fixture": "vp9-1080p24.mkv",
+      "fixtureSha256": "68efdd1d14246fec7c8fbebce844418a690567076bfd69fed44003d4ec7cd878",
+      "mode": "automatic",
+      "surfaceProtocol": "current-app",
+      "measurementCohort": "renderer-20261018-hw-priority-46a0c824d23c-17192b56c846-r2-idle-controls",
+      "comparisonBlock": "vp9r2:vp9:b2",
+      "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+      "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+      "complete": true,
+      "plannedConditions": [
+        "libmpv@gpu",
+        "libmpv@gpu-next",
+        "libmpv@gpu-next",
+        "libmpv@gpu"
+      ],
+      "conditions": [
+        "libmpv@gpu",
+        "libmpv@gpu-next"
+      ],
+      "runLabels": [
+        "vp9r2-b2-1-libmpv-gpu",
+        "vp9r2-b2-2-libmpv-gpu-next",
+        "vp9r2-b2-3-libmpv-gpu-next",
+        "vp9r2-b2-4-libmpv-gpu"
+      ],
+      "conditionMeanPowerMw": {
+        "libmpv@gpu": 1349.7823841254835,
+        "libmpv@gpu-next": 1323.2439936888952
+      },
+      "a": "libmpv@gpu",
+      "b": "libmpv@gpu-next",
+      "aMinusBMw": 26.538390436588315,
+      "conditionMeanStartTemperatureC": {
+        "libmpv@gpu": 34.3,
+        "libmpv@gpu-next": 34.4
+      },
+      "conditionMeanStartBatteryPercent": {
+        "libmpv@gpu": 54,
+        "libmpv@gpu-next": 54.5
+      },
+      "aggregationEligible": true,
+      "aggregationIssues": [],
+      "conditionActualDecoders": {
+        "libmpv@gpu": [
+          [
+            "mediacodec",
+            false
+          ]
+        ],
+        "libmpv@gpu-next": [
+          [
+            "mediacodec",
+            false
+          ]
+        ]
+      },
+      "startTemperatureBandsC": [
+        34
+      ],
+      "startBatteryBandsPercent": [
+        50
+      ],
+      "batteryClasses": [
+        "normal"
+      ],
+      "startTemperaturesC": [
+        34.4,
+        34.4,
+        34.4,
+        34.2
+      ],
+      "startBatteryPercents": [
+        55,
+        55,
+        54,
+        53
+      ]
+    },
+    {
+      "fixture": "avc-1080p24.mkv",
+      "fixtureSha256": "a6d9a6848aa52e6749a106a0987a13cd8db186008171b45aaca55da94649bb33",
+      "mode": "automatic",
+      "surfaceProtocol": "current-app",
+      "measurementCohort": "renderer-20261018-hw-priority-46a0c824d23c-17192b56c846-r2-idle-controls",
+      "comparisonBlock": "exoavcr2:avc:b1",
+      "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+      "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+      "complete": true,
+      "plannedConditions": [
+        "exo",
+        "libmpv@gpu-next",
+        "libmpv@gpu-next",
+        "exo"
+      ],
+      "conditions": [
+        "exo",
+        "libmpv@gpu-next"
+      ],
+      "runLabels": [
+        "exoavcr2-b1-1-exo-gpu-next",
+        "exoavcr2-b1-2-libmpv-gpu-next",
+        "exoavcr2-b1-3-libmpv-gpu-next",
+        "exoavcr2-b1-4-exo-gpu-next"
+      ],
+      "conditionMeanPowerMw": {
+        "exo": 1244.6330020396902,
+        "libmpv@gpu-next": 1310.6659869283108
+      },
+      "a": "exo",
+      "b": "libmpv@gpu-next",
+      "aMinusBMw": -66.0329848886206,
+      "conditionMeanStartTemperatureC": {
+        "exo": 34.4,
+        "libmpv@gpu-next": 34.4
+      },
+      "conditionMeanStartBatteryPercent": {
+        "exo": 51.5,
+        "libmpv@gpu-next": 51.5
+      },
+      "aggregationEligible": true,
+      "aggregationIssues": [],
+      "conditionActualDecoders": {
+        "exo": [
+          [
+            "c2.qti.avc.decoder",
+            false
+          ]
+        ],
+        "libmpv@gpu-next": [
+          [
+            "mediacodec",
+            false
+          ]
+        ]
+      },
+      "startTemperatureBandsC": [
+        34
+      ],
+      "startBatteryBandsPercent": [
+        50
+      ],
+      "batteryClasses": [
+        "normal"
+      ],
+      "startTemperaturesC": [
+        34.4,
+        34.4,
+        34.4,
+        34.4
+      ],
+      "startBatteryPercents": [
+        52,
+        52,
+        51,
+        51
+      ]
+    },
+    {
+      "fixture": "avc-1080p24.mkv",
+      "fixtureSha256": "a6d9a6848aa52e6749a106a0987a13cd8db186008171b45aaca55da94649bb33",
+      "mode": "automatic",
+      "surfaceProtocol": "current-app",
+      "measurementCohort": "renderer-20261018-hw-priority-46a0c824d23c-17192b56c846-r2-idle-controls",
+      "comparisonBlock": "exoavcr2:avc:b2",
+      "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+      "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+      "complete": true,
+      "plannedConditions": [
+        "libmpv@gpu-next",
+        "exo",
+        "exo",
+        "libmpv@gpu-next"
+      ],
+      "conditions": [
+        "exo",
+        "libmpv@gpu-next"
+      ],
+      "runLabels": [
+        "exoavcr2-b2-1-libmpv-gpu-next",
+        "exoavcr2-b2-2-exo-gpu-next",
+        "exoavcr2-b2-3-exo-gpu-next",
+        "exoavcr2-b2-4-libmpv-gpu-next"
+      ],
+      "conditionMeanPowerMw": {
+        "exo": 1236.9036531518482,
+        "libmpv@gpu-next": 1322.278149088889
+      },
+      "a": "exo",
+      "b": "libmpv@gpu-next",
+      "aMinusBMw": -85.37449593704082,
+      "conditionMeanStartTemperatureC": {
+        "exo": 34.6,
+        "libmpv@gpu-next": 34.4
+      },
+      "conditionMeanStartBatteryPercent": {
+        "exo": 49,
+        "libmpv@gpu-next": 49
+      },
+      "aggregationEligible": false,
+      "aggregationIssues": [
+        "crosses_10pct_start_battery_strata"
+      ],
+      "conditionActualDecoders": {
+        "exo": [
+          [
+            "c2.qti.avc.decoder",
+            false
+          ]
+        ],
+        "libmpv@gpu-next": [
+          [
+            "mediacodec",
+            false
+          ]
+        ]
+      },
+      "startTemperatureBandsC": [
+        34
+      ],
+      "startBatteryBandsPercent": [
+        40,
+        50
+      ],
+      "batteryClasses": [
+        "normal"
+      ],
+      "startTemperaturesC": [
+        34.4,
+        34.6,
+        34.6,
+        34.4
+      ],
+      "startBatteryPercents": [
+        50,
+        49,
+        49,
+        48
+      ]
+    },
+    {
+      "fixture": "avc-1080p24.mkv",
+      "fixtureSha256": "a6d9a6848aa52e6749a106a0987a13cd8db186008171b45aaca55da94649bb33",
+      "mode": "automatic",
+      "surfaceProtocol": "current-app",
+      "measurementCohort": "renderer-20261018-hw-priority-46a0c824d23c-17192b56c846-r2-idle-controls",
+      "comparisonBlock": "vlcavcr2:avc:b1",
+      "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+      "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+      "complete": true,
+      "plannedConditions": [
+        "libmpv@gpu-next",
+        "vlc",
+        "vlc",
+        "libmpv@gpu-next"
+      ],
+      "conditions": [
+        "libmpv@gpu-next",
+        "vlc"
+      ],
+      "runLabels": [
+        "vlcavcr2-b1-1-libmpv-gpu-next",
+        "vlcavcr2-b1-2-vlc-gpu-next",
+        "vlcavcr2-b1-3-vlc-gpu-next",
+        "vlcavcr2-b1-4-libmpv-gpu-next"
+      ],
+      "conditionMeanPowerMw": {
+        "libmpv@gpu-next": 1303.3288457714661,
+        "vlc": 1251.9615854855076
+      },
+      "a": "libmpv@gpu-next",
+      "b": "vlc",
+      "aMinusBMw": 51.36726028595854,
+      "conditionMeanStartTemperatureC": {
+        "libmpv@gpu-next": 34.4,
+        "vlc": 34.4
+      },
+      "conditionMeanStartBatteryPercent": {
+        "libmpv@gpu-next": 46.5,
+        "vlc": 46.5
+      },
+      "aggregationEligible": true,
+      "aggregationIssues": [],
+      "conditionActualDecoders": {
+        "libmpv@gpu-next": [
+          [
+            "mediacodec",
+            false
+          ]
+        ],
+        "vlc": [
+          [
+            "c2.qti.avc.decoder",
+            false
+          ]
+        ]
+      },
+      "startTemperatureBandsC": [
+        34
+      ],
+      "startBatteryBandsPercent": [
+        40
+      ],
+      "batteryClasses": [
+        "normal"
+      ],
+      "startTemperaturesC": [
+        34.4,
+        34.4,
+        34.4,
+        34.4
+      ],
+      "startBatteryPercents": [
+        47,
+        47,
+        46,
+        46
+      ]
+    },
+    {
+      "fixture": "avc-1080p24.mkv",
+      "fixtureSha256": "a6d9a6848aa52e6749a106a0987a13cd8db186008171b45aaca55da94649bb33",
+      "mode": "automatic",
+      "surfaceProtocol": "current-app",
+      "measurementCohort": "renderer-20261018-hw-priority-46a0c824d23c-17192b56c846-r2-idle-controls",
+      "comparisonBlock": "vlcavcr2:avc:b2",
+      "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+      "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+      "complete": true,
+      "plannedConditions": [
+        "vlc",
+        "libmpv@gpu-next",
+        "libmpv@gpu-next",
+        "vlc"
+      ],
+      "conditions": [
+        "libmpv@gpu-next",
+        "vlc"
+      ],
+      "runLabels": [
+        "vlcavcr2-b2-1-vlc-gpu-next",
+        "vlcavcr2-b2-2-libmpv-gpu-next",
+        "vlcavcr2-b2-3-libmpv-gpu-next",
+        "vlcavcr2-b2-4-vlc-gpu-next"
+      ],
+      "conditionMeanPowerMw": {
+        "libmpv@gpu-next": 1328.3956127359893,
+        "vlc": 1234.6381151295031
+      },
+      "a": "libmpv@gpu-next",
+      "b": "vlc",
+      "aMinusBMw": 93.75749760648614,
+      "conditionMeanStartTemperatureC": {
+        "libmpv@gpu-next": 34.6,
+        "vlc": 34.65
+      },
+      "conditionMeanStartBatteryPercent": {
+        "libmpv@gpu-next": 44,
+        "vlc": 44
+      },
+      "aggregationEligible": true,
+      "aggregationIssues": [],
+      "conditionActualDecoders": {
+        "libmpv@gpu-next": [
+          [
+            "mediacodec",
+            false
+          ]
+        ],
+        "vlc": [
+          [
+            "c2.qti.avc.decoder",
+            false
+          ]
+        ]
+      },
+      "startTemperatureBandsC": [
+        34
+      ],
+      "startBatteryBandsPercent": [
+        40
+      ],
+      "batteryClasses": [
+        "normal"
+      ],
+      "startTemperaturesC": [
+        34.5,
+        34.6,
+        34.6,
+        34.8
+      ],
+      "startBatteryPercents": [
+        45,
+        44,
+        44,
+        43
+      ]
+    }
+  ],
+  "comparisons": [
+    {
+      "fixture": "avc-1080p24.mkv",
+      "fixtureSha256": "a6d9a6848aa52e6749a106a0987a13cd8db186008171b45aaca55da94649bb33",
+      "mode": "automatic",
+      "surfaceProtocol": "current-app",
+      "measurementCohort": "renderer-20261018-hw-priority-46a0c824d23c-17192b56c846-r2-idle-controls",
+      "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+      "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+      "a": "libmpv@gpu",
+      "b": "libmpv@gpu-next",
+      "conditionActualDecoders": {
+        "libmpv@gpu": [
+          [
+            "mediacodec",
+            false
+          ]
+        ],
+        "libmpv@gpu-next": [
+          [
+            "mediacodec",
+            false
+          ]
+        ]
+      },
+      "startTemperatureBandsC": [
+        34
+      ],
+      "startBatteryBandsPercent": [
+        70
+      ],
+      "batteryClasses": [
+        "normal"
+      ],
+      "blockCount": 3,
+      "blockIds": [
+        "avcmainar2:avc:b1",
+        "avcmainar2:avc:b2",
+        "avcmainbr2:avc:b1"
+      ],
+      "meanAMinusBMw": 57.95445826845738,
+      "blockDifferencesMw": [
+        56.85633352856621,
+        79.7104401872225,
+        37.29660108958342
+      ],
+      "blockDifferenceStdevMw": 21.228232267628297,
+      "conditionMeanPowerMw": {
+        "libmpv@gpu": 1343.1892600630335,
+        "libmpv@gpu-next": 1285.2348017945762
+      }
+    },
+    {
+      "fixture": "hevc-1080p24.mkv",
+      "fixtureSha256": "49fee53a0264f2373cb95a88c506796f68c2229aa985e1d9348d341c53169d14",
+      "mode": "automatic",
+      "surfaceProtocol": "current-app",
+      "measurementCohort": "renderer-20261018-hw-priority-46a0c824d23c-17192b56c846-r2-idle-controls",
+      "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+      "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+      "a": "libmpv@gpu",
+      "b": "libmpv@gpu-next",
+      "conditionActualDecoders": {
+        "libmpv@gpu": [
+          [
+            "mediacodec",
+            false
+          ]
+        ],
+        "libmpv@gpu-next": [
+          [
+            "mediacodec",
+            false
+          ]
+        ]
+      },
+      "startTemperatureBandsC": [
+        34
+      ],
+      "startBatteryBandsPercent": [
+        60
+      ],
+      "batteryClasses": [
+        "normal"
+      ],
+      "blockCount": 2,
+      "blockIds": [
+        "hevcr2:hevc:b1",
+        "hevcr2:hevc:b2"
+      ],
+      "meanAMinusBMw": 32.59484085239296,
+      "blockDifferencesMw": [
+        27.20205283824953,
+        37.9876288665364
+      ],
+      "blockDifferenceStdevMw": 7.626553948604715,
+      "conditionMeanPowerMw": {
+        "libmpv@gpu": 1344.2955057713189,
+        "libmpv@gpu-next": 1311.700664918926
+      }
+    },
+    {
+      "fixture": "hevc10-1080p24.mkv",
+      "fixtureSha256": "c338ae9ad3ee0c89a8dc893df6d4c06be9e43d35d873a987f2cfaaaa7c22ba22",
+      "mode": "automatic",
+      "surfaceProtocol": "current-app",
+      "measurementCohort": "renderer-20261018-hw-priority-46a0c824d23c-17192b56c846-r2-idle-controls",
+      "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+      "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+      "a": "libmpv@gpu",
+      "b": "libmpv@gpu-next",
+      "conditionActualDecoders": {
+        "libmpv@gpu": [
+          [
+            "mediacodec",
+            false
+          ]
+        ],
+        "libmpv@gpu-next": [
+          [
+            "mediacodec",
+            false
+          ]
+        ]
+      },
+      "startTemperatureBandsC": [
+        34
+      ],
+      "startBatteryBandsPercent": [
+        60
+      ],
+      "batteryClasses": [
+        "normal"
+      ],
+      "blockCount": 1,
+      "blockIds": [
+        "hevc10r2:hevc10:b1"
+      ],
+      "meanAMinusBMw": 33.00241541859714,
+      "blockDifferencesMw": [
+        33.00241541859714
+      ],
+      "blockDifferenceStdevMw": null,
+      "conditionMeanPowerMw": {
+        "libmpv@gpu": 1337.0970631823616,
+        "libmpv@gpu-next": 1304.0946477637644
+      }
+    },
+    {
+      "fixture": "vp9-1080p24.mkv",
+      "fixtureSha256": "68efdd1d14246fec7c8fbebce844418a690567076bfd69fed44003d4ec7cd878",
+      "mode": "automatic",
+      "surfaceProtocol": "current-app",
+      "measurementCohort": "renderer-20261018-hw-priority-46a0c824d23c-17192b56c846-r2-idle-controls",
+      "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+      "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+      "a": "libmpv@gpu",
+      "b": "libmpv@gpu-next",
+      "conditionActualDecoders": {
+        "libmpv@gpu": [
+          [
+            "mediacodec",
+            false
+          ]
+        ],
+        "libmpv@gpu-next": [
+          [
+            "mediacodec",
+            false
+          ]
+        ]
+      },
+      "startTemperatureBandsC": [
+        34
+      ],
+      "startBatteryBandsPercent": [
+        50
+      ],
+      "batteryClasses": [
+        "normal"
+      ],
+      "blockCount": 2,
+      "blockIds": [
+        "vp9r2:vp9:b1",
+        "vp9r2:vp9:b2"
+      ],
+      "meanAMinusBMw": 23.588145361452575,
+      "blockDifferencesMw": [
+        20.637900286316835,
+        26.538390436588315
+      ],
+      "blockDifferenceStdevMw": 4.172276597581394,
+      "conditionMeanPowerMw": {
+        "libmpv@gpu": 1345.7695509009316,
+        "libmpv@gpu-next": 1322.1814055394789
+      }
+    },
+    {
+      "fixture": "avc-1080p24.mkv",
+      "fixtureSha256": "a6d9a6848aa52e6749a106a0987a13cd8db186008171b45aaca55da94649bb33",
+      "mode": "automatic",
+      "surfaceProtocol": "current-app",
+      "measurementCohort": "renderer-20261018-hw-priority-46a0c824d23c-17192b56c846-r2-idle-controls",
+      "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+      "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+      "a": "exo",
+      "b": "libmpv@gpu-next",
+      "conditionActualDecoders": {
+        "exo": [
+          [
+            "c2.qti.avc.decoder",
+            false
+          ]
+        ],
+        "libmpv@gpu-next": [
+          [
+            "mediacodec",
+            false
+          ]
+        ]
+      },
+      "startTemperatureBandsC": [
+        34
+      ],
+      "startBatteryBandsPercent": [
+        50
+      ],
+      "batteryClasses": [
+        "normal"
+      ],
+      "blockCount": 1,
+      "blockIds": [
+        "exoavcr2:avc:b1"
+      ],
+      "meanAMinusBMw": -66.0329848886206,
+      "blockDifferencesMw": [
+        -66.0329848886206
+      ],
+      "blockDifferenceStdevMw": null,
+      "conditionMeanPowerMw": {
+        "exo": 1244.6330020396902,
+        "libmpv@gpu-next": 1310.6659869283108
+      }
+    },
+    {
+      "fixture": "avc-1080p24.mkv",
+      "fixtureSha256": "a6d9a6848aa52e6749a106a0987a13cd8db186008171b45aaca55da94649bb33",
+      "mode": "automatic",
+      "surfaceProtocol": "current-app",
+      "measurementCohort": "renderer-20261018-hw-priority-46a0c824d23c-17192b56c846-r2-idle-controls",
+      "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+      "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+      "a": "libmpv@gpu-next",
+      "b": "vlc",
+      "conditionActualDecoders": {
+        "libmpv@gpu-next": [
+          [
+            "mediacodec",
+            false
+          ]
+        ],
+        "vlc": [
+          [
+            "c2.qti.avc.decoder",
+            false
+          ]
+        ]
+      },
+      "startTemperatureBandsC": [
+        34
+      ],
+      "startBatteryBandsPercent": [
+        40
+      ],
+      "batteryClasses": [
+        "normal"
+      ],
+      "blockCount": 2,
+      "blockIds": [
+        "vlcavcr2:avc:b1",
+        "vlcavcr2:avc:b2"
+      ],
+      "meanAMinusBMw": 72.56237894622234,
+      "blockDifferencesMw": [
+        51.36726028595854,
+        93.75749760648614
+      ],
+      "blockDifferenceStdevMw": 29.974424265452132,
+      "conditionMeanPowerMw": {
+        "libmpv@gpu-next": 1315.8622292537277,
+        "vlc": 1243.2998503075055
+      }
+    }
+  ],
+  "policy": "Full ABBA/BAAB blocks are replicates. Pool only identical APK/fixture/protocol/cohort/actual decoder, battery class, 10 percentage-point start battery band, and 1 C start temperature band. Boundary-crossing blocks remain visible individually. No pooled confidence interval is claimed.",
+  "limitation": "Same new APK renderer/core comparison; not a causal estimate of dependency-upgrade benefit. Power does not establish visual quality. The original progress-report.json is an operational snapshot; use this report for stratified comparisons."
+}

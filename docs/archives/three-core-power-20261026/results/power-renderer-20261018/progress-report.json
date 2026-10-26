@@ -1,0 +1,442 @@
+{
+  "updatedUtc": "2026-10-18T00:46:27.504350+00:00",
+  "phase": "completed",
+  "hardwarePriority": true,
+  "stages": [
+    {
+      "name": "hwpreflight",
+      "plan": "F:\\Git\\ZivPlayer\\native\\out\\power-renderer-20261018\\hwpreflight\\run-plan.json",
+      "planSha256": "95588e127e9365d218847b9bddf43e35eb5c6b17c458709352aa8818deaa1cc7",
+      "status": "collected",
+      "preflight": true,
+      "optional": false,
+      "nominalSeconds": 590,
+      "startedUtc": "2026-10-17T18:01:58Z",
+      "finishedUtc": "2026-10-17T18:22:27.487984+00:00",
+      "qualifiedRows": 0,
+      "preflightPassed": 0,
+      "exit": {
+        "finishedUtc": "2026-10-17T18:22:16Z",
+        "stopReason": "cooling_deadline_expired",
+        "runnerExitCode": 1,
+        "cleanupSucceeded": true,
+        "screenTimeout": "86400000",
+        "bluetooth": "0",
+        "sleepRequested": false,
+        "sleepVerified": false,
+        "batteryPercent": 80
+      }
+    },
+    {
+      "name": "avcmaina",
+      "plan": "F:\\Git\\ZivPlayer\\native\\out\\power-renderer-20261018\\avcmaina\\run-plan.json",
+      "planSha256": "8217039e22f5b5351976425104e3ac53410169da21c807fd85c8bad9762fa31a",
+      "status": "superseded",
+      "preflight": false,
+      "optional": false,
+      "nominalSeconds": 3090,
+      "supersededBy": "avcmainar2"
+    },
+    {
+      "name": "avcmainb",
+      "plan": "F:\\Git\\ZivPlayer\\native\\out\\power-renderer-20261018\\avcmainb\\run-plan.json",
+      "planSha256": "a95a18357c733ff2343f0aad1a189b89dce1d6320b78078ba86f8277c92941f2",
+      "status": "superseded",
+      "preflight": false,
+      "optional": false,
+      "nominalSeconds": 3090,
+      "supersededBy": "avcmainbr2"
+    },
+    {
+      "name": "hevc",
+      "plan": "F:\\Git\\ZivPlayer\\native\\out\\power-renderer-20261018\\hevc\\run-plan.json",
+      "planSha256": "889bf42934307750b7f6d55e70715e79a3d2b66965b5004a36f48fe95d69040b",
+      "status": "superseded",
+      "preflight": false,
+      "optional": false,
+      "nominalSeconds": 3090,
+      "supersededBy": "hevcr2"
+    },
+    {
+      "name": "hevc10",
+      "plan": "F:\\Git\\ZivPlayer\\native\\out\\power-renderer-20261018\\hevc10\\run-plan.json",
+      "planSha256": "0cd8167dd863c0a2a2f9955621f5889835ef9babf509ad3822213d50c5d143b8",
+      "status": "superseded",
+      "preflight": false,
+      "optional": false,
+      "nominalSeconds": 3090,
+      "supersededBy": "hevc10r2"
+    },
+    {
+      "name": "vp9",
+      "plan": "F:\\Git\\ZivPlayer\\native\\out\\power-renderer-20261018\\vp9\\run-plan.json",
+      "planSha256": "78df134a1f05a881a539c85f4a7bffb5414330aa72a83743f8aa39cdd14e3205",
+      "status": "superseded",
+      "preflight": false,
+      "optional": false,
+      "nominalSeconds": 3090,
+      "supersededBy": "vp9r2"
+    },
+    {
+      "name": "exoavc",
+      "plan": "F:\\Git\\ZivPlayer\\native\\out\\power-renderer-20261018\\exoavc\\run-plan.json",
+      "planSha256": "5f51ba10fb38fa3e69970ec398427ce232f233e124fac162f875d0837544bd3a",
+      "status": "superseded",
+      "preflight": false,
+      "optional": false,
+      "nominalSeconds": 3090,
+      "supersededBy": "exoavcr2"
+    },
+    {
+      "name": "vlcavc",
+      "plan": "F:\\Git\\ZivPlayer\\native\\out\\power-renderer-20261018\\vlcavc\\run-plan.json",
+      "planSha256": "8dcf979c33f39ed63c1c8a018785a2c5dffb2ab748f1049078e5d61db5739f04",
+      "status": "superseded",
+      "preflight": false,
+      "optional": false,
+      "nominalSeconds": 3090,
+      "supersededBy": "vlcavcr2"
+    },
+    {
+      "name": "av1optional",
+      "plan": "F:\\Git\\ZivPlayer\\native\\out\\power-renderer-20261018\\av1optional\\run-plan.json",
+      "planSha256": "6664e3f8d2e923dca06231768455122a5400155d4f8b67289e5a7fa91f2a8a42",
+      "status": "superseded",
+      "preflight": false,
+      "optional": true,
+      "nominalSeconds": 3090,
+      "supersededBy": "av1optionalr2"
+    },
+    {
+      "name": "hwpreflightr2",
+      "plan": "F:\\Git\\ZivPlayer\\native\\out\\power-renderer-20261018\\hwpreflightr2\\run-plan.json",
+      "planSha256": "1768b2b89c4afe0b6c2a6b8e8326800544c5abc41094108ce1021bca14fee4f2",
+      "status": "collected",
+      "preflight": true,
+      "optional": false,
+      "nominalSeconds": 590,
+      "revision": 2,
+      "startedUtc": "2026-10-17T18:35:09Z",
+      "finishedUtc": "2026-10-17T18:45:16.518763+00:00",
+      "qualifiedRows": 0,
+      "preflightPassed": 4,
+      "exit": {
+        "finishedUtc": "2026-10-17T18:45:10Z",
+        "stopReason": "manifest_completed",
+        "runnerExitCode": 0,
+        "cleanupSucceeded": true,
+        "screenTimeout": "86400000",
+        "bluetooth": "0",
+        "sleepRequested": false,
+        "sleepVerified": false,
+        "batteryPercent": 78
+      }
+    },
+    {
+      "name": "avcmainar2",
+      "plan": "F:\\Git\\ZivPlayer\\native\\out\\power-renderer-20261018\\avcmainar2\\run-plan.json",
+      "planSha256": "45269445a917156fe86b3af038200f08feff6e2a6492ba2ebb0d422f3e5d8ff3",
+      "status": "collected",
+      "preflight": false,
+      "optional": false,
+      "nominalSeconds": 3090,
+      "revision": 2,
+      "startedUtc": "2026-10-17T18:45:18Z",
+      "finishedUtc": "2026-10-17T19:36:55.496701+00:00",
+      "qualifiedRows": 8,
+      "preflightPassed": 0,
+      "exit": {
+        "finishedUtc": "2026-10-17T19:36:37Z",
+        "stopReason": "manifest_completed",
+        "runnerExitCode": 0,
+        "cleanupSucceeded": true,
+        "screenTimeout": "86400000",
+        "bluetooth": "0",
+        "sleepRequested": false,
+        "sleepVerified": false,
+        "batteryPercent": 73
+      }
+    },
+    {
+      "name": "avcmainbr2",
+      "plan": "F:\\Git\\ZivPlayer\\native\\out\\power-renderer-20261018\\avcmainbr2\\run-plan.json",
+      "planSha256": "e11b190970572ea1011a7e6d454956f95af89598bf636ce97cee24eae2e39844",
+      "status": "collected",
+      "preflight": false,
+      "optional": false,
+      "nominalSeconds": 3090,
+      "revision": 2,
+      "startedUtc": "2026-10-17T19:36:57Z",
+      "finishedUtc": "2026-10-17T20:28:49.679975+00:00",
+      "qualifiedRows": 8,
+      "preflightPassed": 0,
+      "exit": {
+        "finishedUtc": "2026-10-17T20:28:32Z",
+        "stopReason": "manifest_completed",
+        "runnerExitCode": 0,
+        "cleanupSucceeded": true,
+        "screenTimeout": "86400000",
+        "bluetooth": "0",
+        "sleepRequested": false,
+        "sleepVerified": false,
+        "batteryPercent": 68
+      }
+    },
+    {
+      "name": "hevcr2",
+      "plan": "F:\\Git\\ZivPlayer\\native\\out\\power-renderer-20261018\\hevcr2\\run-plan.json",
+      "planSha256": "b188d49c8972d461e6f014faa6c8e90660bb244edd3595e8526235045ce3529a",
+      "status": "collected",
+      "preflight": false,
+      "optional": false,
+      "nominalSeconds": 3090,
+      "revision": 2,
+      "startedUtc": "2026-10-17T20:28:52Z",
+      "finishedUtc": "2026-10-17T21:20:16.718778+00:00",
+      "qualifiedRows": 8,
+      "preflightPassed": 0,
+      "exit": {
+        "finishedUtc": "2026-10-17T21:20:09Z",
+        "stopReason": "manifest_completed",
+        "runnerExitCode": 0,
+        "cleanupSucceeded": true,
+        "screenTimeout": "86400000",
+        "bluetooth": "0",
+        "sleepRequested": false,
+        "sleepVerified": false,
+        "batteryPercent": 63
+      }
+    },
+    {
+      "name": "hevc10r2",
+      "plan": "F:\\Git\\ZivPlayer\\native\\out\\power-renderer-20261018\\hevc10r2\\run-plan.json",
+      "planSha256": "7ea6655379178d5e357cd82bc1bb82fe2178e84ac25f605ccc925a8bf9237f8a",
+      "status": "collected",
+      "preflight": false,
+      "optional": false,
+      "nominalSeconds": 3090,
+      "revision": 2,
+      "startedUtc": "2026-10-17T21:20:18Z",
+      "finishedUtc": "2026-10-17T22:11:43.013715+00:00",
+      "qualifiedRows": 8,
+      "preflightPassed": 0,
+      "exit": {
+        "finishedUtc": "2026-10-17T22:11:36Z",
+        "stopReason": "manifest_completed",
+        "runnerExitCode": 0,
+        "cleanupSucceeded": true,
+        "screenTimeout": "86400000",
+        "bluetooth": "0",
+        "sleepRequested": false,
+        "sleepVerified": false,
+        "batteryPercent": 58
+      }
+    },
+    {
+      "name": "vp9r2",
+      "plan": "F:\\Git\\ZivPlayer\\native\\out\\power-renderer-20261018\\vp9r2\\run-plan.json",
+      "planSha256": "1ac6da01f2e8014b1d78a7d3d9b4d79d548504755a8e94b320dc88fcfdd90717",
+      "status": "collected",
+      "preflight": false,
+      "optional": false,
+      "nominalSeconds": 3090,
+      "revision": 2,
+      "startedUtc": "2026-10-17T22:11:45Z",
+      "finishedUtc": "2026-10-17T23:03:09.201427+00:00",
+      "qualifiedRows": 8,
+      "preflightPassed": 0,
+      "exit": {
+        "finishedUtc": "2026-10-17T23:03:02Z",
+        "stopReason": "manifest_completed",
+        "runnerExitCode": 0,
+        "cleanupSucceeded": true,
+        "screenTimeout": "86400000",
+        "bluetooth": "0",
+        "sleepRequested": false,
+        "sleepVerified": false,
+        "batteryPercent": 53
+      }
+    },
+    {
+      "name": "exoavcr2",
+      "plan": "F:\\Git\\ZivPlayer\\native\\out\\power-renderer-20261018\\exoavcr2\\run-plan.json",
+      "planSha256": "caad6dac86856a311e80355052b2ce6eb8703c67001d9c7df47891d5b4bfa9f8",
+      "status": "collected",
+      "preflight": false,
+      "optional": false,
+      "nominalSeconds": 3090,
+      "revision": 2,
+      "startedUtc": "2026-10-17T23:03:11Z",
+      "finishedUtc": "2026-10-17T23:54:33.296704+00:00",
+      "qualifiedRows": 8,
+      "preflightPassed": 0,
+      "exit": {
+        "finishedUtc": "2026-10-17T23:54:28Z",
+        "stopReason": "manifest_completed",
+        "runnerExitCode": 0,
+        "cleanupSucceeded": true,
+        "screenTimeout": "86400000",
+        "bluetooth": "0",
+        "sleepRequested": false,
+        "sleepVerified": false,
+        "batteryPercent": 48
+      }
+    },
+    {
+      "name": "vlcavcr2",
+      "plan": "F:\\Git\\ZivPlayer\\native\\out\\power-renderer-20261018\\vlcavcr2\\run-plan.json",
+      "planSha256": "2168053c4197f47e4ea9c0d165dc9d30cc8be562f513a9ce19a28613a5198ed4",
+      "status": "collected",
+      "preflight": false,
+      "optional": false,
+      "nominalSeconds": 3090,
+      "revision": 2,
+      "startedUtc": "2026-10-17T23:54:35Z",
+      "finishedUtc": "2026-10-18T00:46:11.865903+00:00",
+      "qualifiedRows": 8,
+      "preflightPassed": 0,
+      "exit": {
+        "finishedUtc": "2026-10-18T00:45:54Z",
+        "stopReason": "manifest_completed",
+        "runnerExitCode": 0,
+        "cleanupSucceeded": true,
+        "screenTimeout": "86400000",
+        "bluetooth": "0",
+        "sleepRequested": false,
+        "sleepVerified": false,
+        "batteryPercent": 43
+      }
+    },
+    {
+      "name": "av1optionalr2",
+      "plan": "F:\\Git\\ZivPlayer\\native\\out\\power-renderer-20261018\\av1optionalr2\\run-plan.json",
+      "planSha256": "d600dfe70504a7e43057e724749b7aecc6f25eb0e0912ee6c6b50080fb9224e7",
+      "status": "skipped",
+      "preflight": false,
+      "optional": true,
+      "nominalSeconds": 3090,
+      "revision": 2,
+      "skipReason": "insufficient_time_for_complete_balanced_phase"
+    }
+  ],
+  "qualifiedRuns": 56,
+  "completeBlocks": 14,
+  "comparisons": [
+    {
+      "fixture": "avc-1080p24.mkv",
+      "mode": "automatic",
+      "cohort": "renderer-20261018-hw-priority-46a0c824d23c-17192b56c846-r2-idle-controls",
+      "a": "libmpv@gpu",
+      "b": "libmpv@gpu-next",
+      "blocks": 4,
+      "meanAMinusBMw": 50.27757250028719,
+      "blockDifferenceStdevMw": 23.155205257761214,
+      "descriptiveT95IntervalMw": [
+        13.437640935189101,
+        87.11750406538528
+      ],
+      "note": "Block differences are the replicate unit; small-n t interval is descriptive and assumes independent blocks. One-second samples are not replicates.",
+      "conditionMeanPowerMw": {
+        "libmpv@gpu": 1339.6841003076765,
+        "libmpv@gpu-next": 1289.4065278073895
+      }
+    },
+    {
+      "fixture": "hevc-1080p24.mkv",
+      "mode": "automatic",
+      "cohort": "renderer-20261018-hw-priority-46a0c824d23c-17192b56c846-r2-idle-controls",
+      "a": "libmpv@gpu",
+      "b": "libmpv@gpu-next",
+      "blocks": 2,
+      "meanAMinusBMw": 32.59484085239296,
+      "blockDifferenceStdevMw": 7.626553948604715,
+      "descriptiveT95IntervalMw": [
+        -35.92592365531351,
+        101.11560536009944
+      ],
+      "note": "Block differences are the replicate unit; small-n t interval is descriptive and assumes independent blocks. One-second samples are not replicates.",
+      "conditionMeanPowerMw": {
+        "libmpv@gpu": 1344.2955057713189,
+        "libmpv@gpu-next": 1311.700664918926
+      }
+    },
+    {
+      "fixture": "hevc10-1080p24.mkv",
+      "mode": "automatic",
+      "cohort": "renderer-20261018-hw-priority-46a0c824d23c-17192b56c846-r2-idle-controls",
+      "a": "libmpv@gpu",
+      "b": "libmpv@gpu-next",
+      "blocks": 2,
+      "meanAMinusBMw": 48.17344326949899,
+      "blockDifferenceStdevMw": 21.455073341885345,
+      "descriptiveT95IntervalMw": [
+        -144.5896366040599,
+        240.93652314305788
+      ],
+      "note": "Block differences are the replicate unit; small-n t interval is descriptive and assumes independent blocks. One-second samples are not replicates.",
+      "conditionMeanPowerMw": {
+        "libmpv@gpu": 1350.4834488102842,
+        "libmpv@gpu-next": 1302.3100055407851
+      }
+    },
+    {
+      "fixture": "vp9-1080p24.mkv",
+      "mode": "automatic",
+      "cohort": "renderer-20261018-hw-priority-46a0c824d23c-17192b56c846-r2-idle-controls",
+      "a": "libmpv@gpu",
+      "b": "libmpv@gpu-next",
+      "blocks": 2,
+      "meanAMinusBMw": 23.588145361452575,
+      "blockDifferenceStdevMw": 4.172276597581394,
+      "descriptiveT95IntervalMw": [
+        -13.897668563222133,
+        61.073959286127284
+      ],
+      "note": "Block differences are the replicate unit; small-n t interval is descriptive and assumes independent blocks. One-second samples are not replicates.",
+      "conditionMeanPowerMw": {
+        "libmpv@gpu": 1345.7695509009316,
+        "libmpv@gpu-next": 1322.1814055394789
+      }
+    },
+    {
+      "fixture": "avc-1080p24.mkv",
+      "mode": "automatic",
+      "cohort": "renderer-20261018-hw-priority-46a0c824d23c-17192b56c846-r2-idle-controls",
+      "a": "exo",
+      "b": "libmpv@gpu-next",
+      "blocks": 2,
+      "meanAMinusBMw": -75.70374041283071,
+      "blockDifferenceStdevMw": 13.676513620732464,
+      "descriptiveT95IntervalMw": [
+        -198.58036010344432,
+        47.17287927778291
+      ],
+      "note": "Block differences are the replicate unit; small-n t interval is descriptive and assumes independent blocks. One-second samples are not replicates.",
+      "conditionMeanPowerMw": {
+        "exo": 1240.7683275957693,
+        "libmpv@gpu-next": 1316.4720680085998
+      }
+    },
+    {
+      "fixture": "avc-1080p24.mkv",
+      "mode": "automatic",
+      "cohort": "renderer-20261018-hw-priority-46a0c824d23c-17192b56c846-r2-idle-controls",
+      "a": "libmpv@gpu-next",
+      "b": "vlc",
+      "blocks": 2,
+      "meanAMinusBMw": 72.56237894622234,
+      "blockDifferenceStdevMw": 29.974424265452132,
+      "descriptiveT95IntervalMw": [
+        -196.74279875108948,
+        341.86755664353416
+      ],
+      "note": "Block differences are the replicate unit; small-n t interval is descriptive and assumes independent blocks. One-second samples are not replicates.",
+      "conditionMeanPowerMw": {
+        "libmpv@gpu-next": 1315.8622292537277,
+        "vlc": 1243.2998503075055
+      }
+    }
+  ],
+  "limitation": "Same new APK, renderer comparison only; cannot isolate dependency-upgrade effects. Battery/temperature strata are not pooled.",
+  "screenPolicy": "Keep awake through preparation, measurement, repair and recovery until user returns."
+}

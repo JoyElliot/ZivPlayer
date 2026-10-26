@@ -1,0 +1,21 @@
+{
+  "source": "stratified-report.json complete blocks only",
+  "values": {
+    "avc": {},
+    "hevc": {
+      "exo": {
+        "meanPowerMw": 1218.2230946976854,
+        "completeBlockCount": 2,
+        "formalLegCount": 4
+      },
+      "libmpv@gpu-next": {
+        "meanPowerMw": 1299.0787850820611,
+        "completeBlockCount": 2,
+        "formalLegCount": 4
+      }
+    },
+    "hevc10": {},
+    "vp9": {}
+  },
+  "scope": "Raw arithmetic descriptive means, unequal temperature/battery strata are not adjusted; never a paired or causal estimate."
+}

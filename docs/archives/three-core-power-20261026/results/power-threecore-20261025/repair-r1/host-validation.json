@@ -1,0 +1,6 @@
+{
+  "windowsValidate": true,
+  "retryPlanPreservationAndProtocolEquivalence": true,
+  "deviceTransactionGeneratedSyntax": true,
+  "deviceIoPerformed": false
+}

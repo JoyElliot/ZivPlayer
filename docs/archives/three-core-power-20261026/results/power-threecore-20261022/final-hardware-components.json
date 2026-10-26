@@ -1,0 +1,542 @@
+[
+  {
+    "stage": "avccheck",
+    "archiveMember": "raw/avccheck-b1-1-libmpv-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.avc.decoder"
+    ],
+    "expected": "c2.qti.avc.decoder",
+    "matches": true
+  },
+  {
+    "stage": "avccheck",
+    "archiveMember": "raw/avccheck-b1-2-exo-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.avc.decoder"
+    ],
+    "expected": "c2.qti.avc.decoder",
+    "matches": true
+  },
+  {
+    "stage": "avccheck",
+    "archiveMember": "raw/avccheck-b1-3-vlc-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.avc.decoder"
+    ],
+    "expected": "c2.qti.avc.decoder",
+    "matches": true
+  },
+  {
+    "stage": "avcmva",
+    "archiveMember": "raw/avcmva-b1-1-libmpv-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.avc.decoder"
+    ],
+    "expected": "c2.qti.avc.decoder",
+    "matches": true
+  },
+  {
+    "stage": "avcmva",
+    "archiveMember": "raw/avcmva-b1-2-vlc-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.avc.decoder"
+    ],
+    "expected": "c2.qti.avc.decoder",
+    "matches": true
+  },
+  {
+    "stage": "avcmva",
+    "archiveMember": "raw/avcmva-b1-3-vlc-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.avc.decoder"
+    ],
+    "expected": "c2.qti.avc.decoder",
+    "matches": true
+  },
+  {
+    "stage": "avcmva",
+    "archiveMember": "raw/avcmva-b1-4-libmpv-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.avc.decoder"
+    ],
+    "expected": "c2.qti.avc.decoder",
+    "matches": true
+  },
+  {
+    "stage": "avcmvb",
+    "archiveMember": "raw/avcmvb-b1-1-vlc-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.avc.decoder"
+    ],
+    "expected": "c2.qti.avc.decoder",
+    "matches": true
+  },
+  {
+    "stage": "avcmvb",
+    "archiveMember": "raw/avcmvb-b1-2-libmpv-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.avc.decoder"
+    ],
+    "expected": "c2.qti.avc.decoder",
+    "matches": true
+  },
+  {
+    "stage": "avcmvb",
+    "archiveMember": "raw/avcmvb-b1-3-libmpv-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.avc.decoder"
+    ],
+    "expected": "c2.qti.avc.decoder",
+    "matches": true
+  },
+  {
+    "stage": "avcmvb",
+    "archiveMember": "raw/avcmvb-b1-4-vlc-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.avc.decoder"
+    ],
+    "expected": "c2.qti.avc.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1vp9check",
+    "archiveMember": "raw/n22r1vp9check-b1-1-libmpv-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.vp9.decoder"
+    ],
+    "expected": "c2.qti.vp9.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1vp9check",
+    "archiveMember": "raw/n22r1vp9check-b1-2-exo-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.vp9.decoder"
+    ],
+    "expected": "c2.qti.vp9.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1vp9check",
+    "archiveMember": "raw/n22r1vp9check-b1-3-vlc-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.vp9.decoder"
+    ],
+    "expected": "c2.qti.vp9.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1vp9mva",
+    "archiveMember": "raw/n22r1vp9mva-b1-1-libmpv-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.vp9.decoder"
+    ],
+    "expected": "c2.qti.vp9.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1vp9mva",
+    "archiveMember": "raw/n22r1vp9mva-b1-2-vlc-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.vp9.decoder"
+    ],
+    "expected": "c2.qti.vp9.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1vp9mva",
+    "archiveMember": "raw/n22r1vp9mva-b1-3-vlc-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.vp9.decoder"
+    ],
+    "expected": "c2.qti.vp9.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1vp9mva",
+    "archiveMember": "raw/n22r1vp9mva-b1-4-libmpv-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.vp9.decoder"
+    ],
+    "expected": "c2.qti.vp9.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1vp9mvb",
+    "archiveMember": "raw/n22r1vp9mvb-b1-1-vlc-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.vp9.decoder"
+    ],
+    "expected": "c2.qti.vp9.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1vp9mvb",
+    "archiveMember": "raw/n22r1vp9mvb-b1-2-libmpv-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.vp9.decoder"
+    ],
+    "expected": "c2.qti.vp9.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1vp9mvb",
+    "archiveMember": "raw/n22r1vp9mvb-b1-3-libmpv-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.vp9.decoder"
+    ],
+    "expected": "c2.qti.vp9.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1vp9mvb",
+    "archiveMember": "raw/n22r1vp9mvb-b1-4-vlc-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.vp9.decoder"
+    ],
+    "expected": "c2.qti.vp9.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1hevccheck",
+    "archiveMember": "raw/n22r1hevccheck-b1-1-libmpv-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.hevc.decoder"
+    ],
+    "expected": "c2.qti.hevc.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1hevccheck",
+    "archiveMember": "raw/n22r1hevccheck-b1-2-exo-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.hevc.decoder"
+    ],
+    "expected": "c2.qti.hevc.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1hevccheck",
+    "archiveMember": "raw/n22r1hevccheck-b1-3-vlc-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.hevc.decoder"
+    ],
+    "expected": "c2.qti.hevc.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1hevcmea",
+    "archiveMember": "raw/n22r1hevcmea-b1-1-libmpv-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.hevc.decoder"
+    ],
+    "expected": "c2.qti.hevc.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1hevcmea",
+    "archiveMember": "raw/n22r1hevcmea-b1-2-exo-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.hevc.decoder"
+    ],
+    "expected": "c2.qti.hevc.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1hevcmea",
+    "archiveMember": "raw/n22r1hevcmea-b1-3-exo-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.hevc.decoder"
+    ],
+    "expected": "c2.qti.hevc.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1hevcmea",
+    "archiveMember": "raw/n22r1hevcmea-b1-4-libmpv-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.hevc.decoder"
+    ],
+    "expected": "c2.qti.hevc.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1hevcmeb",
+    "archiveMember": "raw/n22r1hevcmeb-b1-1-exo-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.hevc.decoder"
+    ],
+    "expected": "c2.qti.hevc.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1hevcmeb",
+    "archiveMember": "raw/n22r1hevcmeb-b1-2-libmpv-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.hevc.decoder"
+    ],
+    "expected": "c2.qti.hevc.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1hevcmeb",
+    "archiveMember": "raw/n22r1hevcmeb-b1-3-libmpv-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.hevc.decoder"
+    ],
+    "expected": "c2.qti.hevc.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1hevcmeb",
+    "archiveMember": "raw/n22r1hevcmeb-b1-4-exo-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.hevc.decoder"
+    ],
+    "expected": "c2.qti.hevc.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1hevc10check",
+    "archiveMember": "raw/n22r1hevc10check-b1-1-libmpv-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.hevc.decoder"
+    ],
+    "expected": "c2.qti.hevc.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1hevc10check",
+    "archiveMember": "raw/n22r1hevc10check-b1-2-exo-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.hevc.decoder"
+    ],
+    "expected": "c2.qti.hevc.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1hevc10check",
+    "archiveMember": "raw/n22r1hevc10check-b1-3-vlc-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.hevc.decoder"
+    ],
+    "expected": "c2.qti.hevc.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1hevc10mea",
+    "archiveMember": "raw/n22r1hevc10mea-b1-1-libmpv-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.hevc.decoder"
+    ],
+    "expected": "c2.qti.hevc.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1hevc10mea",
+    "archiveMember": "raw/n22r1hevc10mea-b1-2-exo-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.hevc.decoder"
+    ],
+    "expected": "c2.qti.hevc.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1hevc10mea",
+    "archiveMember": "raw/n22r1hevc10mea-b1-3-exo-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.hevc.decoder"
+    ],
+    "expected": "c2.qti.hevc.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1hevc10mea",
+    "archiveMember": "raw/n22r1hevc10mea-b1-4-libmpv-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.hevc.decoder"
+    ],
+    "expected": "c2.qti.hevc.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1hevc10meb",
+    "archiveMember": "raw/n22r1hevc10meb-b1-1-exo-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.hevc.decoder"
+    ],
+    "expected": "c2.qti.hevc.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1hevc10meb",
+    "archiveMember": "raw/n22r1hevc10meb-b1-2-libmpv-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.hevc.decoder"
+    ],
+    "expected": "c2.qti.hevc.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1hevc10meb",
+    "archiveMember": "raw/n22r1hevc10meb-b1-3-libmpv-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.hevc.decoder"
+    ],
+    "expected": "c2.qti.hevc.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1hevc10meb",
+    "archiveMember": "raw/n22r1hevc10meb-b1-4-exo-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.hevc.decoder"
+    ],
+    "expected": "c2.qti.hevc.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1vp9mea",
+    "archiveMember": "raw/n22r1vp9mea-b1-1-libmpv-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.vp9.decoder"
+    ],
+    "expected": "c2.qti.vp9.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1vp9mea",
+    "archiveMember": "raw/n22r1vp9mea-b1-2-exo-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.vp9.decoder"
+    ],
+    "expected": "c2.qti.vp9.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1vp9mea",
+    "archiveMember": "raw/n22r1vp9mea-b1-3-exo-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.vp9.decoder"
+    ],
+    "expected": "c2.qti.vp9.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1vp9mea",
+    "archiveMember": "raw/n22r1vp9mea-b1-4-libmpv-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.vp9.decoder"
+    ],
+    "expected": "c2.qti.vp9.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1vp9meb",
+    "archiveMember": "raw/n22r1vp9meb-b1-1-exo-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.vp9.decoder"
+    ],
+    "expected": "c2.qti.vp9.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1vp9meb",
+    "archiveMember": "raw/n22r1vp9meb-b1-2-libmpv-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.vp9.decoder"
+    ],
+    "expected": "c2.qti.vp9.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1vp9meb",
+    "archiveMember": "raw/n22r1vp9meb-b1-3-libmpv-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.vp9.decoder"
+    ],
+    "expected": "c2.qti.vp9.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1vp9meb",
+    "archiveMember": "raw/n22r1vp9meb-b1-4-exo-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.vp9.decoder"
+    ],
+    "expected": "c2.qti.vp9.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1hevcmva",
+    "archiveMember": "raw/n22r1hevcmva-b1-1-libmpv-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.hevc.decoder"
+    ],
+    "expected": "c2.qti.hevc.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1hevcmva",
+    "archiveMember": "raw/n22r1hevcmva-b1-2-vlc-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.hevc.decoder"
+    ],
+    "expected": "c2.qti.hevc.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1hevcmva",
+    "archiveMember": "raw/n22r1hevcmva-b1-3-vlc-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.hevc.decoder"
+    ],
+    "expected": "c2.qti.hevc.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1hevcmva",
+    "archiveMember": "raw/n22r1hevcmva-b1-4-libmpv-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.hevc.decoder"
+    ],
+    "expected": "c2.qti.hevc.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1hevcmvb",
+    "archiveMember": "raw/n22r1hevcmvb-b1-1-vlc-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.hevc.decoder"
+    ],
+    "expected": "c2.qti.hevc.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1hevcmvb",
+    "archiveMember": "raw/n22r1hevcmvb-b1-2-libmpv-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.hevc.decoder"
+    ],
+    "expected": "c2.qti.hevc.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1hevcmvb",
+    "archiveMember": "raw/n22r1hevcmvb-b1-3-libmpv-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.hevc.decoder"
+    ],
+    "expected": "c2.qti.hevc.decoder",
+    "matches": true
+  },
+  {
+    "stage": "n22r1hevcmvb",
+    "archiveMember": "raw/n22r1hevcmvb-b1-4-vlc-gpu-next-codec-end.txt",
+    "videoComponents": [
+      "c2.qti.hevc.decoder"
+    ],
+    "expected": "c2.qti.hevc.decoder",
+    "matches": true
+  }
+]

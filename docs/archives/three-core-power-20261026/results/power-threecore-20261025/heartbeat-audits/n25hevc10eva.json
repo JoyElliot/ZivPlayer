@@ -1,0 +1,53 @@
+{
+  "verifiedUtc": "2026-10-24T20:50:56.223882+00:00",
+  "auditSha256": "213708a7646644a666ca288da8d9ed5652d764c8c132113d53a827448405c7d7",
+  "archiveSha256": "1235337bc6eb9d3dc3158f548d64054592528612c32662770e572253c3db655f",
+  "independentArchiveEvidenceVerified": true,
+  "qualifiedLegs": 4,
+  "codecEndCoverageComplete": true,
+  "hardwareComponent": "c2.qti.hevc.decoder",
+  "formalMeasurements": true,
+  "aggregationEligible": true,
+  "aggregationIssues": [],
+  "cpuWithinLeg": [],
+  "cpuPolicyApplicable": false,
+  "qualityIssues": [],
+  "diagnosticDroppedFrames": 0,
+  "archivedCooldownSeconds": [
+    189,
+    64,
+    926,
+    63
+  ],
+  "archivedStageElapsedSeconds": 2612,
+  "preplayEntryTemperaturesC": [
+    34.8,
+    35.0,
+    34.9,
+    35.0
+  ],
+  "measurementStartTemperaturesC": [
+    35.0,
+    35.0,
+    35.0,
+    35.5
+  ],
+  "measurementStartBatteryPercents": [
+    76,
+    76,
+    74,
+    73
+  ],
+  "codecEndCounts": {
+    "n25hevc10eva-b1-1-exo-gpu-next": 1,
+    "n25hevc10eva-b1-2-vlc-gpu-next": 1,
+    "n25hevc10eva-b1-3-vlc-gpu-next": 1,
+    "n25hevc10eva-b1-4-exo-gpu-next": 1
+  },
+  "notes": [
+    "Only Exo/VLC legs in this block; the mpv CPU threshold is not applicable.",
+    "Fourth leg entered playback at 35.0 C; measurement began at 35.5 C after 90001 ms warmup. Entry and sampling thresholds are separate.",
+    "One same-stratum block is retained; no stable power ranking or pooled confidence interval is established.",
+    "Power remains whole-device power under controlled awake/background conditions; their effects remain unquantified."
+  ]
+}

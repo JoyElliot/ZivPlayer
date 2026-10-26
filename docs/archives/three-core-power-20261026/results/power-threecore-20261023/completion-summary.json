@@ -1,0 +1,98 @@
+{
+  "generatedUtc": "2026-10-22T22:35:00.110865+00:00",
+  "phase": "completed",
+  "formalRuns": 27,
+  "preflightLegs": 12,
+  "completeBlocks": 6,
+  "sameStratumBlocks": 4,
+  "recovery": {
+    "finishedUtc": "2026-10-22T22:34:44Z",
+    "action": "deadline_recovery",
+    "trigger": "host_requested",
+    "cleanupSucceeded": true,
+    "keptAwake": true,
+    "awakeGuardStopped": true,
+    "originalTimeoutRestored": true
+  },
+  "recoveryVerified": true,
+  "archivedHardwareComponentsVerified": true,
+  "cpuFlags": [],
+  "screenTimeoutMs": "***",
+  "awakeGuardStoppedAfterRecovery": true,
+  "skippedStages": [
+    {
+      "name": "n23hevcmea",
+      "reason": "insufficient_time_for_complementary_pair"
+    },
+    {
+      "name": "n23hevcmeb",
+      "reason": "insufficient_time_for_complementary_pair"
+    },
+    {
+      "name": "n23hevc10eva",
+      "reason": "insufficient_time_for_complementary_pair"
+    },
+    {
+      "name": "n23hevc10evb",
+      "reason": "insufficient_time_for_complementary_pair"
+    },
+    {
+      "name": "n23avceva",
+      "reason": "insufficient_time_for_complementary_pair"
+    },
+    {
+      "name": "n23avcevb",
+      "reason": "insufficient_time_for_complementary_pair"
+    }
+  ],
+  "statisticsPolicy": "Unchanged predeclared 1C and 10-percent start strata; complete blocks only; no cross-night pooling.",
+  "automationStatus": "deleted_after_completion",
+  "completionAuditUtc": "2026-10-22T22:46:44.034417+00:00",
+  "completeBlockQualifiedLegs": 24,
+  "qualifiedLegsExcludedFromCompleteBlockStatistics": 3,
+  "incompleteStages": [
+    {
+      "name": "n23hevc10evextra",
+      "plannedLegs": 4,
+      "startedLegs": 3,
+      "qualifiedLegs": 3,
+      "unstartedLegs": 1,
+      "unstartedLabel": "n23hevc10evextra-b1-4-exo-gpu-next",
+      "stopReason": "night_deadline",
+      "status": "collected_incomplete_block",
+      "excludedFromPairedAndDescriptiveMeans": true
+    }
+  ],
+  "notRunStages": [
+    {
+      "name": "n23avcevextra",
+      "recordedState": "pending",
+      "reason": "not_started_before_night_deadline"
+    },
+    {
+      "name": "n23hevc10mvextra",
+      "recordedState": "pending",
+      "reason": "not_started_before_night_deadline"
+    }
+  ],
+  "independentPostCompletionVerification": "post-completion-verification-r3/verification.json",
+  "allOriginalGuardProcessesExited": true,
+  "guardOwnerEvidence": {
+    "awake": "owner.txt",
+    "recovery": "owner.txt",
+    "formal": "config.env OWNER matched with frozen local configuration"
+  },
+  "originalAppsAndAllTenBackgroundStatesVerified": true,
+  "screenStateAfterRestoration": {
+    "wakefulness": "Dozing",
+    "keyguardShowing": true,
+    "normalOriginalTimeoutRestored": true,
+    "forcedLockOrSleepSentByCompletionAudit": false
+  },
+  "automationCompletionReceipt": "automation-completion.json",
+  "completionFinalizedUtc": "2026-10-22T22:49:38.797049+00:00",
+  "completionFinalizedLocal": "2026-10-23T06:49:38.797049+08:00",
+  "completedBeforeUserDeadline": true,
+  "originalWindowsControllerProcessExited": true,
+  "temporaryReportBrowserAndServerClosed": true
+}

@@ -1,0 +1,196 @@
+{
+  "verifiedUtc": "2026-10-23T18:22:31.104316+00:00",
+  "recoveryVerified": true,
+  "checks": {
+    "original-main-apk": true,
+    "original-test-apk": true,
+    "package-app-01-***": true,
+    "package-app-02-***": true,
+    "package-app-03-***": true,
+    "package-app-04-***": true,
+    "package-app-05-***": true,
+    "package-app-06-***": true,
+    "package-app-07-***": true,
+    "package-app-08-***": true,
+    "package-app-09-***": true,
+    "package-app-10-***": true,
+    "setting-screen_off_timeout": true,
+    "setting-screen_brightness": true,
+    "setting-screen_brightness_mode": true,
+    "setting-bluetooth_on": true,
+    "setting-airplane_mode_on": true,
+    "setting-wifi_on": true,
+    "setting-stay_on_while_plugged_in": true,
+    "music-volume": true,
+    "music-muted": true,
+    "bluetooth-state": true,
+    "awake-owner": true,
+    "awake-exited": true,
+    "awake-cleanup-exit": true,
+    "recovery-owner": true,
+    "recovery-exited": true,
+    "recovery-cleanup-exit": true
+  },
+  "errors": {},
+  "apks": [
+    {
+      "package": "io.github.joyelliot.zivplayer",
+      "actualPath": "/data/app/***",
+      "actualSha256": "3823eded124b39e5d4b31ece4566faff75b06bfef01a52925bb16d37bf3bda73",
+      "expectedSha256": "3823eded124b39e5d4b31ece4566faff75b06bfef01a52925bb16d37bf3bda73"
+    },
+    {
+      "package": "io.github.joyelliot.zivplayer.test",
+      "actualPath": "/data/app/***",
+      "actualSha256": "389b06b28eac7868acf10cf6bdf47cc1523eb158a787129743c0ffe6096aed0b",
+      "expectedSha256": "389b06b28eac7868acf10cf6bdf47cc1523eb158a787129743c0ffe6096aed0b"
+    }
+  ],
+  "packages": [
+    {
+      "package": "app-01-***",
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      }
+    },
+    {
+      "package": "app-02-***",
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      }
+    },
+    {
+      "package": "app-03-***",
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      }
+    },
+    {
+      "package": "app-04-***",
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      }
+    },
+    {
+      "package": "app-05-***",
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      }
+    },
+    {
+      "package": "app-06-***",
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      }
+    },
+    {
+      "package": "app-07-***",
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      }
+    },
+    {
+      "package": "app-08-***",
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      }
+    },
+    {
+      "package": "app-09-***",
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      }
+    },
+    {
+      "package": "app-10-***",
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      }
+    }
+  ],
+  "settings": {
+    "screen_off_timeout": "***",
+    "screen_brightness": "***",
+    "screen_brightness_mode": "***",
+    "bluetooth_on": "***",
+    "airplane_mode_on": "***",
+    "wifi_on": "***",
+    "stay_on_while_plugged_in": "***"
+  },
+  "screenAwake": false,
+  "keyguardShowing": true,
+  "samplingStarted": false,
+  "formalLegs": 0,
+  "preflightLegs": 0,
+  "deviceWritesDuringVerification": false
+}

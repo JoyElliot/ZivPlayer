@@ -1,0 +1,18 @@
+{
+  "utc": "2026-10-25T00:32:49.669931+00:00",
+  "original": "n25avcevb",
+  "retry": "n25avcevbr1",
+  "identicalProtocol": true,
+  "changedFields": [
+    "labels",
+    "comparisonBlock",
+    "remoteDirectory",
+    "manifestSha",
+    "frozenUtc",
+    "provenance"
+  ],
+  "unchangedBaseline": true,
+  "unchangedGuardGeneration": 1,
+  "unchangedApks": true,
+  "unchangedControls": true
+}

@@ -1,0 +1,327 @@
+{
+  "utc": "2026-10-25T17:32:18.477251+00:00",
+  "stage": "n26avcmvb",
+  "formalQualifiedLegs": 4,
+  "completeFormalBlocks": 1,
+  "formalPreflightPassedFalseExpected": true,
+  "archiveSha256": "5fb6341151d5660e2137b2c06124de412a1635c815a3d8a089bb86e5d2ae8071",
+  "rows": [
+    {
+      "analysis": "n26avcmvb-b1-1-vlc-gpu-next.json",
+      "runLabel": "n26avcmvb-b1-1-vlc-gpu-next",
+      "qualified": true,
+      "qualityIssues": [],
+      "steadyElapsedMs": 240003,
+      "steadyProcessCpuDeltaMs": 95810,
+      "steadyProcessCpuFraction": 0.39920334329154217,
+      "startTemperatureC": 33.3,
+      "startBatteryPercent": 94,
+      "thermalStatuses": [
+        0
+      ]
+    },
+    {
+      "analysis": "n26avcmvb-b1-2-libmpv-gpu-next.json",
+      "runLabel": "n26avcmvb-b1-2-libmpv-gpu-next",
+      "qualified": true,
+      "qualityIssues": [],
+      "steadyElapsedMs": 240002,
+      "steadyProcessCpuDeltaMs": 134135,
+      "steadyProcessCpuFraction": 0.5588911759068674,
+      "startTemperatureC": 33.4,
+      "startBatteryPercent": 93,
+      "thermalStatuses": [
+        0
+      ],
+      "predeclaredCpuFlagAbove08": false
+    },
+    {
+      "analysis": "n26avcmvb-b1-3-libmpv-gpu-next.json",
+      "runLabel": "n26avcmvb-b1-3-libmpv-gpu-next",
+      "qualified": true,
+      "qualityIssues": [],
+      "steadyElapsedMs": 240002,
+      "steadyProcessCpuDeltaMs": 133114,
+      "steadyProcessCpuFraction": 0.5546370446912943,
+      "startTemperatureC": 33.4,
+      "startBatteryPercent": 93,
+      "thermalStatuses": [
+        0
+      ],
+      "predeclaredCpuFlagAbove08": false
+    },
+    {
+      "analysis": "n26avcmvb-b1-4-vlc-gpu-next.json",
+      "runLabel": "n26avcmvb-b1-4-vlc-gpu-next",
+      "qualified": true,
+      "qualityIssues": [],
+      "steadyElapsedMs": 240002,
+      "steadyProcessCpuDeltaMs": 99205,
+      "steadyProcessCpuFraction": 0.41335072207731605,
+      "startTemperatureC": 33.3,
+      "startBatteryPercent": 92,
+      "thermalStatuses": [
+        0
+      ]
+    }
+  ],
+  "stratifiedBlock": {
+    "fixture": "avc-1080p24.mkv",
+    "fixtureSha256": "a6d9a6848aa52e6749a106a0987a13cd8db186008171b45aaca55da94649bb33",
+    "mode": "automatic",
+    "surfaceProtocol": "current-app",
+    "measurementCohort": "threecore-20261026-46a0c824d23c-17192b56c846",
+    "comparisonBlock": "n26avcmvb:avc:b1",
+    "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+    "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+    "complete": true,
+    "plannedConditions": [
+      "vlc",
+      "libmpv@gpu-next",
+      "libmpv@gpu-next",
+      "vlc"
+    ],
+    "conditions": [
+      "libmpv@gpu-next",
+      "vlc"
+    ],
+    "runLabels": [
+      "n26avcmvb-b1-1-vlc-gpu-next",
+      "n26avcmvb-b1-2-libmpv-gpu-next",
+      "n26avcmvb-b1-3-libmpv-gpu-next",
+      "n26avcmvb-b1-4-vlc-gpu-next"
+    ],
+    "conditionMeanPowerMw": {
+      "libmpv@gpu-next": 1290.4015219227344,
+      "vlc": 1334.823016137319
+    },
+    "a": "libmpv@gpu-next",
+    "b": "vlc",
+    "aMinusBMw": -44.42149421458453,
+    "conditionMeanStartTemperatureC": {
+      "libmpv@gpu-next": 33.4,
+      "vlc": 33.3
+    },
+    "conditionMeanStartBatteryPercent": {
+      "libmpv@gpu-next": 93,
+      "vlc": 93
+    },
+    "aggregationEligible": true,
+    "aggregationIssues": [],
+    "conditionActualDecoders": {
+      "libmpv@gpu-next": [
+        [
+          "mediacodec",
+          false
+        ]
+      ],
+      "vlc": [
+        [
+          "c2.qti.avc.decoder",
+          false
+        ]
+      ]
+    },
+    "startTemperatureBandsC": [
+      33
+    ],
+    "startBatteryBandsPercent": [
+      90
+    ],
+    "batteryClasses": [
+      "normal"
+    ],
+    "startTemperaturesC": [
+      33.3,
+      33.4,
+      33.4,
+      33.3
+    ],
+    "startBatteryPercents": [
+      94,
+      93,
+      93,
+      92
+    ]
+  },
+  "powerSource": "stratified-report.json",
+  "currentSessionCompleteBlocks": 2,
+  "currentSessionCompleteComparisons": 1,
+  "overallCoverageOnly": {
+    "completeBlocks": 20,
+    "targetBlocks": 24,
+    "completeComparisons": 10,
+    "targetComparisons": 12,
+    "powerPooledAcrossNights": false
+  },
+  "codecAudit": "passed_independent_label_pid_marker_component_render_review_and_root_mpv_tail_spotcheck",
+  "controlsAudit": "passed_independent_control_review_and_root_ending_cooldown_check",
+  "currentActiveStage": "n26hevccheck",
+  "noExtraAdb": true,
+  "phase": "complete_formal_block_passed",
+  "codecCoverage": [
+    {
+      "label": "n26avcmvb-b1-1-vlc-gpu-next",
+      "archiveMember": "raw/n26avcmvb-b1-1-vlc-gpu-next-codec-end.txt",
+      "pid": 7105,
+      "videoComponent": "c2.qti.avc.decoder",
+      "lastVideoRender": 121,
+      "lastVideoDrop": 0
+    },
+    {
+      "label": "n26avcmvb-b1-2-libmpv-gpu-next",
+      "archiveMember": "raw/n26avcmvb-b1-2-libmpv-gpu-next-codec-end.txt",
+      "pid": 15638,
+      "videoComponent": "c2.qti.avc.decoder",
+      "lastVideoRender": 120,
+      "lastVideoDrop": 0
+    },
+    {
+      "label": "n26avcmvb-b1-3-libmpv-gpu-next",
+      "archiveMember": "raw/n26avcmvb-b1-3-libmpv-gpu-next-codec-end.txt",
+      "pid": 22387,
+      "videoComponent": "c2.qti.avc.decoder",
+      "lastVideoRender": 121,
+      "lastVideoDrop": 0
+    },
+    {
+      "label": "n26avcmvb-b1-4-vlc-gpu-next",
+      "archiveMember": "raw/n26avcmvb-b1-4-vlc-gpu-next-codec-end.txt",
+      "pid": 28676,
+      "videoComponent": "c2.qti.avc.decoder",
+      "lastVideoRender": 121,
+      "lastVideoDrop": 0
+    }
+  ],
+  "cooldownEvidence": [
+    {
+      "label": "n26avcmvb-b1-1-vlc-gpu-next",
+      "cooldownSeconds": 188,
+      "endingFourPolls": [
+        [
+          "2026-10-25T16:59:44Z",
+          "142",
+          "333",
+          "94"
+        ],
+        [
+          "2026-10-25T17:00:00Z",
+          "157",
+          "333",
+          "94"
+        ],
+        [
+          "2026-10-25T17:00:16Z",
+          "173",
+          "333",
+          "94"
+        ],
+        [
+          "2026-10-25T17:00:31Z",
+          "188",
+          "333",
+          "94"
+        ]
+      ],
+      "threeNonrisingComparisons": true
+    },
+    {
+      "label": "n26avcmvb-b1-2-libmpv-gpu-next",
+      "cooldownSeconds": 63,
+      "endingFourPolls": [
+        [
+          "2026-10-25T17:06:29Z",
+          "16",
+          "335",
+          "94"
+        ],
+        [
+          "2026-10-25T17:06:45Z",
+          "32",
+          "335",
+          "94"
+        ],
+        [
+          "2026-10-25T17:07:00Z",
+          "48",
+          "335",
+          "94"
+        ],
+        [
+          "2026-10-25T17:07:16Z",
+          "63",
+          "334",
+          "93"
+        ]
+      ],
+      "threeNonrisingComparisons": true
+    },
+    {
+      "label": "n26avcmvb-b1-3-libmpv-gpu-next",
+      "cooldownSeconds": 63,
+      "endingFourPolls": [
+        [
+          "2026-10-25T17:13:14Z",
+          "16",
+          "334",
+          "93"
+        ],
+        [
+          "2026-10-25T17:13:30Z",
+          "32",
+          "334",
+          "93"
+        ],
+        [
+          "2026-10-25T17:13:45Z",
+          "47",
+          "334",
+          "93"
+        ],
+        [
+          "2026-10-25T17:14:01Z",
+          "63",
+          "334",
+          "93"
+        ]
+      ],
+      "threeNonrisingComparisons": true
+    },
+    {
+      "label": "n26avcmvb-b1-4-vlc-gpu-next",
+      "cooldownSeconds": 63,
+      "endingFourPolls": [
+        [
+          "2026-10-25T17:19:59Z",
+          "16",
+          "333",
+          "92"
+        ],
+        [
+          "2026-10-25T17:20:14Z",
+          "32",
+          "333",
+          "92"
+        ],
+        [
+          "2026-10-25T17:20:30Z",
+          "47",
+          "333",
+          "92"
+        ],
+        [
+          "2026-10-25T17:20:46Z",
+          "63",
+          "333",
+          "92"
+        ]
+      ],
+      "threeNonrisingComparisons": true
+    }
+  ],
+  "reviewCompletedUtc": "2026-10-25T17:34:56.766805+00:00",
+  "measurementLimitations": [
+    "Saved PID/stat snapshots are not independent executable-path evidence; live restoration must retain full owner/cmdline/UID/starttime/group verification.",
+    "Complete-block evidence does not prove absence of every unrecorded external action."
+  ]
+}

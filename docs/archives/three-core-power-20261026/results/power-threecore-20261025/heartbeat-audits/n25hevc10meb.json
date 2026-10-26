@@ -1,0 +1,83 @@
+{
+  "verifiedUtc": "2026-10-25T05:28:27.929321+00:00",
+  "auditSha256": "d8de07cb150673ff7235cc75d43631725633d300ce52e78867e8403f64d86574",
+  "archiveSha256": "7d8dd6ba88c42b6460655ed763930681fe962959951a023a323ac5c4c7fa66a9",
+  "independentArchiveEvidenceVerified": true,
+  "qualifiedLegs": 4,
+  "completeBlock": true,
+  "codecEndCoverageComplete": true,
+  "codecEndCounts": {
+    "n25hevc10meb-b1-1-exo-gpu-next": 1,
+    "n25hevc10meb-b1-2-libmpv-gpu-next": 1,
+    "n25hevc10meb-b1-3-libmpv-gpu-next": 1,
+    "n25hevc10meb-b1-4-exo-gpu-next": 1
+  },
+  "hardwareComponent": "c2.qti.hevc.decoder",
+  "formalMeasurements": true,
+  "aggregationEligible": false,
+  "aggregationIssues": [
+    "crosses_1C_start_temperature_strata"
+  ],
+  "startTemperatureBandsC": [
+    34,
+    35
+  ],
+  "startBatteryBandsPercent": [
+    30
+  ],
+  "cpuWithinLeg": [
+    {
+      "label": "n25hevc10meb-b1-2-libmpv-gpu-next",
+      "sampleCount": 241,
+      "processCpuDeltaMs": 138763,
+      "steadyElapsedMs": 240002,
+      "fraction": 0.5781743485470955,
+      "flagAbovePointEight": false
+    },
+    {
+      "label": "n25hevc10meb-b1-3-libmpv-gpu-next",
+      "sampleCount": 241,
+      "processCpuDeltaMs": 141185,
+      "steadyElapsedMs": 240002,
+      "fraction": 0.5882659311172407,
+      "flagAbovePointEight": false
+    }
+  ],
+  "cpuPolicyApplicable": true,
+  "qualityIssues": [],
+  "diagnosticVideoDroppedFrames": 0,
+  "archivedCooldownSeconds": [
+    409,
+    64,
+    63,
+    126
+  ],
+  "archivedStageElapsedSeconds": 2031,
+  "preplayEntryTemperaturesC": [
+    34.9,
+    35.0,
+    35.0,
+    34.9
+  ],
+  "measurementStartTemperaturesC": [
+    34.9,
+    35.0,
+    35.5,
+    35.1
+  ],
+  "measurementStartBatteryPercents": [
+    32,
+    31,
+    30,
+    30
+  ],
+  "endingThreeNonrisingComparisonsVerified": true,
+  "notes": [
+    "Complete BAAB block crosses the 1 C start-temperature strata and remains separate.",
+    "Each codec-end stream matches the app PID and unique end marker with QTI HEVC positive Render and Drop 0.",
+    "Root CPU verification uses steady samples only. The scout full JSONL warmup-plus-steady ratios were not accepted as the steady CPU policy values.",
+    "Both mpv steady CPU fractions are below 0.8; neither leg is excluded.",
+    "Entry <=35 C and post-warmup sampling <=40 C are distinct gates; no whole-period monotonic-temperature rule was introduced.",
+    "This was the human-selected final block. No subsequent pending stage was launched."
+  ]
+}

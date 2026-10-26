@@ -1,0 +1,50 @@
+{
+  "auditedUtc": "2026-10-25T19:59:48.645016+00:00",
+  "localOnly": true,
+  "deviceIo": false,
+  "allMeasurementsCompleted": true,
+  "restorationVerificationPassed": true,
+  "controllerExitEvidence": "completion-controller-cim.json",
+  "recoveryAndAwakeAbsent": true,
+  "backgroundPackagesMatched": 10,
+  "backgroundJournals": {
+    "suspendedPackages": 9,
+    "stoppedPackages": 8,
+    "enabledPackages": 10,
+    "allMatchedControlAndBaseline": true
+  },
+  "independentReportAudit": {
+    "agent": "final_report_audit_26",
+    "passed": true,
+    "numericalOrSemanticErrors": [],
+    "missingDirectEvidenceLinksAdded": true
+  },
+  "expectedInitialRecoveryExitAbsentStderr": {
+    "explained": true,
+    "source": "frozen-tools/three-core-open-session.py:478",
+    "resolution": "Initial reconcile probe preceded recovery request; recovery.json and final-verification record the later successful cleanup. No phone action repeated."
+  },
+  "automationStatus": "deleted",
+  "powerPooledAcrossNights": false,
+  "remainingComparisons": [],
+  "automationDeletedUtc": "2026-10-25T20:00:21.003793+00:00",
+  "closureCompletedUtc": "2026-10-25T20:00:21.003793+00:00",
+  "automationDeletionEvidence": "automation-deletion.json",
+  "outputSha256": {
+    "morning-report.html": "538fdbb251926650885b56075461b29c50e1b0ad244de45922bf4cb193be9b35",
+    "completion-summary.json": "1e0545c402f4e899e08b72b9aaa9d0ab1239ef80498ac2cdfae36d79afe73c92",
+    "stratified-report.json": "a8d829c4475e0ed7ab58e10cc7109bcde5163cb4f2db53a21611b08e138046ad",
+    "stratified-report.md": "23b1f8597bc01754cc0cef85233ce9b2b11760b6e706bc1e2f4fe69f02ac19e2",
+    "descriptive-core-means.json": "137c607e1c9a215adb433f26399e6f52efc5fdda1f7ee04e1680093fa949c111",
+    "final-verification/verification.json": "441659379e9119d81dfab3fddf5fbe25aaaccd4a0750147d3c5e9c2cd5e7c984",
+    "final-component-coverage.json": "f8f09165ef57e586d14fb212575f8e99b3d14e82d150f87593d80a6b21691c8b",
+    "final-hardware-components.json": "263d1a0afe5809b8c354df0d30e91d121872fd13d79ec8572e9c2b340d074b84",
+    "final-quality-observations.json": "c31efda7af44170d5cf99afad4f1b9c06bc0af91eccf9b109e92aed49c3a3e8f",
+    "cpu-observations.json": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f",
+    "cpu-steady-fractions.json": "323c37f2cb20ff3f0fb27bf1abecd450c03d1fe68f95d6dcfb83e2309263c370",
+    "audio-quality-observations.json": "20e8d477f2d0f44c72659dacbdd3ebb312c10c7b6274f2d311f8ff9ca6d4eb80",
+    "heartbeat-audit-state.json": "280b5186ce536f0473631e16244522d9bef98baf91597146a19a2cf9a8455b5e",
+    "completion-review/report-augmentation.json": "3e52f1c66b71f420cc23ddb64a0d2c07c725c5ad1b1b90b82ae93b7822d3ec53",
+    "completion-review/automation-deletion.json": "04d52e5ef707449cfe257f5c767f5800f166028605aec6c959ccd29b40c6dfcb"
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "screenAlwaysOn": {
+    "status": "unquantified",
+    "note": "\u5c4f\u5e55\u5e38\u4eae\u5c5e\u4e8e\u672c\u8f6e\u53d7\u63a7\u6761\u4ef6\uff0c\u5176\u5bf9\u6574\u673a\u529f\u8017\u7684\u5f71\u54cd\u672a\u5355\u72ec\u6d4b\u5b9a\u3002"
+  },
+  "backgroundControl": {
+    "status": "unquantified",
+    "note": "\u540e\u53f0\u5305\u6682\u505c\u3001\u7981\u7528\u548c\u5f3a\u505c\u5c5e\u4e8e\u672c\u8f6e\u53d7\u63a7\u6761\u4ef6\uff1b\u63a7\u5236\u9020\u6210\u7684\u504f\u5dee\u53ca\u6b8b\u4f59\u540e\u53f0\u8d1f\u8f7d\u672a\u5b9a\u91cf\u3002"
+  },
+  "interpretation": "\u62a5\u544a\u4e3a\u53d7\u63a7\u6761\u4ef6\u4e0b\u6574\u673a\u529f\u8017\uff0c\u4e0d\u7b49\u540c\u4e8e\u65e5\u5e38\u4f7f\u7528\u529f\u8017\u6216\u64ad\u653e\u5668\u8fdb\u7a0b\u5355\u72ec\u529f\u8017\uff1b\u4e0d\u4f5c\u672a\u7ecf\u6d4b\u91cf\u7684\u8bef\u5dee\u6263\u9664\u3002",
+  "pooling": "\u4ec5\u540c APK\u3001fixture\u3001protocol\u3001cohort\u3001\u5b9e\u9645 decoder\u3001\u4f4e\u7535\u91cf\u7c7b\u522b\u3001\u8d77\u59cb 10% \u7535\u91cf\u5c42\u548c 1\u00b0C \u6e29\u5ea6\u5c42\u6c47\u603b\uff1b\u5b8c\u6574\u56db\u817f\u5757\u4e3a\u91cd\u590d\u5355\u4f4d\u3002",
+  "quality": "\u529f\u8017\u3001\u6e29\u5ea6\u3001\u6389\u5e27\u548c\u753b\u8d28\u8fb9\u754c\u5206\u5f00\u62a5\u544a\uff1bframe hash \u4e0d\u8bc1\u660e\u4e3b\u89c2\u753b\u8d28\u3002",
+  "observedBackgroundStateDrift": {
+    "observedUtc": "2026-10-25T00:35:16Z",
+    "package": "app-03-***",
+    "expectedDuringControl": {
+      "suspended": "true",
+      "stopped": "true",
+      "enabled": "0"
+    },
+    "observed": {
+      "suspended": "true",
+      "stopped": "false",
+      "enabled": "0"
+    },
+    "onset": "unknown",
+    "relationToPlaybackPositionJump": "not_established",
+    "quantitativeCorrection": "none",
+    "recoveryVerifiedUtc": "2026-10-25T00:37:37Z",
+    "nextGenerationUsesSamePredeclaredControls": true
+  },
+  "observedEnabledStateDriftAtRecovery": {
+    "observedUtc": "2026-10-25T05:17:57.454048+00:00",
+    "package": "app-09-***",
+    "baselineEnabled": "0",
+    "observedEnabled": "1",
+    "onset": "unknown",
+    "cause": "not_established",
+    "relationToMeasuredPowerOrPlayback": "not_established",
+    "quantitativeCorrection": "none",
+    "narrowBaselineCorrection": "2026-10-25T05:24:51.692973+00:00",
+    "restoredEnabled": "0",
+    "evidence": "checkpoint-final-review/wechat-correction.json"
+  }
+}

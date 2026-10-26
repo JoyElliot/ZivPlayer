@@ -1,0 +1,53 @@
+{
+  "verifiedUtc": "2026-10-24T23:30:48.130845+00:00",
+  "auditSha256": "0d4bbb967edd5249e7cc0ce5af04088840ad7f60e0f5c03f16791c9592f5f3ed",
+  "archiveSha256": "0e32d7c0e8ae9ce40eb3d050c7a119a6f8b6c3a2ea75b097f47296f4cda67b70",
+  "independentArchiveEvidenceVerified": true,
+  "qualifiedLegs": 4,
+  "codecEndCoverageComplete": true,
+  "hardwareComponent": "c2.qti.avc.decoder",
+  "formalMeasurements": true,
+  "aggregationEligible": true,
+  "aggregationIssues": [],
+  "cpuWithinLeg": [],
+  "cpuPolicyApplicable": false,
+  "qualityIssues": [],
+  "diagnosticVideoDroppedFrames": 0,
+  "archivedCooldownSeconds": [
+    189,
+    722,
+    64,
+    1020
+  ],
+  "archivedStageElapsedSeconds": 3363,
+  "preplayEntryTemperaturesC": [
+    35.0,
+    35.0,
+    35.0,
+    35.0
+  ],
+  "measurementStartTemperaturesC": [
+    35.2,
+    35.0,
+    35.0,
+    35.0
+  ],
+  "measurementStartBatteryPercents": [
+    65,
+    63,
+    63,
+    61
+  ],
+  "codecEndCounts": {
+    "n25avceva-b1-1-exo-gpu-next": 1,
+    "n25avceva-b1-2-vlc-gpu-next": 1,
+    "n25avceva-b1-3-vlc-gpu-next": 1,
+    "n25avceva-b1-4-exo-gpu-next": 1
+  },
+  "notes": [
+    "Only Exo/VLC legs; mpv CPU threshold is not applicable.",
+    "All playback entries meet 35.0 C; measurement temperatures follow 90 seconds warmup.",
+    "One same-stratum block does not establish a stable power ranking or pooled confidence interval.",
+    "Whole-device power under controlled awake/background conditions; effects remain unquantified."
+  ]
+}

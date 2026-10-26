@@ -1,0 +1,26 @@
+{
+  "verifiedUtc": "2026-10-21T22:38:28.055541+00:00",
+  "files": [
+    {
+      "kind": "main",
+      "path": "native/out/power-threecore-20261022/backups/original-main.apk",
+      "bytes": 293297731,
+      "sha256": "6f56c3bb869ba9411dfd30857e6dac0e3bc0f7ab3071b5e75175d5461ccc3d9a",
+      "matchesBaseline": true
+    },
+    {
+      "kind": "test",
+      "path": "native/out/power-threecore-20261022/backups/original-test.apk",
+      "bytes": 10492735,
+      "sha256": "a8e66bace93e6d69e7bcb1917054cd7557ea7a051157e783cee1700ef98de436",
+      "matchesBaseline": true
+    },
+    {
+      "kind": "userDataBackup",
+      "path": "native/out/power-threecore-20261022/backups/user-data-before.tar",
+      "bytes": 13800448,
+      "sha256": "513eb8a29ea7069826627aa47474c8f90053484d9b2642811f8d380de45a443c",
+      "matchesBaseline": true
+    }
+  ]
+}

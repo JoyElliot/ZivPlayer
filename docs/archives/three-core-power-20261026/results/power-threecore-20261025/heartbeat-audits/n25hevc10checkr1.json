@@ -1,0 +1,46 @@
+{
+  "verifiedUtc": "2026-10-24T19:58:04.846574+00:00",
+  "auditSha256": "ddc30ef80bbc710f4b6e1538d44685c0291bdf25312f3d809e6e7c335e288c7f",
+  "archiveSha256": "80bad0127c9501ee6c554021cf5daf471bcd79d55d607240d374d97c0769e8d7",
+  "preflightPassed": 3,
+  "codecEndCoverageComplete": true,
+  "codecEndCounts": {
+    "n25hevc10checkr1-b1-1-libmpv-gpu-next": 1,
+    "n25hevc10checkr1-b1-2-exo-gpu-next": 1,
+    "n25hevc10checkr1-b1-3-vlc-gpu-next": 1
+  },
+  "hardwareComponent": "c2.qti.hevc.decoder",
+  "formalMeasurements": false,
+  "quality": [
+    {
+      "analysis": "n25hevc10checkr1-b1-1-libmpv-gpu-next.json",
+      "samples": 66,
+      "hardware": true,
+      "software": false,
+      "qualityIssues": [],
+      "thermalStatuses": [
+        0
+      ]
+    },
+    {
+      "analysis": "n25hevc10checkr1-b1-2-exo-gpu-next.json",
+      "samples": 66,
+      "hardware": true,
+      "software": false,
+      "qualityIssues": [],
+      "thermalStatuses": [
+        0
+      ]
+    },
+    {
+      "analysis": "n25hevc10checkr1-b1-3-vlc-gpu-next.json",
+      "samples": 66,
+      "hardware": true,
+      "software": false,
+      "qualityIssues": [],
+      "thermalStatuses": [
+        0
+      ]
+    }
+  ]
+}

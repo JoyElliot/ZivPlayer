@@ -1,0 +1,16 @@
+{
+  "utc": "2026-10-25T19:56:50.691194+00:00",
+  "sourcePower": "stratified-report.json",
+  "originalAutomaticReportPreserved": true,
+  "deviceIo": false,
+  "coverageComplete": true,
+  "strictCounts": {
+    "avc": 2,
+    "hevc": 1,
+    "vp9": 2
+  },
+  "excludedCrossStratumBlocks": [
+    "n26hevcmva:hevc:b1"
+  ],
+  "noCrossNightPooling": true
+}

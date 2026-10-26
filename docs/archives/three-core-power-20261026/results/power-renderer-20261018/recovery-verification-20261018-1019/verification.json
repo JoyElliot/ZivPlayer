@@ -1,0 +1,179 @@
+{
+  "verifiedUtc": "2026-10-18T02:19:27.519790+00:00",
+  "packages": {
+    "main": {
+      "sha256": "5da4f18f33883721dae2dd0672510666d8809e841b13948a38dee2d000e7d746",
+      "expectedSha256": "5da4f18f33883721dae2dd0672510666d8809e841b13948a38dee2d000e7d746",
+      "matches": true
+    },
+    "test": {
+      "sha256": "2f48a9b717e4e84ab1ee1c9f4949667f6fb9d3bc2a95a47a36029498062470fd",
+      "expectedSha256": "2f48a9b717e4e84ab1ee1c9f4949667f6fb9d3bc2a95a47a36029498062470fd",
+      "matches": true
+    }
+  },
+  "settings": {
+    "screen_off_timeout": "***",
+    "screen_brightness": "***",
+    "screen_brightness_mode": "***",
+    "bluetooth_on": "***",
+    "airplane_mode_on": "***",
+    "wifi_on": "***",
+    "stay_on_while_plugged_in": "***"
+  },
+  "background": [
+    {
+      "package": "app-07-***",
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "expected": {
+        "stopped": "***",
+        "suspended": "***"
+      },
+      "matches": true
+    },
+    {
+      "package": "app-08-***",
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "expected": {
+        "stopped": "***",
+        "suspended": "***"
+      },
+      "matches": true
+    },
+    {
+      "package": "app-02-***",
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "expected": {
+        "stopped": "***",
+        "suspended": "***"
+      },
+      "matches": true
+    },
+    {
+      "package": "app-09-***",
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "expected": {
+        "stopped": "***",
+        "suspended": "***"
+      },
+      "matches": true
+    },
+    {
+      "package": "app-01-***",
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "expected": {
+        "stopped": "***",
+        "suspended": "***"
+      },
+      "matches": true
+    },
+    {
+      "package": "app-10-***",
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "expected": {
+        "stopped": "***",
+        "suspended": "***",
+        "enabled": "***"
+      },
+      "matches": true
+    },
+    {
+      "package": "app-03-***",
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "expected": {
+        "stopped": "***",
+        "suspended": "***"
+      },
+      "matches": true
+    },
+    {
+      "package": "app-04-***",
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "expected": {
+        "stopped": "***",
+        "suspended": "***",
+        "enabled": "***"
+      },
+      "matches": true
+    },
+    {
+      "package": "app-06-***",
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "expected": {
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "matches": true
+    }
+  ],
+  "guardRecovery": {
+    "finishedUtc": "2026-10-18T00:46:24Z",
+    "action": "deadline_recovery",
+    "trigger": "host_requested",
+    "cleanupSucceeded": true,
+    "keptAwake": true
+  },
+  "ownerMatches": true,
+  "awakeGuard": {
+    "pid": 16825,
+    "identityMatches": true
+  },
+  "awake": true,
+  "keyguardLines": [
+    "mKeyguardOccluded=false mKeyguardOccludedChanged=false mPendingKeyguardOccluded=false",
+    "KeyguardServiceDelegate",
+    "showing=false",
+    "inputRestricted=false",
+    "occluded=false",
+    "deviceHasKeyguard=true",
+    "KeyguardStateMonitor",
+    "mIsShowing=false",
+    "mInputRestricted=false"
+  ],
+  "music": {
+    "volumeMatches": true,
+    "muteMatches": true
+  },
+  "bluetoothOn": true,
+  "sessionProcessLines": [
+    "16825     1 sh /data/local/tmp/ziv-power-20261018/awake-guard/guard.sh /data/local/tmp/ziv-power-20261018/awake-guard"
+  ],
+  "battery": "Current Battery Service state:\n  AC powered: false\n  USB powered: false\n  Wireless powered: false\n  Dock powered: false\n  Max charging current: 0\n  Max charging voltage: 0\n  Charge counter: 2043\n  status: 3\n  health: 2\n  present: true\n  level: 35\n  scale: 100\n  voltage: 3777\n  temperature: 334\n  technology: Li-poly\n  Charging state: 0\n  Charging policy: 0\nMiuiBatteryService first usage time:\n  mSetBatteryUsageTimeCount=0\n  mNtpTime=-1\n  mParseNtpTime=",
+  "allRestorationChecksPassed": true
+}

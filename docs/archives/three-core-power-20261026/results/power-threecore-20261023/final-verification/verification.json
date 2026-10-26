@@ -1,0 +1,182 @@
+{
+  "verifiedUtc": "2026-10-22T22:35:00.016333+00:00",
+  "checks": {
+    "recoveryOwner": true,
+    "awakeGuardStopped": true,
+    "awakeTimeoutRestored": true,
+    "apks": true,
+    "backgroundPackages": true,
+    "settings": true,
+    "musicVolume": true,
+    "musicMuted": true,
+    "awake": true,
+    "keyguardNotShowing": true,
+    "bluetoothState": true
+  },
+  "recoveryVerified": true,
+  "apks": {
+    "main": {
+      "expected": "734baeb4894023b5ddd94e1ddfd31ef3c3ad4cca04277bbf9a7e71510b3e5b71",
+      "actual": "734baeb4894023b5ddd94e1ddfd31ef3c3ad4cca04277bbf9a7e71510b3e5b71",
+      "matches": true
+    },
+    "test": {
+      "expected": "b9ef2baa144dea17cbae236415bbcaa5dc9af097ad2e66059285def30bb1c903",
+      "actual": "b9ef2baa144dea17cbae236415bbcaa5dc9af097ad2e66059285def30bb1c903",
+      "matches": true
+    }
+  },
+  "packages": [
+    {
+      "package": "app-01-***",
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "matches": true
+    },
+    {
+      "package": "app-02-***",
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "matches": true
+    },
+    {
+      "package": "app-03-***",
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "matches": true
+    },
+    {
+      "package": "app-04-***",
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "matches": true
+    },
+    {
+      "package": "app-05-***",
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "matches": true
+    },
+    {
+      "package": "app-06-***",
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "matches": true
+    },
+    {
+      "package": "app-07-***",
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "matches": true
+    },
+    {
+      "package": "app-08-***",
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "matches": true
+    },
+    {
+      "package": "app-09-***",
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "matches": true
+    },
+    {
+      "package": "app-10-***",
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "matches": true
+    }
+  ],
+  "settings": {
+    "screen_off_timeout": "***",
+    "screen_brightness": "***",
+    "screen_brightness_mode": "***",
+    "bluetooth_on": "***",
+    "airplane_mode_on": "***",
+    "wifi_on": "***",
+    "stay_on_while_plugged_in": "***"
+  },
+  "errors": {},
+  "brightnessPolicy": "Read only. In automatic mode the brightness value is dynamic; verify mode and all other settings."
+}

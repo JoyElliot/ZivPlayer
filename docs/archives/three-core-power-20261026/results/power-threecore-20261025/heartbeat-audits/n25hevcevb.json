@@ -1,0 +1,69 @@
+{
+  "verifiedUtc": "2026-10-25T03:46:47.073723+00:00",
+  "auditSha256": "9328640927a0d570feab36d0afe670a3712a7d56f6316ac8b8d93a8da243c68b",
+  "archiveSha256": "94e768da61de22db941a7e309ea3ffae2ebacbc22f722f00a891e0a223384c1f",
+  "independentArchiveEvidenceVerified": true,
+  "qualifiedLegs": 4,
+  "completeBlock": true,
+  "codecEndCoverageComplete": true,
+  "codecEndCounts": {
+    "n25hevcevb-b1-1-vlc-gpu-next": 1,
+    "n25hevcevb-b1-2-exo-gpu-next": 1,
+    "n25hevcevb-b1-3-exo-gpu-next": 1,
+    "n25hevcevb-b1-4-vlc-gpu-next": 1
+  },
+  "hardwareComponent": "c2.qti.hevc.decoder",
+  "formalMeasurements": true,
+  "aggregationEligible": false,
+  "aggregationIssues": [
+    "crosses_1C_start_temperature_strata",
+    "crosses_10pct_start_battery_strata"
+  ],
+  "startTemperatureBandsC": [
+    34,
+    35
+  ],
+  "startBatteryBandsPercent": [
+    30,
+    40
+  ],
+  "cpuWithinLeg": [],
+  "cpuPolicyApplicable": false,
+  "qualityIssues": [],
+  "diagnosticVideoDroppedFrames": 0,
+  "archivedCooldownSeconds": [
+    361,
+    63,
+    63,
+    283
+  ],
+  "archivedStageElapsedSeconds": 2140,
+  "preplayEntryTemperaturesC": [
+    35.0,
+    34.9,
+    34.9,
+    34.9
+  ],
+  "measurementStartTemperaturesC": [
+    35.0,
+    34.9,
+    35.0,
+    35.1
+  ],
+  "measurementStartBatteryPercents": [
+    40,
+    39,
+    39,
+    38
+  ],
+  "endingThreeNonrisingComparisonsVerified": true,
+  "notes": [
+    "Complete BAAB block crosses both 1 C and 10-percent start strata and remains visible separately.",
+    "All four codec-end streams have unique matching end markers and app PID, QTI HEVC positive Render statistics, and Drop 0.",
+    "All playback entries satisfy the 35 C gate; the final leg measures 35.1 C after 90 seconds warmup, below the 40 C sampling limit.",
+    "Only Exo/VLC legs are present; the mpv CPU threshold does not apply.",
+    "The checksum file stores a raw 64-character digest rather than sha256sum -c file syntax; actual archive digest matches it and audit.json.",
+    "Whole-device awake/background effects remain unquantified. Diagnostics do not establish subjective visual quality; no stable power ranking is asserted.",
+    "Archive-only review and pure local reporting; no additional ADB queries were issued."
+  ]
+}

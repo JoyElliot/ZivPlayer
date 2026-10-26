@@ -1,0 +1,84 @@
+{
+  "utc": "2026-10-25T16:33:46.366420+00:00",
+  "stage": "n26avccheck",
+  "phase": "functional_preflight_passed",
+  "passedFunctionalLegs": 3,
+  "qualifiedFormalLegs": 0,
+  "completeFormalBlocks": 0,
+  "archiveSha256": "e5cb0ddf08c3e406881b95e5dd982f4facbccb8393588ce72fb15b1641c34c4c",
+  "rows": [
+    {
+      "analysis": "n26avccheck-b1-1-libmpv-gpu-next.json",
+      "sampleCount": 66,
+      "steadyElapsedMs": 65002,
+      "steadyProcessCpuDeltaMs": 41359,
+      "steadyProcessCpuFraction": 0.636272730069844,
+      "qualityIssues": [],
+      "functionalOnly": true,
+      "formalQualified": false
+    },
+    {
+      "analysis": "n26avccheck-b1-2-exo-gpu-next.json",
+      "sampleCount": 66,
+      "steadyElapsedMs": 65001,
+      "steadyProcessCpuDeltaMs": 42773,
+      "steadyProcessCpuFraction": 0.6580360302149197,
+      "qualityIssues": [],
+      "functionalOnly": true,
+      "formalQualified": false
+    },
+    {
+      "analysis": "n26avccheck-b1-3-vlc-gpu-next.json",
+      "sampleCount": 66,
+      "steadyElapsedMs": 65002,
+      "steadyProcessCpuDeltaMs": 29934,
+      "steadyProcessCpuFraction": 0.4605089074182333,
+      "qualityIssues": [],
+      "functionalOnly": true,
+      "formalQualified": false
+    }
+  ],
+  "codecArchiveAudit": "passed_independent_archive_review_and_root_component_spotcheck",
+  "measurementScope": "Functional only; excluded from formal block power means and coverage.",
+  "currentActiveStage": "n26avcmva",
+  "noExtraAdb": true,
+  "codecCoverage": [
+    {
+      "label": "n26avccheck-b1-1-libmpv-gpu-next",
+      "archiveMember": "raw/n26avccheck-b1-1-libmpv-gpu-next-codec-end.txt",
+      "videoComponents": [
+        "c2.qti.avc.decoder"
+      ],
+      "matches": true,
+      "lastVideoRender": 120,
+      "lastVideoDrop": 0
+    },
+    {
+      "label": "n26avccheck-b1-2-exo-gpu-next",
+      "archiveMember": "raw/n26avccheck-b1-2-exo-gpu-next-codec-end.txt",
+      "videoComponents": [
+        "c2.qti.avc.decoder"
+      ],
+      "matches": true,
+      "lastVideoRender": 119,
+      "lastVideoDrop": 0
+    },
+    {
+      "label": "n26avccheck-b1-3-vlc-gpu-next",
+      "archiveMember": "raw/n26avccheck-b1-3-vlc-gpu-next-codec-end.txt",
+      "videoComponents": [
+        "c2.qti.avc.decoder"
+      ],
+      "matches": true,
+      "lastVideoRender": 120,
+      "lastVideoDrop": 0
+    }
+  ],
+  "videoDropObservations": "All video Drop 0 with active render evidence.",
+  "separateLogObservations": [
+    "Exo AAC component Render 0 / Drop counters are audio-only; their semantics are unresolved and are not AVC video drops.",
+    "Current-leg startup stale buffer callbacks and Choreographer skipped frames are preserved, without causal attribution.",
+    "VLC libcuda load warning precedes successful QTI AVC decoder creation; no hardware-failure claim."
+  ],
+  "reviewCompletedUtc": "2026-10-25T16:34:42.183137+00:00"
+}

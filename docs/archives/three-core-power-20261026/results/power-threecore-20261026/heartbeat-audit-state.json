@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "session": "20261026",
+  "auditedStages": {
+    "n26avccheck": {
+      "evidence": "heartbeat-audits/n26avccheck.json",
+      "functionalPassed": 3,
+      "qualifiedFormalLegs": 0,
+      "completeFormalBlocks": 0,
+      "archiveSha256": "e5cb0ddf08c3e406881b95e5dd982f4facbccb8393588ce72fb15b1641c34c4c"
+    },
+    "n26avcmva": {
+      "evidence": "heartbeat-audits/n26avcmva.json",
+      "formalQualifiedLegs": 4,
+      "completeFormalBlocks": 1,
+      "archiveSha256": "617255b1e4b99ba6877b2db35b9e90d9707cc2f3b20399ecb494277239c0e6ad",
+      "aggregationEligible": true
+    },
+    "n26avcmvb": {
+      "evidence": "heartbeat-audits/n26avcmvb.json",
+      "formalQualifiedLegs": 4,
+      "completeFormalBlocks": 1,
+      "archiveSha256": "5fb6341151d5660e2137b2c06124de412a1635c815a3d8a089bb86e5d2ae8071",
+      "aggregationEligible": true
+    },
+    "n26hevccheck": {
+      "evidence": "heartbeat-audits/n26hevccheck.json",
+      "functionalPassed": 3,
+      "qualifiedFormalLegs": 0,
+      "completeFormalBlocks": 0,
+      "archiveSha256": "d53f9198ea07214d07d7a6497a615e972c69e506a7038c9fa63dee1235da1e61"
+    },
+    "n26hevcmva": {
+      "evidence": "heartbeat-audits/n26hevcmva.json",
+      "formalQualifiedLegs": 4,
+      "completeFormalBlocks": 1,
+      "archiveSha256": "f984857d3031b8e6b5d6bdb9bab0ff16b4119d983f517646cd29b82e1d2bf3e0",
+      "aggregationEligible": false,
+      "aggregationIssues": [
+        "crosses_10pct_start_battery_strata"
+      ]
+    },
+    "n26hevcmvb": {
+      "evidence": "heartbeat-audits/n26hevcmvb.json",
+      "formalQualifiedLegs": 4,
+      "completeFormalBlocks": 1,
+      "archiveSha256": "5d4c17c580691ab2399e66d887dcdc5e41ff0a81072d58bf0531a27a6c0a3847",
+      "aggregationEligible": true
+    },
+    "n26vp9check": {
+      "evidence": "heartbeat-audits/n26vp9check.json",
+      "functionalPassed": 3,
+      "qualifiedFormalLegs": 0,
+      "completeFormalBlocks": 0,
+      "archiveSha256": "e056c5eb07f7e209c6bb4a0d4f7766fdba2b2277e41ffaf845d6f54eb5b5322d"
+    },
+    "n26vp9mva": {
+      "evidence": "heartbeat-audits/n26vp9mva.json",
+      "formalQualifiedLegs": 4,
+      "completeFormalBlocks": 1,
+      "archiveSha256": "9ad83d06949dbbad14b83fc85b50dfe7cc6126069f0ca7da6c0dcf7f61f70620",
+      "aggregationEligible": true
+    },
+    "n26vp9mvb": {
+      "evidence": "heartbeat-audits/n26vp9mvb.json",
+      "formalQualifiedLegs": 4,
+      "completeFormalBlocks": 1,
+      "archiveSha256": "f357610b177c3c36be23a773f79969ab413b2870174795cb2b4cd06bf0180bf0",
+      "aggregationEligible": true
+    }
+  },
+  "updatedUtc": "2026-10-25T19:56:23.630021+00:00",
+  "currentSessionCompleteFormalBlocks": 6,
+  "currentSessionCompleteComparisons": 3,
+  "priorCoverageOnly": {
+    "completeComparisons": 9,
+    "completeBlocks": 18,
+    "powerDataPooled": false
+  },
+  "overallCoverageOnly": {
+    "completeBlocks": 24,
+    "targetBlocks": 24,
+    "completeComparisons": 12,
+    "targetComparisons": 12,
+    "powerDataPooled": false
+  },
+  "remainingCurrentSessionFormalBlocks": 0,
+  "remainingCurrentSessionComparisons": 0,
+  "passedPreflightLegs": 9,
+  "completedPreflightStages": 3
+}

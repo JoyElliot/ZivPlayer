@@ -1,0 +1,63 @@
+{
+  "verifiedUtc": "2026-10-25T02:36:47.867874+00:00",
+  "auditSha256": "5a969c884e040818218ce8ca9714290120592ae43315462da7e894f848e162cd",
+  "archiveSha256": "812dc249c3bc3f2624dcb7a2e40b9051516450d4f943b73e8796069ab0ce072d",
+  "independentArchiveEvidenceVerified": true,
+  "qualifiedLegs": 4,
+  "completeBlock": true,
+  "codecEndCoverageComplete": true,
+  "codecEndCounts": {
+    "n25vp9evb-b1-1-vlc-gpu-next": 1,
+    "n25vp9evb-b1-2-exo-gpu-next": 1,
+    "n25vp9evb-b1-3-exo-gpu-next": 1,
+    "n25vp9evb-b1-4-vlc-gpu-next": 1
+  },
+  "hardwareComponent": "c2.qti.vp9.decoder",
+  "formalMeasurements": true,
+  "aggregationEligible": true,
+  "aggregationIssues": [],
+  "startTemperatureBandsC": [
+    35
+  ],
+  "startBatteryBandsPercent": [
+    40
+  ],
+  "cpuWithinLeg": [],
+  "cpuPolicyApplicable": false,
+  "qualityIssues": [],
+  "diagnosticVideoDroppedFrames": 0,
+  "archivedCooldownSeconds": [
+    189,
+    174,
+    64,
+    441
+  ],
+  "archivedStageElapsedSeconds": 2236,
+  "preplayEntryTemperaturesC": [
+    34.9,
+    34.9,
+    35.0,
+    34.9
+  ],
+  "measurementStartTemperaturesC": [
+    35.0,
+    35.0,
+    35.3,
+    35.0
+  ],
+  "measurementStartBatteryPercents": [
+    47,
+    46,
+    45,
+    44
+  ],
+  "notes": [
+    "Complete BAAB block is retained in 35 C / 40-percent start strata. The complementary ABBA block crosses strata and remains separate.",
+    "All four codec-end streams contain unique matching markers, matching app PID, and QTI VP9 rendered-frame statistics with zero video drops.",
+    "Third leg entered at 35.0 C and measured first at 35.3 C after 90-second warmup; entry and sampling thresholds are distinct.",
+    "Only Exo/VLC legs are present, so the mpv CPU threshold does not apply.",
+    "One eligible block does not establish a stable ranking or pooled confidence interval.",
+    "Power is controlled-condition whole-device power. Awake/background effects remain unquantified; diagnostics do not establish subjective visual quality.",
+    "Archive-only review and local report generation; no additional ADB queries were issued."
+  ]
+}

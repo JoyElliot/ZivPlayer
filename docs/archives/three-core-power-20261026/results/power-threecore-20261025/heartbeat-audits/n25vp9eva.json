@@ -1,0 +1,67 @@
+{
+  "verifiedUtc": "2026-10-25T02:09:06.804577+00:00",
+  "auditSha256": "145ea1378f22e31bb1d6b7bed6c3333e76cfff10e3b93bb481b43cb826467273",
+  "archiveSha256": "514d56a9ff265e3af8a0a62a56c3364796f14d03167d81fd654156de09046835",
+  "independentArchiveEvidenceVerified": true,
+  "qualifiedLegs": 4,
+  "completeBlock": true,
+  "codecEndCoverageComplete": true,
+  "codecEndCounts": {
+    "n25vp9eva-b1-1-exo-gpu-next": 1,
+    "n25vp9eva-b1-2-vlc-gpu-next": 1,
+    "n25vp9eva-b1-3-vlc-gpu-next": 1,
+    "n25vp9eva-b1-4-exo-gpu-next": 1
+  },
+  "hardwareComponent": "c2.qti.vp9.decoder",
+  "formalMeasurements": true,
+  "aggregationEligible": false,
+  "aggregationIssues": [
+    "crosses_1C_start_temperature_strata",
+    "crosses_10pct_start_battery_strata"
+  ],
+  "startTemperatureBandsC": [
+    34,
+    35
+  ],
+  "startBatteryBandsPercent": [
+    40,
+    50
+  ],
+  "cpuWithinLeg": [],
+  "cpuPolicyApplicable": false,
+  "qualityIssues": [],
+  "diagnosticVideoDroppedFrames": 0,
+  "archivedCooldownSeconds": [
+    188,
+    63,
+    63,
+    64
+  ],
+  "archivedStageElapsedSeconds": 1748,
+  "preplayEntryTemperaturesC": [
+    34.6,
+    34.7,
+    34.7,
+    34.9
+  ],
+  "measurementStartTemperaturesC": [
+    34.6,
+    34.7,
+    34.7,
+    35.0
+  ],
+  "measurementStartBatteryPercents": [
+    50,
+    49,
+    48,
+    48
+  ],
+  "notes": [
+    "Complete ABBA block is retained separately because it crosses both 1 C and 10-percent start strata.",
+    "Each codec-end stream has a unique matching end marker, matching app PID, and QTI VP9 rendered-frame statistics with Drop 0.",
+    "All four playback entries satisfy the 35 C gate; first measured temperatures follow 90-second warmup.",
+    "Only Exo/VLC legs are present; the mpv CPU threshold does not apply.",
+    "A complete block does not establish subjective visual quality or a stable power ranking.",
+    "The whole-device awake/background-control effects and residual activity remain unquantified. No extra ADB queries were issued."
+  ]
+}

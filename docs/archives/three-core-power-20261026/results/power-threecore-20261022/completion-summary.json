@@ -1,0 +1,141 @@
+{
+  "generatedUtc": "2026-10-21T22:24:50.393194+00:00",
+  "phase": "completed",
+  "formalRuns": 48,
+  "preflightLegs": 12,
+  "completeBlocks": 12,
+  "sameStratumBlocks": 9,
+  "recovery": {
+    "finishedUtc": "2026-10-21T22:24:33Z",
+    "action": "deadline_recovery",
+    "trigger": "host_requested",
+    "cleanupSucceeded": true,
+    "keptAwake": true
+  },
+  "recoveryVerified": true,
+  "archivedHardwareComponentsVerified": true,
+  "cpuFlags": [],
+  "screenTimeoutMs": "***",
+  "skippedStages": [
+    {
+      "name": "vp9mva",
+      "reason": "superseded_by_date_namespaced_plan_before_start"
+    },
+    {
+      "name": "vp9mvb",
+      "reason": "superseded_by_date_namespaced_plan_before_start"
+    },
+    {
+      "name": "hevccheck",
+      "reason": "superseded_by_date_namespaced_plan_before_start"
+    },
+    {
+      "name": "hevcmea",
+      "reason": "superseded_by_date_namespaced_plan_before_start"
+    },
+    {
+      "name": "hevcmeb",
+      "reason": "superseded_by_date_namespaced_plan_before_start"
+    },
+    {
+      "name": "hevc10check",
+      "reason": "superseded_by_date_namespaced_plan_before_start"
+    },
+    {
+      "name": "hevc10mea",
+      "reason": "superseded_by_date_namespaced_plan_before_start"
+    },
+    {
+      "name": "hevc10meb",
+      "reason": "superseded_by_date_namespaced_plan_before_start"
+    },
+    {
+      "name": "vp9mea",
+      "reason": "superseded_by_date_namespaced_plan_before_start"
+    },
+    {
+      "name": "vp9meb",
+      "reason": "superseded_by_date_namespaced_plan_before_start"
+    },
+    {
+      "name": "hevcmva",
+      "reason": "superseded_by_date_namespaced_plan_before_start"
+    },
+    {
+      "name": "hevcmvb",
+      "reason": "superseded_by_date_namespaced_plan_before_start"
+    },
+    {
+      "name": "hevc10eva",
+      "reason": "superseded_by_date_namespaced_plan_before_start"
+    },
+    {
+      "name": "n22r1hevc10eva",
+      "reason": "insufficient_time_for_complementary_pair"
+    },
+    {
+      "name": "hevc10evb",
+      "reason": "superseded_by_date_namespaced_plan_before_start"
+    },
+    {
+      "name": "n22r1hevc10evb",
+      "reason": "insufficient_time_for_complementary_pair"
+    },
+    {
+      "name": "vp9mvextra",
+      "reason": "superseded_by_date_namespaced_plan_before_start"
+    },
+    {
+      "name": "n22r1vp9mvextra",
+      "reason": "insufficient_time_for_complete_stage"
+    },
+    {
+      "name": "avcmvextra",
+      "reason": "superseded_by_date_namespaced_plan_before_start"
+    },
+    {
+      "name": "n22r1avcmvextra",
+      "reason": "insufficient_time_for_complete_stage"
+    },
+    {
+      "name": "hevc10meextra",
+      "reason": "superseded_by_date_namespaced_plan_before_start"
+    },
+    {
+      "name": "n22r1hevc10meextra",
+      "reason": "insufficient_time_for_complete_stage"
+    }
+  ],
+  "statisticsPolicy": "Unchanged predeclared 1C and 10-percent start strata; complete blocks only; no cross-night pooling.",
+  "automationStatus": "deleted_after_completion",
+  "updatedUtc": "2026-10-21T23:37:39.144168+00:00",
+  "report": "morning-report.html",
+  "reportReady": true,
+  "completionBeforeTaipeiDeadline": true,
+  "deadlineTaipei": "2026-10-22T07:15:00+08:00",
+  "crossStratumBlocks": 3,
+  "pooledGroupsWithTwoBlocks": 2,
+  "automationStop": "completion-audit/automation-stop.json",
+  "awakeGuardRetentionPolicy": "released_after_user_return",
+  "awakeGuardIdentityVerifiedUtc": "2026-10-21T22:37:29Z",
+  "awakeGuardAliveAtVerification": true,
+  "readOnlyDeviceRecheck": "completion-audit/device-recheck/verification.json",
+  "guardIdentityVerification": "completion-audit/guard-verification.json",
+  "backupShaVerification": "completion-audit/backup-verification.json",
+  "evidenceSummary": "completion-audit/evidence-summary.json",
+  "independentReportReview": "completion-audit/independent-report-review.json",
+  "browserQA": "completion-audit/report-browser-qa.json",
+  "noPostRestorePhoneMutations": false,
+  "resultBoundaries": [
+    "Complete four-leg blocks are the replicate unit; 1Hz samples are not independent replicates.",
+    "Only HEVC Exo/mpv and VP9 Exo/mpv have two blocks in matching strata.",
+    "Other blocks remain standalone; no cross-night pooling.",
+    "Whole-device power and supported frame-loss observations do not establish subjective picture quality.",
+    "User-data tar retained, not restored and not individually verified.",
+    "Awake-guard identity evidence is point-in-time; guard is retained until user returns."
+  ],
+  "awakeGuardExitedUtc": "2026-10-21T23:35:03Z",
+  "userHandover": "user-handover/handover-summary.json",
+  "dailyUsePreferencesPending": true,
+  "baselineSettingsRepresentConfirmedDailyPreferences": false
+}

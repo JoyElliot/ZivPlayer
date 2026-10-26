@@ -1,0 +1,232 @@
+{
+  "verifiedUtc": "2026-10-22T22:43:18.706661+00:00",
+  "source": "Independent post-completion read-only device audit",
+  "checks": {
+    "originalApks": true,
+    "allTenPackageStates": true,
+    "originalSettings": true,
+    "musicVolume": true,
+    "musicMuted": true,
+    "bluetoothState": true,
+    "allGuardOwners": true,
+    "allOriginalGuardProcessesExited": true,
+    "awakeExitRestoredTimeout": true,
+    "recoveryExitSucceeded": true,
+    "formalExitSucceeded": true
+  },
+  "allRestorationChecksPassed": true,
+  "observations": {
+    "awakeAtAudit": false,
+    "keyguardNotShowingAtAudit": false
+  },
+  "apks": {
+    "main": {
+      "package": "io.github.joyelliot.zivplayer",
+      "path": "/data/app/***",
+      "expected": "734baeb4894023b5ddd94e1ddfd31ef3c3ad4cca04277bbf9a7e71510b3e5b71",
+      "actual": "734baeb4894023b5ddd94e1ddfd31ef3c3ad4cca04277bbf9a7e71510b3e5b71",
+      "matches": true
+    },
+    "test": {
+      "package": "io.github.joyelliot.zivplayer.test",
+      "path": "/data/app/***",
+      "expected": "b9ef2baa144dea17cbae236415bbcaa5dc9af097ad2e66059285def30bb1c903",
+      "actual": "b9ef2baa144dea17cbae236415bbcaa5dc9af097ad2e66059285def30bb1c903",
+      "matches": true
+    }
+  },
+  "packages": [
+    {
+      "package": "app-01-***",
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "matches": true
+    },
+    {
+      "package": "app-02-***",
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "matches": true
+    },
+    {
+      "package": "app-03-***",
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "matches": true
+    },
+    {
+      "package": "app-04-***",
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "matches": true
+    },
+    {
+      "package": "app-05-***",
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "matches": true
+    },
+    {
+      "package": "app-06-***",
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "matches": true
+    },
+    {
+      "package": "app-07-***",
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "matches": true
+    },
+    {
+      "package": "app-08-***",
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "matches": true
+    },
+    {
+      "package": "app-09-***",
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "matches": true
+    },
+    {
+      "package": "app-10-***",
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "matches": true
+    }
+  ],
+  "settings": {
+    "screen_off_timeout": "***",
+    "screen_brightness": "***",
+    "screen_brightness_mode": "***",
+    "bluetooth_on": "***",
+    "airplane_mode_on": "***",
+    "wifi_on": "***",
+    "stay_on_while_plugged_in": "***"
+  },
+  "guards": {
+    "awake": {
+      "ownerMatches": true,
+      "ownerSource": "owner.txt",
+      "originalProcessExited": true,
+      "exit": {
+        "finishedUtc": "2026-10-22T22:34:32Z",
+        "screenTimeoutMs": "***",
+        "cleanupSucceeded": true
+      },
+      "liveDetailsRecorded": true
+    },
+    "recovery": {
+      "ownerMatches": true,
+      "ownerSource": "owner.txt",
+      "originalProcessExited": true,
+      "exit": {
+        "finishedUtc": "2026-10-22T22:34:44Z",
+        "action": "deadline_recovery",
+        "trigger": "host_requested",
+        "cleanupSucceeded": true,
+        "keptAwake": true,
+        "awakeGuardStopped": true,
+        "originalTimeoutRestored": true
+      },
+      "liveDetailsRecorded": true
+    },
+    "formal": {
+      "ownerMatches": true,
+      "ownerSource": "config.env OWNER; this guard does not create owner.txt",
+      "originalProcessExited": true,
+      "exit": {
+        "finishedUtc": "2026-10-22T22:34:00Z",
+        "action": "formal_stop_requested",
+        "ok": true
+      },
+      "liveDetailsRecorded": true
+    }
+  },
+  "errors": {},
+  "brightnessPolicy": "No device writes. In automatic mode numeric brightness may change; preserve current value.",
+  "screenPolicy": "Original 600000 ms timeout restored. Subsequent normal sleep/lock is not a restoration failure.",
+  "auditRevisionNote": "Revision 1 incorrectly queried a separate formal-stop owner.txt. Revision 2 corrected the source but compared Windows ADB CRLF with local LF. Revision 3 normalizes newlines for the text comparison while preserving raw bytes, reads the actual OWNER configuration, and re-verifies device state. No device writes in any audit."
+}

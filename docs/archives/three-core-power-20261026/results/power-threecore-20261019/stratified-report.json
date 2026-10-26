@@ -1,0 +1,1178 @@
+{
+  "updatedUtc": "2026-10-18T23:55:00.872075+00:00",
+  "phase": "completed",
+  "qualifiedFormalRuns": 44,
+  "passedPreflightLegs": 9,
+  "blocks": [
+    {
+      "fixture": "hevc-1080p24.mkv",
+      "fixtureSha256": "49fee53a0264f2373cb95a88c506796f68c2229aa985e1d9348d341c53169d14",
+      "mode": "automatic",
+      "surfaceProtocol": "current-app",
+      "measurementCohort": "threecore-20261019-46a0c824d23c-17192b56c846",
+      "comparisonBlock": "hevcme:hevc:b1",
+      "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+      "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+      "complete": true,
+      "plannedConditions": [
+        "libmpv@gpu-next",
+        "exo",
+        "exo",
+        "libmpv@gpu-next"
+      ],
+      "conditions": [
+        "exo",
+        "libmpv@gpu-next"
+      ],
+      "runLabels": [
+        "hevcme-b1-1-libmpv-gpu-next",
+        "hevcme-b1-2-exo-gpu-next",
+        "hevcme-b1-3-exo-gpu-next",
+        "hevcme-b1-4-libmpv-gpu-next"
+      ],
+      "conditionMeanPowerMw": {
+        "exo": 1205.3853030908094,
+        "libmpv@gpu-next": 1264.6367861279741
+      },
+      "a": "exo",
+      "b": "libmpv@gpu-next",
+      "aMinusBMw": -59.25148303716469,
+      "conditionMeanStartTemperatureC": {
+        "exo": 34.75,
+        "libmpv@gpu-next": 34.8
+      },
+      "conditionMeanStartBatteryPercent": {
+        "exo": 71.5,
+        "libmpv@gpu-next": 71
+      },
+      "aggregationEligible": false,
+      "aggregationIssues": [
+        "crosses_1C_start_temperature_strata"
+      ],
+      "conditionActualDecoders": {
+        "exo": [
+          [
+            "c2.qti.hevc.decoder",
+            false
+          ]
+        ],
+        "libmpv@gpu-next": [
+          [
+            "mediacodec",
+            false
+          ]
+        ]
+      },
+      "startTemperatureBandsC": [
+        34,
+        35
+      ],
+      "startBatteryBandsPercent": [
+        70
+      ],
+      "batteryClasses": [
+        "normal"
+      ],
+      "startTemperaturesC": [
+        35.0,
+        34.8,
+        34.7,
+        34.6
+      ],
+      "startBatteryPercents": [
+        72,
+        72,
+        71,
+        70
+      ]
+    },
+    {
+      "fixture": "hevc-1080p24.mkv",
+      "fixtureSha256": "49fee53a0264f2373cb95a88c506796f68c2229aa985e1d9348d341c53169d14",
+      "mode": "automatic",
+      "surfaceProtocol": "current-app",
+      "measurementCohort": "threecore-20261019-46a0c824d23c-17192b56c846",
+      "comparisonBlock": "hevcmv:hevc:b1",
+      "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+      "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+      "complete": true,
+      "plannedConditions": [
+        "vlc",
+        "libmpv@gpu-next",
+        "libmpv@gpu-next",
+        "vlc"
+      ],
+      "conditions": [
+        "libmpv@gpu-next",
+        "vlc"
+      ],
+      "runLabels": [
+        "hevcmv-b1-1-vlc-gpu-next",
+        "hevcmv-b1-2-libmpv-gpu-next",
+        "hevcmv-b1-3-libmpv-gpu-next",
+        "hevcmv-b1-4-vlc-gpu-next"
+      ],
+      "conditionMeanPowerMw": {
+        "libmpv@gpu-next": 1246.1011589723807,
+        "vlc": 1196.947998325758
+      },
+      "a": "libmpv@gpu-next",
+      "b": "vlc",
+      "aMinusBMw": 49.15316064662284,
+      "conditionMeanStartTemperatureC": {
+        "libmpv@gpu-next": 34.55,
+        "vlc": 34.55
+      },
+      "conditionMeanStartBatteryPercent": {
+        "libmpv@gpu-next": 69,
+        "vlc": 69
+      },
+      "aggregationEligible": false,
+      "aggregationIssues": [
+        "crosses_10pct_start_battery_strata"
+      ],
+      "conditionActualDecoders": {
+        "libmpv@gpu-next": [
+          [
+            "mediacodec",
+            false
+          ]
+        ],
+        "vlc": [
+          [
+            "c2.qti.hevc.decoder",
+            false
+          ]
+        ]
+      },
+      "startTemperatureBandsC": [
+        34
+      ],
+      "startBatteryBandsPercent": [
+        60,
+        70
+      ],
+      "batteryClasses": [
+        "normal"
+      ],
+      "startTemperaturesC": [
+        34.4,
+        34.6,
+        34.5,
+        34.7
+      ],
+      "startBatteryPercents": [
+        70,
+        69,
+        69,
+        68
+      ]
+    },
+    {
+      "fixture": "hevc-1080p24.mkv",
+      "fixtureSha256": "49fee53a0264f2373cb95a88c506796f68c2229aa985e1d9348d341c53169d14",
+      "mode": "automatic",
+      "surfaceProtocol": "current-app",
+      "measurementCohort": "threecore-20261019-46a0c824d23c-17192b56c846",
+      "comparisonBlock": "hevcev:hevc:b1",
+      "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+      "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+      "complete": true,
+      "plannedConditions": [
+        "exo",
+        "vlc",
+        "vlc",
+        "exo"
+      ],
+      "conditions": [
+        "exo",
+        "vlc"
+      ],
+      "runLabels": [
+        "hevcev-b1-1-exo-gpu-next",
+        "hevcev-b1-2-vlc-gpu-next",
+        "hevcev-b1-3-vlc-gpu-next",
+        "hevcev-b1-4-exo-gpu-next"
+      ],
+      "conditionMeanPowerMw": {
+        "exo": 1185.4795026915667,
+        "vlc": 1193.9402387628015
+      },
+      "a": "exo",
+      "b": "vlc",
+      "aMinusBMw": -8.460736071234805,
+      "conditionMeanStartTemperatureC": {
+        "exo": 34.55,
+        "vlc": 34.55
+      },
+      "conditionMeanStartBatteryPercent": {
+        "exo": 66.5,
+        "vlc": 66.5
+      },
+      "aggregationEligible": true,
+      "aggregationIssues": [],
+      "conditionActualDecoders": {
+        "exo": [
+          [
+            "c2.qti.hevc.decoder",
+            false
+          ]
+        ],
+        "vlc": [
+          [
+            "c2.qti.hevc.decoder",
+            false
+          ]
+        ]
+      },
+      "startTemperatureBandsC": [
+        34
+      ],
+      "startBatteryBandsPercent": [
+        60
+      ],
+      "batteryClasses": [
+        "normal"
+      ],
+      "startTemperaturesC": [
+        34.6,
+        34.6,
+        34.5,
+        34.5
+      ],
+      "startBatteryPercents": [
+        67,
+        67,
+        66,
+        66
+      ]
+    },
+    {
+      "fixture": "hevc10-1080p24.mkv",
+      "fixtureSha256": "c338ae9ad3ee0c89a8dc893df6d4c06be9e43d35d873a987f2cfaaaa7c22ba22",
+      "mode": "automatic",
+      "surfaceProtocol": "current-app",
+      "measurementCohort": "threecore-20261019-46a0c824d23c-17192b56c846",
+      "comparisonBlock": "hevc10mv:hevc10:b1",
+      "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+      "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+      "complete": true,
+      "plannedConditions": [
+        "libmpv@gpu-next",
+        "vlc",
+        "vlc",
+        "libmpv@gpu-next"
+      ],
+      "conditions": [
+        "libmpv@gpu-next",
+        "vlc"
+      ],
+      "runLabels": [
+        "hevc10mv-b1-1-libmpv-gpu-next",
+        "hevc10mv-b1-2-vlc-gpu-next",
+        "hevc10mv-b1-3-vlc-gpu-next",
+        "hevc10mv-b1-4-libmpv-gpu-next"
+      ],
+      "conditionMeanPowerMw": {
+        "libmpv@gpu-next": 1269.193069640029,
+        "vlc": 1197.2994619860197
+      },
+      "a": "libmpv@gpu-next",
+      "b": "vlc",
+      "aMinusBMw": 71.89360765400943,
+      "conditionMeanStartTemperatureC": {
+        "libmpv@gpu-next": 34.7,
+        "vlc": 34.6
+      },
+      "conditionMeanStartBatteryPercent": {
+        "libmpv@gpu-next": 63.5,
+        "vlc": 63.5
+      },
+      "aggregationEligible": true,
+      "aggregationIssues": [],
+      "conditionActualDecoders": {
+        "libmpv@gpu-next": [
+          [
+            "mediacodec",
+            false
+          ]
+        ],
+        "vlc": [
+          [
+            "c2.qti.hevc.decoder",
+            false
+          ]
+        ]
+      },
+      "startTemperatureBandsC": [
+        34
+      ],
+      "startBatteryBandsPercent": [
+        60
+      ],
+      "batteryClasses": [
+        "normal"
+      ],
+      "startTemperaturesC": [
+        34.6,
+        34.6,
+        34.6,
+        34.8
+      ],
+      "startBatteryPercents": [
+        64,
+        64,
+        63,
+        63
+      ]
+    },
+    {
+      "fixture": "hevc10-1080p24.mkv",
+      "fixtureSha256": "c338ae9ad3ee0c89a8dc893df6d4c06be9e43d35d873a987f2cfaaaa7c22ba22",
+      "mode": "automatic",
+      "surfaceProtocol": "current-app",
+      "measurementCohort": "threecore-20261019-46a0c824d23c-17192b56c846",
+      "comparisonBlock": "hevc10me:hevc10:b1",
+      "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+      "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+      "complete": true,
+      "plannedConditions": [
+        "exo",
+        "libmpv@gpu-next",
+        "libmpv@gpu-next",
+        "exo"
+      ],
+      "conditions": [
+        "exo",
+        "libmpv@gpu-next"
+      ],
+      "runLabels": [
+        "hevc10me-b1-1-exo-gpu-next",
+        "hevc10me-b1-2-libmpv-gpu-next",
+        "hevc10me-b1-3-libmpv-gpu-next",
+        "hevc10me-b1-4-exo-gpu-next"
+      ],
+      "conditionMeanPowerMw": {
+        "exo": 1196.1866894046457,
+        "libmpv@gpu-next": 1261.36245666503
+      },
+      "a": "exo",
+      "b": "libmpv@gpu-next",
+      "aMinusBMw": -65.17576726038442,
+      "conditionMeanStartTemperatureC": {
+        "exo": 34.849999999999994,
+        "libmpv@gpu-next": 34.95
+      },
+      "conditionMeanStartBatteryPercent": {
+        "exo": 61,
+        "libmpv@gpu-next": 61
+      },
+      "aggregationEligible": false,
+      "aggregationIssues": [
+        "crosses_1C_start_temperature_strata"
+      ],
+      "conditionActualDecoders": {
+        "exo": [
+          [
+            "c2.qti.hevc.decoder",
+            false
+          ]
+        ],
+        "libmpv@gpu-next": [
+          [
+            "mediacodec",
+            false
+          ]
+        ]
+      },
+      "startTemperatureBandsC": [
+        34,
+        35
+      ],
+      "startBatteryBandsPercent": [
+        60
+      ],
+      "batteryClasses": [
+        "normal"
+      ],
+      "startTemperaturesC": [
+        34.8,
+        34.9,
+        35.0,
+        34.9
+      ],
+      "startBatteryPercents": [
+        62,
+        61,
+        61,
+        60
+      ]
+    },
+    {
+      "fixture": "hevc10-1080p24.mkv",
+      "fixtureSha256": "c338ae9ad3ee0c89a8dc893df6d4c06be9e43d35d873a987f2cfaaaa7c22ba22",
+      "mode": "automatic",
+      "surfaceProtocol": "current-app",
+      "measurementCohort": "threecore-20261019-46a0c824d23c-17192b56c846",
+      "comparisonBlock": "hevc10ev:hevc10:b1",
+      "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+      "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+      "complete": true,
+      "plannedConditions": [
+        "exo",
+        "vlc",
+        "vlc",
+        "exo"
+      ],
+      "conditions": [
+        "exo",
+        "vlc"
+      ],
+      "runLabels": [
+        "hevc10ev-b1-1-exo-gpu-next",
+        "hevc10ev-b1-2-vlc-gpu-next",
+        "hevc10ev-b1-3-vlc-gpu-next",
+        "hevc10ev-b1-4-exo-gpu-next"
+      ],
+      "conditionMeanPowerMw": {
+        "exo": 1178.1526956285218,
+        "vlc": 1203.2272013679108
+      },
+      "a": "exo",
+      "b": "vlc",
+      "aMinusBMw": -25.074505739388997,
+      "conditionMeanStartTemperatureC": {
+        "exo": 34.849999999999994,
+        "vlc": 34.849999999999994
+      },
+      "conditionMeanStartBatteryPercent": {
+        "exo": 59,
+        "vlc": 59
+      },
+      "aggregationEligible": false,
+      "aggregationIssues": [
+        "crosses_10pct_start_battery_strata"
+      ],
+      "conditionActualDecoders": {
+        "exo": [
+          [
+            "c2.qti.hevc.decoder",
+            false
+          ]
+        ],
+        "vlc": [
+          [
+            "c2.qti.hevc.decoder",
+            false
+          ]
+        ]
+      },
+      "startTemperatureBandsC": [
+        34
+      ],
+      "startBatteryBandsPercent": [
+        50,
+        60
+      ],
+      "batteryClasses": [
+        "normal"
+      ],
+      "startTemperaturesC": [
+        34.8,
+        34.8,
+        34.9,
+        34.9
+      ],
+      "startBatteryPercents": [
+        60,
+        59,
+        59,
+        58
+      ]
+    },
+    {
+      "fixture": "vp9-1080p24.mkv",
+      "fixtureSha256": "68efdd1d14246fec7c8fbebce844418a690567076bfd69fed44003d4ec7cd878",
+      "mode": "automatic",
+      "surfaceProtocol": "current-app",
+      "measurementCohort": "threecore-20261019-46a0c824d23c-17192b56c846",
+      "comparisonBlock": "vp9ev:vp9:b1",
+      "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+      "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+      "complete": true,
+      "plannedConditions": [
+        "exo",
+        "vlc",
+        "vlc",
+        "exo"
+      ],
+      "conditions": [
+        "exo",
+        "vlc"
+      ],
+      "runLabels": [
+        "vp9ev-b1-1-exo-gpu-next",
+        "vp9ev-b1-2-vlc-gpu-next",
+        "vp9ev-b1-3-vlc-gpu-next",
+        "vp9ev-b1-4-exo-gpu-next"
+      ],
+      "conditionMeanPowerMw": {
+        "exo": 1157.3636377679563,
+        "vlc": 1162.2043747632038
+      },
+      "a": "exo",
+      "b": "vlc",
+      "aMinusBMw": -4.8407369952474255,
+      "conditionMeanStartTemperatureC": {
+        "exo": 34.75,
+        "vlc": 34.7
+      },
+      "conditionMeanStartBatteryPercent": {
+        "exo": 56,
+        "vlc": 55.5
+      },
+      "aggregationEligible": true,
+      "aggregationIssues": [],
+      "conditionActualDecoders": {
+        "exo": [
+          [
+            "c2.qti.vp9.decoder",
+            false
+          ]
+        ],
+        "vlc": [
+          [
+            "c2.qti.vp9.decoder",
+            false
+          ]
+        ]
+      },
+      "startTemperatureBandsC": [
+        34
+      ],
+      "startBatteryBandsPercent": [
+        50
+      ],
+      "batteryClasses": [
+        "normal"
+      ],
+      "startTemperaturesC": [
+        34.9,
+        34.7,
+        34.7,
+        34.6
+      ],
+      "startBatteryPercents": [
+        57,
+        56,
+        55,
+        55
+      ]
+    },
+    {
+      "fixture": "vp9-1080p24.mkv",
+      "fixtureSha256": "68efdd1d14246fec7c8fbebce844418a690567076bfd69fed44003d4ec7cd878",
+      "mode": "automatic",
+      "surfaceProtocol": "current-app",
+      "measurementCohort": "threecore-20261019-46a0c824d23c-17192b56c846",
+      "comparisonBlock": "vp9me:vp9:b1",
+      "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+      "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+      "complete": true,
+      "plannedConditions": [
+        "exo",
+        "libmpv@gpu-next",
+        "libmpv@gpu-next",
+        "exo"
+      ],
+      "conditions": [
+        "exo",
+        "libmpv@gpu-next"
+      ],
+      "runLabels": [
+        "vp9me-b1-1-exo-gpu-next",
+        "vp9me-b1-2-libmpv-gpu-next",
+        "vp9me-b1-3-libmpv-gpu-next",
+        "vp9me-b1-4-exo-gpu-next"
+      ],
+      "conditionMeanPowerMw": {
+        "exo": 1159.333917844722,
+        "libmpv@gpu-next": 1252.4127309825303
+      },
+      "a": "exo",
+      "b": "libmpv@gpu-next",
+      "aMinusBMw": -93.07881313780831,
+      "conditionMeanStartTemperatureC": {
+        "exo": 34.85,
+        "libmpv@gpu-next": 34.75
+      },
+      "conditionMeanStartBatteryPercent": {
+        "exo": 53.5,
+        "libmpv@gpu-next": 53.5
+      },
+      "aggregationEligible": false,
+      "aggregationIssues": [
+        "crosses_1C_start_temperature_strata"
+      ],
+      "conditionActualDecoders": {
+        "exo": [
+          [
+            "c2.qti.vp9.decoder",
+            false
+          ]
+        ],
+        "libmpv@gpu-next": [
+          [
+            "mediacodec",
+            false
+          ]
+        ]
+      },
+      "startTemperatureBandsC": [
+        34,
+        35
+      ],
+      "startBatteryBandsPercent": [
+        50
+      ],
+      "batteryClasses": [
+        "normal"
+      ],
+      "startTemperaturesC": [
+        34.6,
+        34.4,
+        35.1,
+        35.1
+      ],
+      "startBatteryPercents": [
+        54,
+        54,
+        53,
+        53
+      ]
+    },
+    {
+      "fixture": "vp9-1080p24.mkv",
+      "fixtureSha256": "68efdd1d14246fec7c8fbebce844418a690567076bfd69fed44003d4ec7cd878",
+      "mode": "automatic",
+      "surfaceProtocol": "current-app",
+      "measurementCohort": "threecore-20261019-46a0c824d23c-17192b56c846",
+      "comparisonBlock": "vp9mv:vp9:b1",
+      "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+      "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+      "complete": true,
+      "plannedConditions": [
+        "libmpv@gpu-next",
+        "vlc",
+        "vlc",
+        "libmpv@gpu-next"
+      ],
+      "conditions": [
+        "libmpv@gpu-next",
+        "vlc"
+      ],
+      "runLabels": [
+        "vp9mv-b1-1-libmpv-gpu-next",
+        "vp9mv-b1-2-vlc-gpu-next",
+        "vp9mv-b1-3-vlc-gpu-next",
+        "vp9mv-b1-4-libmpv-gpu-next"
+      ],
+      "conditionMeanPowerMw": {
+        "libmpv@gpu-next": 1240.92798550068,
+        "vlc": 1174.578950519464
+      },
+      "a": "libmpv@gpu-next",
+      "b": "vlc",
+      "aMinusBMw": 66.34903498121616,
+      "conditionMeanStartTemperatureC": {
+        "libmpv@gpu-next": 34.7,
+        "vlc": 34.8
+      },
+      "conditionMeanStartBatteryPercent": {
+        "libmpv@gpu-next": 51,
+        "vlc": 51
+      },
+      "aggregationEligible": true,
+      "aggregationIssues": [],
+      "conditionActualDecoders": {
+        "libmpv@gpu-next": [
+          [
+            "mediacodec",
+            false
+          ]
+        ],
+        "vlc": [
+          [
+            "c2.qti.vp9.decoder",
+            false
+          ]
+        ]
+      },
+      "startTemperatureBandsC": [
+        34
+      ],
+      "startBatteryBandsPercent": [
+        50
+      ],
+      "batteryClasses": [
+        "normal"
+      ],
+      "startTemperaturesC": [
+        34.9,
+        34.8,
+        34.8,
+        34.5
+      ],
+      "startBatteryPercents": [
+        52,
+        51,
+        51,
+        50
+      ]
+    },
+    {
+      "fixture": "avc-1080p24.mkv",
+      "fixtureSha256": "a6d9a6848aa52e6749a106a0987a13cd8db186008171b45aaca55da94649bb33",
+      "mode": "automatic",
+      "surfaceProtocol": "current-app",
+      "measurementCohort": "threecore-20261019-46a0c824d23c-17192b56c846",
+      "comparisonBlock": "avcev:avc:b1",
+      "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+      "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+      "complete": true,
+      "plannedConditions": [
+        "exo",
+        "vlc",
+        "vlc",
+        "exo"
+      ],
+      "conditions": [
+        "exo",
+        "vlc"
+      ],
+      "runLabels": [
+        "avcev-b1-1-exo-gpu-next",
+        "avcev-b1-2-vlc-gpu-next",
+        "avcev-b1-3-vlc-gpu-next",
+        "avcev-b1-4-exo-gpu-next"
+      ],
+      "conditionMeanPowerMw": {
+        "exo": 1173.4491196908634,
+        "vlc": 1177.6398168257633
+      },
+      "a": "exo",
+      "b": "vlc",
+      "aMinusBMw": -4.190697134899892,
+      "conditionMeanStartTemperatureC": {
+        "exo": 34.75,
+        "vlc": 34.650000000000006
+      },
+      "conditionMeanStartBatteryPercent": {
+        "exo": 48.5,
+        "vlc": 48.5
+      },
+      "aggregationEligible": true,
+      "aggregationIssues": [],
+      "conditionActualDecoders": {
+        "exo": [
+          [
+            "c2.qti.avc.decoder",
+            false
+          ]
+        ],
+        "vlc": [
+          [
+            "c2.qti.avc.decoder",
+            false
+          ]
+        ]
+      },
+      "startTemperatureBandsC": [
+        34
+      ],
+      "startBatteryBandsPercent": [
+        40
+      ],
+      "batteryClasses": [
+        "normal"
+      ],
+      "startTemperaturesC": [
+        34.6,
+        34.6,
+        34.7,
+        34.9
+      ],
+      "startBatteryPercents": [
+        49,
+        49,
+        48,
+        48
+      ]
+    },
+    {
+      "fixture": "avc-1080p24.mkv",
+      "fixtureSha256": "a6d9a6848aa52e6749a106a0987a13cd8db186008171b45aaca55da94649bb33",
+      "mode": "automatic",
+      "surfaceProtocol": "current-app",
+      "measurementCohort": "threecore-20261019-46a0c824d23c-17192b56c846",
+      "comparisonBlock": "avcme:avc:b1",
+      "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+      "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+      "complete": true,
+      "plannedConditions": [
+        "exo",
+        "libmpv@gpu-next",
+        "libmpv@gpu-next",
+        "exo"
+      ],
+      "conditions": [
+        "exo",
+        "libmpv@gpu-next"
+      ],
+      "runLabels": [
+        "avcme-b1-1-exo-gpu-next",
+        "avcme-b1-2-libmpv-gpu-next",
+        "avcme-b1-3-libmpv-gpu-next",
+        "avcme-b1-4-exo-gpu-next"
+      ],
+      "conditionMeanPowerMw": {
+        "exo": 1159.271833023267,
+        "libmpv@gpu-next": 1232.8089648784512
+      },
+      "a": "exo",
+      "b": "libmpv@gpu-next",
+      "aMinusBMw": -73.53713185518427,
+      "conditionMeanStartTemperatureC": {
+        "exo": 34.849999999999994,
+        "libmpv@gpu-next": 34.650000000000006
+      },
+      "conditionMeanStartBatteryPercent": {
+        "exo": 46,
+        "libmpv@gpu-next": 46.5
+      },
+      "aggregationEligible": true,
+      "aggregationIssues": [],
+      "conditionActualDecoders": {
+        "exo": [
+          [
+            "c2.qti.avc.decoder",
+            false
+          ]
+        ],
+        "libmpv@gpu-next": [
+          [
+            "mediacodec",
+            false
+          ]
+        ]
+      },
+      "startTemperatureBandsC": [
+        34
+      ],
+      "startBatteryBandsPercent": [
+        40
+      ],
+      "batteryClasses": [
+        "normal"
+      ],
+      "startTemperaturesC": [
+        34.8,
+        34.6,
+        34.7,
+        34.9
+      ],
+      "startBatteryPercents": [
+        47,
+        47,
+        46,
+        45
+      ]
+    }
+  ],
+  "comparisons": [
+    {
+      "fixture": "hevc-1080p24.mkv",
+      "fixtureSha256": "49fee53a0264f2373cb95a88c506796f68c2229aa985e1d9348d341c53169d14",
+      "mode": "automatic",
+      "surfaceProtocol": "current-app",
+      "measurementCohort": "threecore-20261019-46a0c824d23c-17192b56c846",
+      "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+      "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+      "a": "exo",
+      "b": "vlc",
+      "conditionActualDecoders": {
+        "exo": [
+          [
+            "c2.qti.hevc.decoder",
+            false
+          ]
+        ],
+        "vlc": [
+          [
+            "c2.qti.hevc.decoder",
+            false
+          ]
+        ]
+      },
+      "startTemperatureBandsC": [
+        34
+      ],
+      "startBatteryBandsPercent": [
+        60
+      ],
+      "batteryClasses": [
+        "normal"
+      ],
+      "blockCount": 1,
+      "blockIds": [
+        "hevcev:hevc:b1"
+      ],
+      "meanAMinusBMw": -8.460736071234805,
+      "blockDifferencesMw": [
+        -8.460736071234805
+      ],
+      "blockDifferenceStdevMw": null,
+      "conditionMeanPowerMw": {
+        "exo": 1185.4795026915667,
+        "vlc": 1193.9402387628015
+      }
+    },
+    {
+      "fixture": "hevc10-1080p24.mkv",
+      "fixtureSha256": "c338ae9ad3ee0c89a8dc893df6d4c06be9e43d35d873a987f2cfaaaa7c22ba22",
+      "mode": "automatic",
+      "surfaceProtocol": "current-app",
+      "measurementCohort": "threecore-20261019-46a0c824d23c-17192b56c846",
+      "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+      "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+      "a": "libmpv@gpu-next",
+      "b": "vlc",
+      "conditionActualDecoders": {
+        "libmpv@gpu-next": [
+          [
+            "mediacodec",
+            false
+          ]
+        ],
+        "vlc": [
+          [
+            "c2.qti.hevc.decoder",
+            false
+          ]
+        ]
+      },
+      "startTemperatureBandsC": [
+        34
+      ],
+      "startBatteryBandsPercent": [
+        60
+      ],
+      "batteryClasses": [
+        "normal"
+      ],
+      "blockCount": 1,
+      "blockIds": [
+        "hevc10mv:hevc10:b1"
+      ],
+      "meanAMinusBMw": 71.89360765400943,
+      "blockDifferencesMw": [
+        71.89360765400943
+      ],
+      "blockDifferenceStdevMw": null,
+      "conditionMeanPowerMw": {
+        "libmpv@gpu-next": 1269.193069640029,
+        "vlc": 1197.2994619860197
+      }
+    },
+    {
+      "fixture": "vp9-1080p24.mkv",
+      "fixtureSha256": "68efdd1d14246fec7c8fbebce844418a690567076bfd69fed44003d4ec7cd878",
+      "mode": "automatic",
+      "surfaceProtocol": "current-app",
+      "measurementCohort": "threecore-20261019-46a0c824d23c-17192b56c846",
+      "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+      "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+      "a": "exo",
+      "b": "vlc",
+      "conditionActualDecoders": {
+        "exo": [
+          [
+            "c2.qti.vp9.decoder",
+            false
+          ]
+        ],
+        "vlc": [
+          [
+            "c2.qti.vp9.decoder",
+            false
+          ]
+        ]
+      },
+      "startTemperatureBandsC": [
+        34
+      ],
+      "startBatteryBandsPercent": [
+        50
+      ],
+      "batteryClasses": [
+        "normal"
+      ],
+      "blockCount": 1,
+      "blockIds": [
+        "vp9ev:vp9:b1"
+      ],
+      "meanAMinusBMw": -4.8407369952474255,
+      "blockDifferencesMw": [
+        -4.8407369952474255
+      ],
+      "blockDifferenceStdevMw": null,
+      "conditionMeanPowerMw": {
+        "exo": 1157.3636377679563,
+        "vlc": 1162.2043747632038
+      }
+    },
+    {
+      "fixture": "vp9-1080p24.mkv",
+      "fixtureSha256": "68efdd1d14246fec7c8fbebce844418a690567076bfd69fed44003d4ec7cd878",
+      "mode": "automatic",
+      "surfaceProtocol": "current-app",
+      "measurementCohort": "threecore-20261019-46a0c824d23c-17192b56c846",
+      "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+      "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+      "a": "libmpv@gpu-next",
+      "b": "vlc",
+      "conditionActualDecoders": {
+        "libmpv@gpu-next": [
+          [
+            "mediacodec",
+            false
+          ]
+        ],
+        "vlc": [
+          [
+            "c2.qti.vp9.decoder",
+            false
+          ]
+        ]
+      },
+      "startTemperatureBandsC": [
+        34
+      ],
+      "startBatteryBandsPercent": [
+        50
+      ],
+      "batteryClasses": [
+        "normal"
+      ],
+      "blockCount": 1,
+      "blockIds": [
+        "vp9mv:vp9:b1"
+      ],
+      "meanAMinusBMw": 66.34903498121616,
+      "blockDifferencesMw": [
+        66.34903498121616
+      ],
+      "blockDifferenceStdevMw": null,
+      "conditionMeanPowerMw": {
+        "libmpv@gpu-next": 1240.92798550068,
+        "vlc": 1174.578950519464
+      }
+    },
+    {
+      "fixture": "avc-1080p24.mkv",
+      "fixtureSha256": "a6d9a6848aa52e6749a106a0987a13cd8db186008171b45aaca55da94649bb33",
+      "mode": "automatic",
+      "surfaceProtocol": "current-app",
+      "measurementCohort": "threecore-20261019-46a0c824d23c-17192b56c846",
+      "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+      "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+      "a": "exo",
+      "b": "vlc",
+      "conditionActualDecoders": {
+        "exo": [
+          [
+            "c2.qti.avc.decoder",
+            false
+          ]
+        ],
+        "vlc": [
+          [
+            "c2.qti.avc.decoder",
+            false
+          ]
+        ]
+      },
+      "startTemperatureBandsC": [
+        34
+      ],
+      "startBatteryBandsPercent": [
+        40
+      ],
+      "batteryClasses": [
+        "normal"
+      ],
+      "blockCount": 1,
+      "blockIds": [
+        "avcev:avc:b1"
+      ],
+      "meanAMinusBMw": -4.190697134899892,
+      "blockDifferencesMw": [
+        -4.190697134899892
+      ],
+      "blockDifferenceStdevMw": null,
+      "conditionMeanPowerMw": {
+        "exo": 1173.4491196908634,
+        "vlc": 1177.6398168257633
+      }
+    },
+    {
+      "fixture": "avc-1080p24.mkv",
+      "fixtureSha256": "a6d9a6848aa52e6749a106a0987a13cd8db186008171b45aaca55da94649bb33",
+      "mode": "automatic",
+      "surfaceProtocol": "current-app",
+      "measurementCohort": "threecore-20261019-46a0c824d23c-17192b56c846",
+      "mainApkSha256": "46a0c824d23cf00b452d4db44e33171decef93475fc218f05009d75ad3de1aee",
+      "testApkSha256": "17192b56c846a8381586abc60470eb0642ed06631b30e72b5d504fffe97de6c7",
+      "a": "exo",
+      "b": "libmpv@gpu-next",
+      "conditionActualDecoders": {
+        "exo": [
+          [
+            "c2.qti.avc.decoder",
+            false
+          ]
+        ],
+        "libmpv@gpu-next": [
+          [
+            "mediacodec",
+            false
+          ]
+        ]
+      },
+      "startTemperatureBandsC": [
+        34
+      ],
+      "startBatteryBandsPercent": [
+        40
+      ],
+      "batteryClasses": [
+        "normal"
+      ],
+      "blockCount": 1,
+      "blockIds": [
+        "avcme:avc:b1"
+      ],
+      "meanAMinusBMw": -73.53713185518427,
+      "blockDifferencesMw": [
+        -73.53713185518427
+      ],
+      "blockDifferenceStdevMw": null,
+      "conditionMeanPowerMw": {
+        "exo": 1159.271833023267,
+        "libmpv@gpu-next": 1232.8089648784512
+      }
+    }
+  ],
+  "policy": "Full ABBA/BAAB blocks are replicates. Pool only identical APK/fixture/protocol/cohort/actual decoder, battery class, 10 percentage-point start battery band, and 1 C start temperature band. Boundary-crossing blocks remain visible individually. No pooled confidence interval is claimed.",
+  "limitation": "Same frozen APK, actual hardware three-core comparison; not dependency-upgrade benefit. Small block counts; power does not establish visual quality."
+}

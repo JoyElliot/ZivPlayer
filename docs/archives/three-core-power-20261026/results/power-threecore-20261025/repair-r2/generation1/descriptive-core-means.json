@@ -1,0 +1,43 @@
+{
+  "source": "stratified-report.json complete blocks only",
+  "values": {
+    "avc": {
+      "exo": {
+        "meanPowerMw": 1265.4696679936003,
+        "completeBlockCount": 1,
+        "formalLegCount": 2
+      },
+      "vlc": {
+        "meanPowerMw": 1248.25997707089,
+        "completeBlockCount": 1,
+        "formalLegCount": 2
+      }
+    },
+    "hevc": {
+      "exo": {
+        "meanPowerMw": 1218.2230946976854,
+        "completeBlockCount": 2,
+        "formalLegCount": 4
+      },
+      "libmpv@gpu-next": {
+        "meanPowerMw": 1299.0787850820611,
+        "completeBlockCount": 2,
+        "formalLegCount": 4
+      }
+    },
+    "hevc10": {
+      "exo": {
+        "meanPowerMw": 1239.1558883211128,
+        "completeBlockCount": 2,
+        "formalLegCount": 4
+      },
+      "vlc": {
+        "meanPowerMw": 1246.3811145208156,
+        "completeBlockCount": 2,
+        "formalLegCount": 4
+      }
+    },
+    "vp9": {}
+  },
+  "scope": "Raw arithmetic descriptive means, unequal temperature/battery strata are not adjusted; never a paired or causal estimate."
+}

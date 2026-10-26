@@ -1,0 +1,34 @@
+{
+  "hostOnly": true,
+  "tests": [
+    {
+      "command": "python3 tools/test-three-core-open.py -v",
+      "passed": 5
+    },
+    {
+      "command": "Windows Python -X utf8 tools/test-three-core-open.py -v",
+      "passed": 5
+    },
+    {
+      "command": "python3 tools/test-open-recovery-safeguards.py -v",
+      "passed": 6
+    }
+  ],
+  "syntaxChecks": [
+    "bash -n tools/power-night-open-guard.sh tools/phone-awake-open-guard.sh",
+    "python3 -m py_compile tools/three-core-open-session.py tools/finalize-three-core-open.py"
+  ],
+  "notCountedAsPass": [
+    {
+      "command": "python3 -m unittest discover -s tools -p test-three-core-open.py -v",
+      "result": "0 tests discovered; rerun directly and passed"
+    }
+  ],
+  "sourceSha256": {
+    "three-core-open-session.py": "c92e57bd858750a83d61e9684b4d27806a41702a468ddcf3ca931bb444c938fe",
+    "power-night-open-guard.sh": "ec9fdb55000e5a602d645a46d7648da2263df3e65afa7180ad7b91cc76065785",
+    "phone-awake-open-guard.sh": "805b47905ad2599f6ac30d2153b30c445d9e6a754212dafbf6b1b95eb6effc5f",
+    "finalize-three-core-open.py": "abe503f67d5bd6740338cb844bbc36a8e85618c34b0e632c44788b62813eb914",
+    "phone-power-stable-runner.sh": "11a0e62b1f2fa7ba91d0a22c57b06a0297671b53838678b6ca3b8e318e3473f6"
+  }
+}

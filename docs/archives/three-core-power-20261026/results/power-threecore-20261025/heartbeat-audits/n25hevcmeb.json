@@ -1,0 +1,41 @@
+{
+  "verifiedUtc": "2026-10-24T19:03:15.622572+00:00",
+  "auditSha256": "fed2cb8ebda23b25c68bab9001076d121d3324fdeec0652c9c315c1afe19320c",
+  "archiveSha256": "c8621295a5792271ce34550e3cbd9fe874a98e960754db1433b1d9c24f030873",
+  "independentArchiveEvidenceVerified": true,
+  "qualifiedLegs": 4,
+  "codecEndCoverageComplete": true,
+  "hardwareComponent": "c2.qti.hevc.decoder",
+  "formalMeasurements": true,
+  "aggregationEligible": true,
+  "aggregationIssues": [],
+  "cpuWithinLeg": [
+    {
+      "label": "b1-2-libmpv",
+      "processCpuDeltaMs": 137808,
+      "steadyElapsedMs": 240002,
+      "fraction": 0.5741952150398747,
+      "flagAbovePointEight": false
+    },
+    {
+      "label": "b1-3-libmpv",
+      "processCpuDeltaMs": 139392,
+      "steadyElapsedMs": 240001,
+      "fraction": 0.5807975800100833,
+      "flagAbovePointEight": false
+    }
+  ],
+  "qualityIssues": [],
+  "diagnosticDroppedFrames": 0,
+  "archivedCooldownSeconds": [
+    582,
+    612,
+    1050,
+    863
+  ],
+  "archivedStageElapsedSeconds": 4476,
+  "notes": [
+    "Extended stage duration is accounted for by archived natural-cooling intervals; no threshold changed.",
+    "Temperature strata remain as declared; first complementary block is retained separately because it crosses strata."
+  ]
+}

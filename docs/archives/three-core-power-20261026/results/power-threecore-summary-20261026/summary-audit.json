@@ -1,0 +1,21 @@
+{
+  "verifiedUtc": "2026-10-26T06:09:55.005904+00:00",
+  "independentAgent": "audit_power_summary",
+  "passed": true,
+  "errors": [],
+  "completeDirectPairs": 12,
+  "completeBlocks": 24,
+  "completeBlockFormalLegs": 96,
+  "strictStratumRows": 12,
+  "strictDistinctDirectPairs": 11,
+  "sameStratumBlocks": 15,
+  "missingStrictPair": "HEVC ExoPlayer/VLC: both complete blocks cross strata",
+  "percentageRowsChecked": 36,
+  "localLinksChecked": 40,
+  "allLinksExist": true,
+  "noCrossNightPooling": true,
+  "filesSha256": {
+    "summary.html": "dc3d087d73eb166a56767050bf9959b93d38823e5337da2d6e253dc66bad4435",
+    "pairwise-comparisons.json": "2bd1c071c4c89fe9225ef8ed9030377f3bb0ac50e4eb42a757b29177d1eddceb"
+  }
+}

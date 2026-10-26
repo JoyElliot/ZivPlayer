@@ -1,0 +1,186 @@
+{
+  "utc": "2026-10-25T18:51:59.349377+00:00",
+  "stage": "n26vp9check",
+  "phase": "functional_preflight_passed",
+  "passedFunctionalLegs": 3,
+  "qualifiedFormalLegs": 0,
+  "completeFormalBlocks": 0,
+  "archiveSha256": "e056c5eb07f7e209c6bb4a0d4f7766fdba2b2277e41ffaf845d6f54eb5b5322d",
+  "rows": [
+    {
+      "analysis": "n26vp9check-b1-1-libmpv-gpu-next.json",
+      "runLabel": "n26vp9check-b1-1-libmpv-gpu-next",
+      "sampleCount": 66,
+      "steadyElapsedMs": 65003,
+      "steadyProcessCpuDeltaMs": 42515,
+      "steadyProcessCpuFraction": 0.6540467363044783,
+      "qualityIssues": [],
+      "functionalOnly": true,
+      "formalQualified": false,
+      "startTemperatureC": 33.5,
+      "startBatteryPercent": 86,
+      "maxTemperatureC": 33.5
+    },
+    {
+      "analysis": "n26vp9check-b1-2-exo-gpu-next.json",
+      "runLabel": "n26vp9check-b1-2-exo-gpu-next",
+      "sampleCount": 66,
+      "steadyElapsedMs": 65002,
+      "steadyProcessCpuDeltaMs": 42128,
+      "steadyProcessCpuFraction": 0.648103135288145,
+      "qualityIssues": [],
+      "functionalOnly": true,
+      "formalQualified": false,
+      "startTemperatureC": 33.4,
+      "startBatteryPercent": 85,
+      "maxTemperatureC": 33.4
+    },
+    {
+      "analysis": "n26vp9check-b1-3-vlc-gpu-next.json",
+      "runLabel": "n26vp9check-b1-3-vlc-gpu-next",
+      "sampleCount": 66,
+      "steadyElapsedMs": 65002,
+      "steadyProcessCpuDeltaMs": 30316,
+      "steadyProcessCpuFraction": 0.46638564967231777,
+      "qualityIssues": [],
+      "functionalOnly": true,
+      "formalQualified": false,
+      "startTemperatureC": 33.4,
+      "startBatteryPercent": 85,
+      "maxTemperatureC": 33.4
+    }
+  ],
+  "cooldownEvidence": [
+    {
+      "label": "n26vp9check-b1-1-libmpv-gpu-next",
+      "cooldownSeconds": 188,
+      "endingFourPolls": [
+        [
+          "2026-10-25T18:38:41Z",
+          "141",
+          "335",
+          "86"
+        ],
+        [
+          "2026-10-25T18:38:57Z",
+          "157",
+          "335",
+          "86"
+        ],
+        [
+          "2026-10-25T18:39:12Z",
+          "172",
+          "335",
+          "86"
+        ],
+        [
+          "2026-10-25T18:39:28Z",
+          "188",
+          "335",
+          "86"
+        ]
+      ],
+      "threeNonrisingComparisons": true
+    },
+    {
+      "label": "n26vp9check-b1-2-exo-gpu-next",
+      "cooldownSeconds": 63,
+      "endingFourPolls": [
+        [
+          "2026-10-25T18:41:18Z",
+          "16",
+          "334",
+          "85"
+        ],
+        [
+          "2026-10-25T18:41:34Z",
+          "32",
+          "334",
+          "85"
+        ],
+        [
+          "2026-10-25T18:41:49Z",
+          "48",
+          "334",
+          "85"
+        ],
+        [
+          "2026-10-25T18:42:05Z",
+          "63",
+          "334",
+          "85"
+        ]
+      ],
+      "threeNonrisingComparisons": true
+    },
+    {
+      "label": "n26vp9check-b1-3-vlc-gpu-next",
+      "cooldownSeconds": 64,
+      "endingFourPolls": [
+        [
+          "2026-10-25T18:43:56Z",
+          "17",
+          "334",
+          "85"
+        ],
+        [
+          "2026-10-25T18:44:11Z",
+          "33",
+          "334",
+          "85"
+        ],
+        [
+          "2026-10-25T18:44:27Z",
+          "48",
+          "334",
+          "85"
+        ],
+        [
+          "2026-10-25T18:44:43Z",
+          "64",
+          "334",
+          "85"
+        ]
+      ],
+      "threeNonrisingComparisons": true
+    }
+  ],
+  "codecArchiveAudit": "passed_independent_label_pid_marker_component_review_and_root_tail_spotcheck",
+  "measurementScope": "Functional only; excluded from formal block power means and coverage.",
+  "currentActiveStage": "n26vp9mva",
+  "noExtraAdb": true,
+  "codecCoverage": [
+    {
+      "label": "n26vp9check-b1-1-libmpv-gpu-next",
+      "archiveMember": "raw/n26vp9check-b1-1-libmpv-gpu-next-codec-end.txt",
+      "pid": 22916,
+      "videoComponent": "c2.qti.vp9.decoder",
+      "lastVideoRender": 120,
+      "lastVideoDrop": 0,
+      "matches": true
+    },
+    {
+      "label": "n26vp9check-b1-2-exo-gpu-next",
+      "archiveMember": "raw/n26vp9check-b1-2-exo-gpu-next-codec-end.txt",
+      "pid": 25687,
+      "videoComponent": "c2.qti.vp9.decoder",
+      "lastVideoRender": 120,
+      "lastVideoDrop": 0,
+      "matches": true
+    },
+    {
+      "label": "n26vp9check-b1-3-vlc-gpu-next",
+      "archiveMember": "raw/n26vp9check-b1-3-vlc-gpu-next-codec-end.txt",
+      "pid": 28346,
+      "videoComponent": "c2.qti.vp9.decoder",
+      "lastVideoRender": 120,
+      "lastVideoDrop": 0,
+      "matches": true
+    }
+  ],
+  "separateLogObservations": [
+    "Exo AAC audio-debug Render0/Drop235 is separate from VP9 video Drop0; relationship to AudioTrack observations is unresolved, without subjective audio-quality inference.",
+    "Current app identity uses host.newAppPid matching codecStreamOpened/Start/End.pid; no separate field named currentAppPid is required."
+  ],
+  "reviewCompletedUtc": "2026-10-25T18:53:46.637957+00:00"
+}

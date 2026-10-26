@@ -1,0 +1,10 @@
+{
+  "updatedUtc": "2026-10-23T18:21:13.676588+00:00",
+  "phase": "completed",
+  "qualifiedFormalRuns": 0,
+  "passedPreflightLegs": 0,
+  "blocks": [],
+  "comparisons": [],
+  "policy": "Full ABBA/BAAB blocks are replicates. Pool only identical APK/fixture/protocol/cohort/actual decoder, battery class, 10 percentage-point start battery band, and 1 C start temperature band. Boundary-crossing blocks remain visible individually. No pooled confidence interval is claimed.",
+  "limitation": "Same frozen APK, actual hardware three-core comparison; not dependency-upgrade benefit. Small block counts; power does not establish visual quality."
+}

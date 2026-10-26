@@ -1,0 +1,28 @@
+{
+  "utc": "2026-09-20T23:24:10.876213+00:00",
+  "archives": {
+    "night01/full-device-directory.tar": {
+      "sha256": "4ce0e8be238d3fcc4a515dca50c8a567d18933bcbde5d6e4f2b27cd5cc1c96eb",
+      "bytes": 99085312
+    },
+    "all-app-power-results.tar": {
+      "sha256": "7ab5669b801bca54f768d5c898c51bc4b6968034b661feb3bfdd04cc2c097aa1",
+      "bytes": 26690560
+    },
+    "preflight-device-directories.tar": {
+      "sha256": "16ef0dced41049d86c7fd0931abed1c9ab125e940683222468cbea84be5c2c63",
+      "bytes": 678912
+    }
+  },
+  "exit": {
+    "finishedUtc": "2026-09-20T23:22:28Z",
+    "stopReason": "user_cancelled",
+    "runnerExitCode": 0,
+    "cleanupSucceeded": true,
+    "screenTimeout": "600000",
+    "bluetooth": "2",
+    "sleepRequested": true,
+    "sleepVerified": true,
+    "batteryPercent": 46
+  }
+}

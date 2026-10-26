@@ -1,0 +1,36 @@
+{
+  "verifiedUtc": "2026-10-24T17:53:32.257579+00:00",
+  "auditSha256": "ac05549a1fa548800991384ae97554ce9ba9c5500d41f20bbc688ebd405713d8",
+  "archiveSha256": "4b85ae61c2a74fa21d55d58d31554d760fd293ff5d36bbff242be551f281dfab",
+  "independentArchiveEvidenceVerified": true,
+  "qualifiedLegs": 4,
+  "codecEndCoverageComplete": true,
+  "hardwareComponent": "c2.qti.hevc.decoder",
+  "formalMeasurements": true,
+  "aggregationEligible": false,
+  "aggregationIssues": [
+    "crosses_1C_start_temperature_strata"
+  ],
+  "cpuWithinLeg": [
+    {
+      "analysis": "n25hevcmea-b1-1-libmpv-gpu-next.json",
+      "sampleCount": 241,
+      "steadyElapsedMs": 240003,
+      "processCpuDeltaMs": 139406,
+      "fraction": 0.5808510726949246,
+      "flagAbovePointEight": false
+    },
+    {
+      "analysis": "n25hevcmea-b1-4-libmpv-gpu-next.json",
+      "sampleCount": 241,
+      "steadyElapsedMs": 240003,
+      "processCpuDeltaMs": 138922,
+      "fraction": 0.5788344312362762,
+      "flagAbovePointEight": false
+    }
+  ],
+  "notes": [
+    "Wi-Fi remains connected; application byte counters do not prove radio-link silence.",
+    "CPU ratio is computed within each leg using first/last samples; differences between two legs are not this threshold."
+  ]
+}

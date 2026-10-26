@@ -1,0 +1,39 @@
+{
+  "verifiedUtc": "2026-10-24T22:31:08.043375+00:00",
+  "auditSha256": "32e98602977ddc28f94a5a833168e0854cf0e7b18da742d1e84ae9c12f74d270",
+  "archiveSha256": "2384dd3eb372b2b8881c8a5739778cb67c1494114f0b9eb01ede5e36aea3c315",
+  "independentArchiveEvidenceVerified": true,
+  "preflightPassed": 3,
+  "codecEndCoverageComplete": true,
+  "codecEndCounts": {
+    "n25avccheck-b1-1-libmpv-gpu-next": 1,
+    "n25avccheck-b1-2-exo-gpu-next": 1,
+    "n25avccheck-b1-3-vlc-gpu-next": 1
+  },
+  "hardwareComponent": "c2.qti.avc.decoder",
+  "formalMeasurements": false,
+  "qualityIssues": [],
+  "diagnosticVideoDroppedFrames": 0,
+  "cpuWithinLeg": [
+    {
+      "label": "n25avccheck-b1-1-libmpv-gpu-next",
+      "sampleCount": 66,
+      "processCpuDeltaMs": 41232,
+      "steadyElapsedMs": 65003,
+      "fraction": 0.6343091857298894,
+      "flagAbovePointEight": false
+    }
+  ],
+  "archivedCooldownSeconds": [
+    1177,
+    298,
+    63
+  ],
+  "archivedStageElapsedSeconds": 1809,
+  "notes": [
+    "Validation-only preflight legs are not formal power measurements and do not fill formal means.",
+    "All three codec-end traces identify the QTI AVC video decoder; no video software fallback component was observed.",
+    "Exo archive also contains AAC audio component Drop counters 234-237; these are separate from AVC video Drop 0 and do not establish subjective quality.",
+    "VLC trace logs Cannot load libcuda.so.1 before creating and using QTI AVC; no cause is inferred from that message."
+  ]
+}

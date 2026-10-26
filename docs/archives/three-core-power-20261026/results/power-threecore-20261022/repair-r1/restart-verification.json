@@ -1,0 +1,15 @@
+{
+  "verifiedUtc": "2026-10-21T17:29:53.386881+00:00",
+  "newStageCount": 18,
+  "allFrozenFileHashesMatch": true,
+  "measurementParametersUnchanged": true,
+  "originalFailedAuditUnchanged": true,
+  "controllerPid": 13900,
+  "activeStage": "n22r1vp9check",
+  "phase": "running_stage",
+  "onlyOneWindowsControllerObserved": true,
+  "guardAndAwakeReused": true,
+  "deviceReconciliation": "device-reconciliation.txt",
+  "controllerLaunch": "../controller-resume-r1-launch.json",
+  "note": "A too-early postlaunch running_stage assertion observed only normal frozen startup; subsequent bounded local check confirmed running_stage. No relaunch was attempted."
+}

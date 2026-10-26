@@ -1,0 +1,27 @@
+{
+  "utc": "2026-10-25T00:46:48.296061+00:00",
+  "phase": "resumed",
+  "status": "running_stage",
+  "comparisonsCompleted": false,
+  "controllerPid": 33728,
+  "controllerCreationDate": "/Date(1792889124571)/",
+  "guardGeneration": 2,
+  "recoveryPid": 18285,
+  "awakePid": 18391,
+  "runnerPid": 20716,
+  "retryStage": "n25avcevbr1",
+  "oldFailedStagePreserved": "n25avcevb",
+  "oldGenerationRestorationVerified": true,
+  "completeBlocksPreserved": 5,
+  "completeBlockLegsPreserved": 20,
+  "failedBlockQualifiedLegsExcludedFromMeans": 3,
+  "protocolEquivalenceFiles": [
+    "protocol-equivalence.json",
+    "generation-protocol-equivalence.json"
+  ],
+  "baselineUnchanged": true,
+  "frozenControllerSha256": "c92e57bd858750a83d61e9684b4d27806a41702a468ddcf3ca931bb444c938fe",
+  "unlockPinSubmissions": 0,
+  "remoteOldGuardArchive": "/data/local/tmp/ziv-power-20261025/guard-archive-r2",
+  "note": "No extra device access after the active runner launch."
+}

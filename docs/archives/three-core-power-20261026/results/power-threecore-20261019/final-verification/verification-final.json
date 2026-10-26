@@ -1,0 +1,188 @@
+{
+  "verifiedUtc": "2026-10-18T23:55:54.769825+00:00",
+  "phaseAtVerification": "completed",
+  "checks": {
+    "apks": true,
+    "settings": false,
+    "backgroundPackages": true,
+    "musicVolume": true,
+    "musicMuted": true,
+    "awake": true,
+    "keyguardNotShowing": true,
+    "bluetoothOn": true,
+    "settingsExceptUserBrightness": true
+  },
+  "recoveryVerified": true,
+  "settings": {
+    "screen_off_timeout": "***",
+    "screen_brightness": "***",
+    "screen_brightness_mode": "***",
+    "bluetooth_on": "***",
+    "airplane_mode_on": "***",
+    "wifi_on": "***",
+    "stay_on_while_plugged_in": "***"
+  },
+  "apks": {
+    "main": {
+      "expected": "6f56c3bb869ba9411dfd30857e6dac0e3bc0f7ab3071b5e75175d5461ccc3d9a",
+      "actual": "6f56c3bb869ba9411dfd30857e6dac0e3bc0f7ab3071b5e75175d5461ccc3d9a",
+      "matches": true
+    },
+    "test": {
+      "expected": "a8e66bace93e6d69e7bcb1917054cd7557ea7a051157e783cee1700ef98de436",
+      "actual": "a8e66bace93e6d69e7bcb1917054cd7557ea7a051157e783cee1700ef98de436",
+      "matches": true
+    }
+  },
+  "backgroundPackages": [
+    {
+      "package": "app-07-***",
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "actual": {
+        "enabled": "***",
+        "suspended": "***",
+        "stopped": "***"
+      },
+      "matches": true,
+      "stateLine": "User 0: ceDataInode=1429825 deDataInode=1322173 installed=true hidden=false suspended=false distractionFlags=0 stopped=false notLaunched=false enabled=0 instant=false virtual=false quarantined=false"
+    },
+    {
+      "package": "app-08-***",
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "actual": {
+        "enabled": "***",
+        "suspended": "***",
+        "stopped": "***"
+      },
+      "matches": true,
+      "stateLine": "User 0: ceDataInode=16498 deDataInode=16501 installed=true hidden=false suspended=false distractionFlags=0 stopped=false notLaunched=false enabled=0 instant=false virtual=false quarantined=false"
+    },
+    {
+      "package": "app-02-***",
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "actual": {
+        "enabled": "***",
+        "suspended": "***",
+        "stopped": "***"
+      },
+      "matches": true,
+      "stateLine": "User 0: ceDataInode=423002 deDataInode=322254 installed=true hidden=false suspended=false distractionFlags=0 stopped=false notLaunched=false enabled=1 instant=false virtual=false quarantined=false"
+    },
+    {
+      "package": "app-09-***",
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "actual": {
+        "enabled": "***",
+        "suspended": "***",
+        "stopped": "***"
+      },
+      "matches": true,
+      "stateLine": "User 0: ceDataInode=523717 deDataInode=523994 installed=true hidden=false suspended=false distractionFlags=0 stopped=false notLaunched=false enabled=1 instant=false virtual=false quarantined=false"
+    },
+    {
+      "package": "app-01-***",
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "actual": {
+        "enabled": "***",
+        "suspended": "***",
+        "stopped": "***"
+      },
+      "matches": true,
+      "stateLine": "User 0: ceDataInode=2428891 deDataInode=2419202 installed=true hidden=false suspended=false distractionFlags=0 stopped=true notLaunched=false enabled=0 instant=false virtual=false quarantined=false"
+    },
+    {
+      "package": "app-10-***",
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "actual": {
+        "enabled": "***",
+        "suspended": "***",
+        "stopped": "***"
+      },
+      "matches": true,
+      "stateLine": "User 0: ceDataInode=3876910 deDataInode=3876913 installed=true hidden=false suspended=false distractionFlags=0 stopped=true notLaunched=false enabled=0 instant=false virtual=false quarantined=false"
+    },
+    {
+      "package": "app-03-***",
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "actual": {
+        "enabled": "***",
+        "suspended": "***",
+        "stopped": "***"
+      },
+      "matches": true,
+      "stateLine": "User 0: ceDataInode=1841521 deDataInode=2393901 installed=true hidden=false suspended=false distractionFlags=0 stopped=false notLaunched=false enabled=0 instant=false virtual=false quarantined=false"
+    },
+    {
+      "package": "app-04-***",
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "actual": {
+        "enabled": "***",
+        "suspended": "***",
+        "stopped": "***"
+      },
+      "matches": true,
+      "stateLine": "User 0: ceDataInode=1290028 deDataInode=1683329 installed=true hidden=false suspended=false distractionFlags=0 stopped=false notLaunched=false enabled=0 instant=false virtual=false quarantined=false"
+    },
+    {
+      "package": "app-06-***",
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "actual": {
+        "enabled": "***",
+        "suspended": "***",
+        "stopped": "***"
+      },
+      "matches": true,
+      "stateLine": "User 0: ceDataInode=1256181 deDataInode=918894 installed=true hidden=false suspended=false distractionFlags=0 stopped=false notLaunched=false enabled=0 instant=false virtual=false quarantined=false"
+    }
+  ],
+  "musicVolume": "***",
+  "musicMuted": "***",
+  "musicStateText": "***",
+  "awake": true,
+  "keyguardShowing": false,
+  "bluetoothOn": true,
+  "batteryText": "Current Battery Service state:\n  AC powered: false\n  USB powered: false\n  Wireless powered: false\n  Dock powered: false\n  Max charging current: 0\n  Max charging voltage: 0\n  Charge counter: 2265\n  status: 3\n  health: 2\n  present: true\n  level: 38\n  scale: 100\n  voltage: 3805\n  temperature: 359\n  technology: Li-poly\n  Charging state: 0\n  Charging policy: 0\nMiuiBatteryService first usage time:\n  mSetBatteryUsageTimeCount=0\n  mNtpTime=-1\n  mParseNtpTime=\n",
+  "rawDirectory": "final-verification",
+  "initialVerificationUtc": "2026-10-18T23:55:54.769825+00:00",
+  "brightnessAndAwakeReverifiedUtc": "2026-10-18T23:58:06.306553+00:00",
+  "brightnessRepairFile": "brightness-repair.json",
+  "verificationScope": "Full read-only check at initialVerificationUtc, followed by one brightness restoration and targeted brightness/awake/keyguard recheck.",
+  "brightnessUserOverrideAccepted": true,
+  "recoveryOutcome": "Verified APK/background/audio/Bluetooth restoration; screen timeout remains86400000. Later user brightness changes explicitly accepted and preserved. No further brightness writes."
+}

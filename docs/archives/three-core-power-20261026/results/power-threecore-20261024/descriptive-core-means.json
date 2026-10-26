@@ -1,0 +1,10 @@
+{
+  "source": "No completed measurement blocks in this attempt",
+  "values": {
+    "avc": {},
+    "hevc": {},
+    "hevc10": {},
+    "vp9": {}
+  },
+  "scope": "No preflight or formal legs started; do not fill cells from previous nights."
+}

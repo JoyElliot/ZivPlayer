@@ -1,0 +1,108 @@
+{
+  "observedUtc": "2026-10-18T21:45:56.190163+00:00",
+  "stage": "vp9mv",
+  "observation": "The final mpv leg has persistently higher process CPU time across every 30-second window, already present at steady start. Whole-device mean power is close to the other mpv leg. Cause not established from telemetry; no device query during ongoing formal sampling.",
+  "mpvLegs": [
+    {
+      "analysis": "vp9mv-b1-1-libmpv-gpu-next.json",
+      "steadyCpuDeltaMs": 138775,
+      "cpuStartMs": 65886,
+      "cpuEndMs": 204661,
+      "steadyMeanPowerMw": 1236.9848696672098,
+      "cpuWindows": [
+        {
+          "startSecond": 0,
+          "endSecond": 30,
+          "cpuDeltaMs": 17873
+        },
+        {
+          "startSecond": 30,
+          "endSecond": 60,
+          "cpuDeltaMs": 17794
+        },
+        {
+          "startSecond": 60,
+          "endSecond": 90,
+          "cpuDeltaMs": 17428
+        },
+        {
+          "startSecond": 90,
+          "endSecond": 120,
+          "cpuDeltaMs": 17082
+        },
+        {
+          "startSecond": 120,
+          "endSecond": 150,
+          "cpuDeltaMs": 17359
+        },
+        {
+          "startSecond": 150,
+          "endSecond": 180,
+          "cpuDeltaMs": 17087
+        },
+        {
+          "startSecond": 180,
+          "endSecond": 210,
+          "cpuDeltaMs": 17098
+        },
+        {
+          "startSecond": 210,
+          "endSecond": 240,
+          "cpuDeltaMs": 17054
+        }
+      ]
+    },
+    {
+      "analysis": "vp9mv-b1-4-libmpv-gpu-next.json",
+      "steadyCpuDeltaMs": 224041,
+      "cpuStartMs": 99914,
+      "cpuEndMs": 323955,
+      "steadyMeanPowerMw": 1244.8711013341497,
+      "cpuWindows": [
+        {
+          "startSecond": 0,
+          "endSecond": 30,
+          "cpuDeltaMs": 28690
+        },
+        {
+          "startSecond": 30,
+          "endSecond": 60,
+          "cpuDeltaMs": 28292
+        },
+        {
+          "startSecond": 60,
+          "endSecond": 90,
+          "cpuDeltaMs": 28095
+        },
+        {
+          "startSecond": 90,
+          "endSecond": 120,
+          "cpuDeltaMs": 28072
+        },
+        {
+          "startSecond": 120,
+          "endSecond": 150,
+          "cpuDeltaMs": 28061
+        },
+        {
+          "startSecond": 150,
+          "endSecond": 180,
+          "cpuDeltaMs": 27594
+        },
+        {
+          "startSecond": 180,
+          "endSecond": 210,
+          "cpuDeltaMs": 27437
+        },
+        {
+          "startSecond": 210,
+          "endSecond": 240,
+          "cpuDeltaMs": 27800
+        }
+      ]
+    }
+  ],
+  "cpuDeltaIncreasePercent": 61.44190235993514,
+  "meanPowerDifferenceMw": 7.886231666939921,
+  "handling": "Preserve qualified audit and full block under predeclared rules; annotate unresolved CPU variation. Do not silently exclude the leg, infer a bug, or interpret process CPU time as CPU frequency."
+}

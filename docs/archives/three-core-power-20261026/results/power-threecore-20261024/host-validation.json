@@ -1,0 +1,18 @@
+{
+  "recordedUtc": "2026-10-23T18:11:38.100380+00:00",
+  "newOpenSessionChecks": {
+    "WSL": {
+      "passed": 5
+    },
+    "WindowsPython": {
+      "passed": 5
+    }
+  },
+  "existingRestorationAndFinalizerChecks": {
+    "passed": 4
+  },
+  "pythonSyntax": "passed",
+  "shellSyntax": "passed",
+  "independentReviews": "Guard sleep/stop, launch-recovery race and atomic symlink correction reviewed; Android startup identities independently verified by launch script.",
+  "legacyDeadlineTest": "One full legacy-suite test has a pre-existing hardcoded 06:35 expectation while its 10/23 budget loads 06:34:20; not changed or counted as a pass."
+}

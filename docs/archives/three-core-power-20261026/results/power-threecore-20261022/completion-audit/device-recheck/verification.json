@@ -1,0 +1,165 @@
+{
+  "verifiedUtc": "2026-10-21T22:36:10.476071+00:00",
+  "checks": {
+    "apks": true,
+    "backgroundPackages": true,
+    "settings": true,
+    "musicVolume": true,
+    "musicMuted": true,
+    "awake": true,
+    "keyguardNotShowing": true,
+    "bluetoothState": true
+  },
+  "allChecksPassed": true,
+  "apks": {
+    "main": {
+      "expected": "6f56c3bb869ba9411dfd30857e6dac0e3bc0f7ab3071b5e75175d5461ccc3d9a",
+      "actual": "6f56c3bb869ba9411dfd30857e6dac0e3bc0f7ab3071b5e75175d5461ccc3d9a",
+      "matches": true
+    },
+    "test": {
+      "expected": "a8e66bace93e6d69e7bcb1917054cd7557ea7a051157e783cee1700ef98de436",
+      "actual": "a8e66bace93e6d69e7bcb1917054cd7557ea7a051157e783cee1700ef98de436",
+      "matches": true
+    }
+  },
+  "packages": [
+    {
+      "package": "app-07-***",
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "matches": true
+    },
+    {
+      "package": "app-08-***",
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "matches": true
+    },
+    {
+      "package": "app-02-***",
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "matches": true
+    },
+    {
+      "package": "app-09-***",
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "matches": true
+    },
+    {
+      "package": "app-01-***",
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "matches": true
+    },
+    {
+      "package": "app-10-***",
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "matches": true
+    },
+    {
+      "package": "app-03-***",
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "matches": true
+    },
+    {
+      "package": "app-04-***",
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "matches": true
+    },
+    {
+      "package": "app-06-***",
+      "expected": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "actual": {
+        "suspended": "***",
+        "stopped": "***",
+        "enabled": "***"
+      },
+      "matches": true
+    }
+  ],
+  "settings": {
+    "screen_off_timeout": "***",
+    "screen_brightness": "***",
+    "screen_brightness_mode": "***",
+    "bluetooth_on": "***",
+    "airplane_mode_on": "***",
+    "wifi_on": "***",
+    "stay_on_while_plugged_in": "***"
+  },
+  "phoneMutations": [],
+  "brightnessPolicy": "Read only; current user brightness is never overwritten."
+}

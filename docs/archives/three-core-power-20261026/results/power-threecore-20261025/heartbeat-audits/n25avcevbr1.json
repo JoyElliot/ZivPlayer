@@ -1,0 +1,63 @@
+{
+  "verifiedUtc": "2026-10-25T01:30:21.837261+00:00",
+  "auditSha256": "e4f36efd4b9fcf0d74c1c4c0cfb480825ec25bb0161d8a03c0ba40bd6d4425d3",
+  "archiveSha256": "bd6f873fbfd50255faac501ed8b5d2866ff825d57a10b450a51f99ab1a670c4a",
+  "independentArchiveEvidenceVerified": true,
+  "qualifiedLegs": 4,
+  "completeBlock": true,
+  "retryOf": "n25avcevb",
+  "codecEndCoverageComplete": true,
+  "codecEndCounts": {
+    "n25avcevbr1-b1-1-vlc-gpu-next": 1,
+    "n25avcevbr1-b1-2-exo-gpu-next": 1,
+    "n25avcevbr1-b1-3-exo-gpu-next": 1,
+    "n25avcevbr1-b1-4-vlc-gpu-next": 1
+  },
+  "hardwareComponent": "c2.qti.avc.decoder",
+  "formalMeasurements": true,
+  "aggregationEligible": true,
+  "aggregationIssues": [],
+  "startTemperatureBandsC": [
+    34
+  ],
+  "startBatteryBandsPercent": [
+    50
+  ],
+  "cpuWithinLeg": [],
+  "cpuPolicyApplicable": false,
+  "qualityIssues": [],
+  "diagnosticVideoDroppedFrames": 0,
+  "archivedCooldownSeconds": [
+    189,
+    64,
+    64,
+    63
+  ],
+  "archivedStageElapsedSeconds": 1748,
+  "preplayEntryTemperaturesC": [
+    33.8,
+    34.0,
+    34.3,
+    34.3
+  ],
+  "measurementStartTemperaturesC": [
+    34.0,
+    34.3,
+    34.3,
+    34.5
+  ],
+  "measurementStartBatteryPercents": [
+    53,
+    53,
+    52,
+    51
+  ],
+  "notes": [
+    "The complete BAAB retry passed all four legs; the failed original block and its three qualified legs remain archived and excluded from complete-block means.",
+    "Root spot verification found exactly one matching end marker per leg and QTI AVC component statistics with the matching PID.",
+    "This block is in the 34 C / 50-percent start strata; previous AVC Exo/VLC block is in 35 C / 60-percent strata. Retain separately, without pooling the complementary pair.",
+    "No mpv leg is present, so its CPU threshold is not applicable.",
+    "Controlled package snapshots are not timestamped proof of package states throughout every leg. Existing background drift limitation and unquantified residual load remain.",
+    "Whole-device controlled-condition power and frame diagnostics do not establish normal-use player-only power or subjective visual quality."
+  ]
+}

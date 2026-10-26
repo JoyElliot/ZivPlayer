@@ -1,0 +1,17 @@
+{
+  "recordedUtc": "2026-10-25T20:00:21.003793+00:00",
+  "tool": "mcp__codex_app__automation_update",
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Deleted automation in the app."
+      },
+      {
+        "type": "text",
+        "text": "{\"automationId\":\"zivplayer-10-26\",\"mode\":\"delete\",\"deleteStatus\":\"deleted\",\"snapshot\":{\"kind\":\"heartbeat\",\"name\":\"ZivPlayer 10/26 \u6536\u5c3e\u5de1\u68c0\",\"rrule\":\"FREQ=MINUTELY;INTERVAL=10\"}}"
+      }
+    ],
+    "isError": false
+  }
+}
