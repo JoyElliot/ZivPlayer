@@ -1,5 +1,7 @@
 # ExoPlayer 与 libmpv 夜间功耗复测
 
+2026-09-13 画质复核后的范围修正：本页数值是旧 APK 在测试强制 `matched-1080p` 下的历史受控观察。它们没有测量旧版 libmpv 默认 2400×1350 路径，也没有验证画质等价；不能用于画质修复后的默认播放功耗结论。17 轮数据及其原始资格/排除记录保持不变，详见[功耗证据范围修正](2026-09-13-power-evidence-scope-correction.md)。
+
 当前状态：2026-09-12 08:55（香港时间）已重新连接并完成设备恢复、个人数据核对及测试文件归档清理。夜间任务在 03:20 因电脑 Wi-Fi 断联中断，控制进程在 03:27 退出；现有 17 轮合格数据，完整矩阵未完成。第 18 轮已找回，但保留传输中断与质量不合格的排除标记。原计划在 01:12:52 启动，覆盖八种编码/解码组合，每种先 ABBA、再 BAAB，共 64 轮。A 为 ExoPlayer，B 为 libmpv。下方仅报告已完成块，不将其作为完整矩阵的最终结论。
 
 ## 与前次数据的关系
@@ -8,7 +10,7 @@
 
 本次单独使用 `matched-overnight-v2` cohort、`matched-1080p` Surface 协议与 `native/out/power-comparison-20260912/` 证据目录。短测和 CPU 诊断明确标为仅验证，不进入正式功耗均值。
 
-普通 libmpv 的缓冲按显示设备长边和视频比例固定，目的是转屏时保持原生输出几何稳定，见 [ADR 0014](../adr/0014-folder-home-and-portrait-player.md) 与 [SurfaceView 后续规则](../adr/0016-live-seek-preview-and-exact-commit.md)。2400 像素长边、16:9 视频得到 2400×1350 缓冲；FIT 可见子区域仍为 1920×1080。Exo 实验则按[源轨宽高](../adr/0017-exoplayer-libass-comparison.md)设置缓冲。这是已有的不同设计约定，没有证据表明原公式计算错误。本次固定相同缓冲尺寸来控制渲染目标变量，结果不能直接替代两个普通显示路径的整机功耗差异。
+当时普通 libmpv 的缓冲按显示设备长边和视频比例固定，目的是转屏时保持原生输出几何稳定，见 [ADR 0014](../adr/0014-folder-home-and-portrait-player.md) 与 [SurfaceView 后续规则](../adr/0016-live-seek-preview-and-exact-commit.md)。2400 像素长边、16:9 视频得到 2400×1350 缓冲；FIT 可见子区域仍为 1920×1080。Exo 实验则按[源轨宽高](../adr/0017-exoplayer-libass-comparison.md)设置缓冲。9 月 13 日的[清晰度 A/B](2026-09-13-video-clarity-ab.md)进一步确认，旧 libmpv 设计会先放大再缩小 1080p 画面，损失细节；原先“未发现公式错误”的判断不构成画质验收。本次固定相同缓冲尺寸来控制渲染目标变量，结果不能直接替代两个普通显示路径的整机功耗差异。
 
 ## 开始前完成的核验
 

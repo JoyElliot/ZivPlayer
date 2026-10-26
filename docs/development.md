@@ -13,7 +13,7 @@
 | JDK | 21；应用和核心模块的 JVM 编译目标为 17 |
 | Android SDK | Platform 37、Build Tools 37.0.0 |
 | Android NDK / CMake | 26.1.10909125 / 3.22.1，用于独立的 VLC 定位事件 JNI 桥接 |
-| Gradle | 使用仓库自带 Wrapper，当前为 9.6.1 |
+| Gradle | 使用仓库自带 Wrapper，当前为 9.8.1 |
 | Python | 3.11 或更高，用于原生库和 APK 校验 |
 | FFmpeg / FFprobe | 生成真机测试素材时需要 |
 | Android 设备或模拟器 | 运行 instrumentation 测试时需要 |
@@ -21,6 +21,8 @@
 SDK 路径可通过本机环境变量 `ANDROID_HOME` 或未跟踪的 `local.properties` 中的 `sdk.dir` 指定。JDK、SDK 和 Gradle 缓存属于开发环境，不提交到仓库。
 
 依赖版本见 [版本目录](../gradle/libs.versions.toml)，Wrapper 版本见 [gradle-wrapper.properties](../gradle/wrapper/gradle-wrapper.properties)，SDK 与 ABI 见 [Android 构建配置](../apps/android/build.gradle.kts)。普通构建沿用仓库中的依赖锁和校验元数据。
+
+本轮共用依赖、三核心运行配置和新功耗基线见[升级验证记录](validation/2026-10-17-dependency-upgrade.md)。libmpv 默认使用 `gpu-next`；功耗 instrumentation 可用 `-e mpvVideoOutput gpu` 对照旧渲染器，并核验运行时 `current-vo`。
 
 ## 准备原生库
 
