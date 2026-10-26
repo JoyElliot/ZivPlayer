@@ -1,6 +1,6 @@
 # 三核心功耗测试与历史记录归档
 
-归档分支：`codex/archive-threecore-power-20261026`。
+归档分支：`power-archive`。
 
 本分支保留 libmpv、ExoPlayer、libVLC 播放实验的最终源码、测试工具和历史证据，供回溯与复核。主开发分支 `main` 继续在独立 worktree 中开发；本次归档没有合并实验代码到 `main`。
 
