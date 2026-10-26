@@ -85,7 +85,7 @@ PARENT_RUNNER_EVENT_FIELDS = (
     "sequence",
 )
 EXPECTED_POLICY_SHA256 = (
-    "1d46ecc732f4aa548fb77b2bf63e96be66b217a8aee869ce8bbcd4626ec1401c"
+    "6c01829c895422e3fdbae9a05982c377be141bd098497185d39c3f9e3fad083d"
 )
 HELPER_KEYS = stack_executor.HELPER_KEYS
 
@@ -124,10 +124,10 @@ def _expected_policy() -> dict[str, object]:
         ).hexdigest(),
         "preparationReceiptKind": native_build_tool.WRAPPER_PREPARATION_RECEIPT_KIND,
         "preparationReceiptSha256": (
-            "e51dae00b7f145de9663ee1b90010bf9904f8775ff2f12624454040c941132b4"
+            "8c86933b4aab231647650db8e785c1ac13aa88bcfc30f889900dc0967c602da9"
         ),
         "toolchainCompositionReceiptSha256": (
-            "e9b88860b8e6d043a80a7f3d6aa7e3e641574e7da4c66a0541db129a4e081989"
+            "a5c67668adebdb8325d4ce6f7d5a682bb2f2ef4667e2cd87173b2abd5c715618"
         ),
         "hostPlatform": "linux/amd64",
         "toolchainMount": "/opt/zivplayer/toolchain",

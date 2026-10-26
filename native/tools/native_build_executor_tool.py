@@ -91,7 +91,7 @@ ARTIFACT_AUDIT_FIELDS = (
     "weakUndefinedSymbolsSha256",
 )
 EXPECTED_POLICY_SHA256 = (
-    "f9d7c4afe5cdf3ff701a9281c4ba92134a3c21512fb8f18e8ecc1addef9feafc"
+    "f421f013718a15949b6cf7505ac00fe9aa32112979535114b30fcfcb565a8b0c"
 )
 HELPER_KEYS = (
     ("launcherPath", "launcherSha256"),
@@ -107,13 +107,13 @@ EXPECTED_POLICY: dict[str, object] = json.loads(
     "kind": "ziv-native-build-executor-policy-v1",
     "binding": {
         "profileName": "ziv-libmpv-stack-api26-v1",
-        "profileSha256": "298845ca407684b0ec073036a78602972cbf971d8b9642a19476bf1c1f6ad4cc",
+        "profileSha256": "e1438d077b541c686003afe9ef71d35a0f0535455d080e63401c53b79651bef4",
         "namespaceProbePolicyPath": "native/native-executor-policy.toml",
-        "namespaceProbePolicySha256": "24a42f725bc174d41a7434d57c7078dd1f02a2cc27963202a8638909cb7276ce",
+        "namespaceProbePolicySha256": "fdb5648fe501518c1a6893f584618ffe0ffc1ef27e6c25af91122de1900d6777",
         "namespaceProbeTranscriptSha256": "fd251aeb116fd8ced374df5c9887af8dcc3bde03002b4968181421a1682b9f81",
         "preparationReceiptKind": "ziv-native-build-preparation-v1",
-        "preparationReceiptSha256": "e51e2e706c3488feabbe1b5482b4d0433db8c823a6a659f2b2483b25b5ff7116",
-        "toolchainCompositionReceiptSha256": "e9b88860b8e6d043a80a7f3d6aa7e3e641574e7da4c66a0541db129a4e081989",
+        "preparationReceiptSha256": "0315af4199e23df427239651879ca8a0406d6375a16d4f0c4fee902e4070a150",
+        "toolchainCompositionReceiptSha256": "a5c67668adebdb8325d4ce6f7d5a682bb2f2ef4667e2cd87173b2abd5c715618",
         "hostPlatform": "linux/amd64",
         "toolchainMount": "/opt/zivplayer/toolchain",
         "sourceMount": "/build/source",

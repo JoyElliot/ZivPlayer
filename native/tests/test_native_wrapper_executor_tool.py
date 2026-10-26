@@ -29,13 +29,13 @@ COMMITTED_POLICY = REPOSITORY_ROOT / "native" / "native-wrapper-executor-policy.
 COMMITTED_PROFILE = REPOSITORY_ROOT / "native" / "native-wrapper-build-profile.toml"
 COMMITTED_SOURCE_MANIFEST = REPOSITORY_ROOT / "native" / "source-manifest.toml"
 COMMITTED_TOOLCHAIN_MANIFEST = REPOSITORY_ROOT / "native" / "toolchain-manifest.toml"
-LOCKED_WRAPPER_POLICY_SHA256 = "e38767eb0e8e095364d13040a9ce3f49479f9147e1a2740d4f81860c496d1647"
-LOCKED_WRAPPER_PROFILE_SHA256 = "d6cf2a360b4c8f159e49fc9a9872faf4a21e3dc5e8a225905d3b3ccaf4fe42ce"
+LOCKED_WRAPPER_POLICY_SHA256 = "c636f74e4f6b26856a6ae8f80c2b821d3a19d3e4a4a52697d41e17ef200dbac7"
+LOCKED_WRAPPER_PROFILE_SHA256 = "d5c1e01b07f52dbf147a7eff771fc3baa61664822aa32426c4df2c8e53b9937c"
 LOCKED_WRAPPER_TRANSCRIPT_SHA256 = "e182d70ac1a76b00f7f3a622835c23621ba3df4654a339b945f66094f959dc9f"
 HISTORICAL_HELPERS = {
     "native-executor-policy.toml": (
         REPOSITORY_ROOT / "native" / "native-executor-policy.toml",
-        "24a42f725bc174d41a7434d57c7078dd1f02a2cc27963202a8638909cb7276ce",
+        "fdb5648fe501518c1a6893f584618ffe0ffc1ef27e6c25af91122de1900d6777",
     ),
     "native-build-namespace.bash": (
         REPOSITORY_ROOT / "native" / "toolchain" / "native-build-namespace.bash",

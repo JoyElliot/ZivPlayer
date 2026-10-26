@@ -1,10 +1,10 @@
 {
   "kind": "ziv-android-inspection-staging-v1",
-  "policySha256": "1d46ecc732f4aa548fb77b2bf63e96be66b217a8aee869ce8bbcd4626ec1401c",
-  "profileSha256": "d6cf2a360b4c8f159e49fc9a9872faf4a21e3dc5e8a225905d3b3ccaf4fe42ce",
+  "policySha256": "6c01829c895422e3fdbae9a05982c377be141bd098497185d39c3f9e3fad083d",
+  "profileSha256": "d5c1e01b07f52dbf147a7eff771fc3baa61664822aa32426c4df2c8e53b9937c",
   "ready": false,
-  "receiptSha256": "f987da92cc0fb22704221cf2d249054bc8bf6ce27a2a1b22efb1aa16cec01d17",
-  "receiptSizeBytes": 82508,
+  "receiptSha256": "15852d91f9c9a5e3d6e980bc154a98c676dcf9f2868671ca955e3379a0ea675e",
+  "receiptSizeBytes": 82777,
   "releaseInput": false,
   "schemaVersion": 1
 }

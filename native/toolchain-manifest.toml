@@ -10,7 +10,7 @@ schemaVersion = 1
 [project]
 name = "ZivPlayer"
 sourceManifest = "native/source-manifest.toml"
-sourceManifestSha256 = "7fc9ae22f2c11b7deb3dcbc32fc132ed79581ad87bc5bbe326f99690def42a44"
+sourceManifestSha256 = "69f5207b0bba1de0b68bfc77aa99b7d719c2680acbe707be0eb78ec996c00385"
 hostPlatform = "linux/amd64"
 nativeApi = 26
 abis = ["arm64-v8a", "x86_64"]
