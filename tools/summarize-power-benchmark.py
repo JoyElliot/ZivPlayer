@@ -6,6 +6,14 @@ import json
 from pathlib import Path
 import statistics
 
+def build_identity(row):
+    """A cohort name alone cannot bind an APK or a renderer experiment."""
+    renderer = row.get('requestedMpvVideoOutput')
+    if not renderer and row.get('engine') == 'libmpv':
+        renderer = row.get('actualVideoOutput')
+    return (row.get('mainApkSha256') or 'legacy-unrecorded',
+            row.get('testApkSha256') or 'legacy-unrecorded', renderer or 'legacy-unrecorded')
+
 def summarize(report, discharge_sign):
     samples = report.get('samples', [])
     if len(samples) < 2:
@@ -13,6 +21,14 @@ def summarize(report, discharge_sign):
     intervals = []
     charge_mah = energy_mwh = elapsed_ms = 0.0
     issues = list(report.get('qualityIssues', []))
+    if report.get('requestedEngine') == 'libmpv' and report.get('requestedMpvVideoOutput'):
+        if any((report.get(endpoint) or {}).get('videoOutput') != report['requestedMpvVideoOutput']
+               for endpoint in ('diagnosticsStart', 'diagnosticsEnd')):
+            issues.append('mpv_renderer_not_continuously_verified_at_endpoints')
+    if report.get('requireHardwareDecoder') and report.get('actualSoftwareDecoder') is not False:
+        issues.append('required_hardware_decoder_not_confirmed')
+    if report.get('frameProofMethod') == 'display-crop-v1' and any(s.get('screenInteractive') is not True for s in samples):
+        issues.append('screen_interactive_not_continuously_verified')
     if report.get('validationOnly'):
         issues.append('functional_validation_only')
     if report.get('allowExternalPower'):
@@ -89,14 +105,24 @@ def summarize(report, discharge_sign):
     return {'runLabel': report['runLabel'], 'fixture': report['fixture'], 'engine': report['requestedEngine'],
             'surfaceProtocol': surface_protocol,
             'measurementCohort': report.get('measurementCohort') or 'legacy',
+            'mainApkSha256': report.get('mainApkSha256'),
+            'testApkSha256': report.get('testApkSha256'),
+            'requestedMpvVideoOutput': report.get('requestedMpvVideoOutput'),
+            'actualVideoOutput': (report.get('diagnosticsStart') or {}).get('videoOutput'),
+            'actualVideoOutputEnd': (report.get('diagnosticsEnd') or {}).get('videoOutput'),
+            'engineVersion': (report.get('diagnosticsStart') or {}).get('engineVersion'),
             'controlProtocolVersion': report.get('controlProtocolVersion', 0),
             'comparisonBlock': report.get('host', {}).get('comparisonBlock'),
             'plannedOrdinal': report.get('host', {}).get('plannedOrdinal'),
             'plannedOrder': report.get('host', {}).get('plannedOrder', []),
+            'plannedConditions': report.get('host', {}).get('plannedConditions', []),
             'surfaceBufferWidth': report.get('surfaceBufferWidth'), 'surfaceBufferHeight': report.get('surfaceBufferHeight'),
             'startedUtc': report.get('host', {}).get('startedUtc'),
-            'mode': report['requestedDecoderMode'], 'actualDecoder': report['diagnosticsStart'].get('decoder'),
+            'mode': report['requestedDecoderMode'], 'actualDecoder': (report.get('diagnosticsStart') or {}).get('decoder'),
             'actualSoftwareDecoder': report.get('actualSoftwareDecoder'),
+            'decoderClassificationEvidence': report.get('decoderClassificationEvidence'),
+            'decoderClassificationConfidence': report.get('decoderClassificationConfidence'),
+            'batteryStratum': report.get('batteryStratum'),
             'fixtureSha256': report['fixtureSha256'], 'seconds': elapsed_ms / 1000,
             'meanPowerMw': energy_mwh * 3_600_000 / elapsed_ms,
             'medianPowerMw': statistics.median(intervals), 'integratedEnergyMwh': energy_mwh,
@@ -119,16 +145,17 @@ def planned_blocks(rows):
     grouped = {}
     for row in rows:
         if row.get('comparisonBlock') and row.get('plannedOrder'):
-            grouped.setdefault(row['comparisonBlock'], []).append(row)
+            key = (row.get('measurementCohort') or '', row['comparisonBlock'], build_identity(row))
+            grouped.setdefault(key, []).append(row)
     blocks = []
-    for block_id, members in sorted(grouped.items()):
+    for _, members in sorted(grouped.items()):
         members = sorted(members, key=lambda row: row.get('plannedOrdinal') or 0)
         order = members[0]['plannedOrder']
         complete = (len(members) == 4 and [r['plannedOrdinal'] for r in members] == [1, 2, 3, 4]
                     and order in [['exo', 'libmpv', 'libmpv', 'exo'], ['libmpv', 'exo', 'exo', 'libmpv']]
                     and all(r['plannedOrder'] == order for r in members)
                     and [r['engine'] for r in members] == order and all(r['qualified'] for r in members))
-        block = {'blockId': block_id, 'plannedOrder': order, 'complete': complete,
+        block = {'blockId': members[0]['comparisonBlock'], 'plannedOrder': order, 'complete': complete,
                  'runLabels': [r['runLabel'] for r in members]}
         if complete:
             engine_means = {engine: statistics.mean(r['meanPowerMw'] for r in members if r['engine'] == engine)
@@ -147,6 +174,76 @@ def planned_blocks(rows):
                 maxRunTemperatureChangeC=max(abs(r['temperatureEndC'] - r['temperatureStartC']) for r in members))
         blocks.append(block)
     return blocks
+
+
+def pairwise_planned_blocks(rows):
+    """Engine-neutral ABBA blocks; never bridge codecs, cohorts, missing legs or output protocols."""
+    grouped = {}
+    for row in rows:
+        if row.get('comparisonBlock') and row.get('plannedOrder'):
+            key = tuple(row.get(k) for k in ('fixture', 'mode', 'surfaceProtocol', 'measurementCohort', 'comparisonBlock'))
+            grouped.setdefault((*key, build_identity(row)), []).append(row)
+    blocks = []
+    for key, members in grouped.items():
+        members = sorted(members, key=lambda r: r.get('plannedOrdinal') or 0)
+        order = members[0]['plannedOrder']
+        engines = sorted(set(order))
+        complete = (len(order) == 4 and len(engines) == 2 and order == order[::-1] and
+                    len(members) == 4 and [r.get('plannedOrdinal') for r in members] == [1, 2, 3, 4] and
+                    [r['engine'] for r in members] == order and
+                    all(r.get('plannedOrder') == order and r['qualified'] for r in members))
+        block = dict(zip(('fixture', 'mode', 'surfaceProtocol', 'measurementCohort', 'blockId'), key))
+        block['buildIdentity'] = dict(zip(('mainApkSha256', 'testApkSha256', 'requestedMpvVideoOutput'), key[-1]))
+        block.update(plannedOrder=order, engines=engines, complete=complete,
+                     runLabels=[r['runLabel'] for r in members])
+        if complete:
+            a, b = engines
+            means = {e: statistics.mean(r['meanPowerMw'] for r in members if r['engine'] == e) for e in engines}
+            pairs = []
+            for first, second in (members[:2], members[2:]):
+                aa, bb = (first, second) if first['engine'] == a else (second, first)
+                pairs.append(dict(runA=aa['runLabel'], runB=bb['runLabel'],
+                                  aMinusBMw=aa['meanPowerMw'] - bb['meanPowerMw']))
+            block.update(engineMeanPowerMw=means, aMinusBMw=means[a] - means[b], plannedPairs=pairs)
+        blocks.append(block)
+    return blocks
+
+def controlled_condition_blocks(rows):
+    """Explicit same-build comparisons may vary renderer; ordinary groups never do."""
+    grouped = {}
+    fields = ('fixture', 'fixtureSha256', 'mode', 'surfaceProtocol', 'measurementCohort',
+              'comparisonBlock', 'mainApkSha256', 'testApkSha256')
+    def condition(row):
+        return row['engine'] + ('@' + str(row.get('requestedMpvVideoOutput'))
+                                if row['engine'] == 'libmpv' else '')
+    for row in rows:
+        if row.get('comparisonBlock') and row.get('plannedConditions'):
+            grouped.setdefault(tuple(row.get(k) for k in fields), []).append(row)
+    result = []
+    for key, members in grouped.items():
+        members = sorted(members, key=lambda r: r['plannedOrdinal'] if isinstance(r.get('plannedOrdinal'), int) else 0)
+        order = members[0]['plannedConditions']
+        conditions = sorted(set(order))
+        complete = (all(key) and len(order) == 4 and len(conditions) == 2 and order == order[::-1] and
+                    len(members) == 4 and [r.get('plannedOrdinal') for r in members] == [1, 2, 3, 4] and
+                    len({r['runLabel'] for r in members}) == 4 and
+                    [condition(r) for r in members] == order and
+                    all(r.get('plannedConditions') == order and r.get('qualified') and
+                        (r['engine'] != 'libmpv' or
+                         r.get('actualVideoOutput') == r.get('actualVideoOutputEnd') == r.get('requestedMpvVideoOutput'))
+                        for r in members))
+        block = dict(zip(fields, key))
+        block.update(complete=bool(complete), plannedConditions=order, conditions=conditions,
+                     runLabels=[r['runLabel'] for r in members])
+        if complete:
+            a, b = conditions
+            means = {c: statistics.mean(r['meanPowerMw'] for r in members if condition(r) == c) for c in conditions}
+            block.update(conditionMeanPowerMw=means, a=a, b=b, aMinusBMw=means[a]-means[b],
+                         conditionMeanStartTemperatureC={c: statistics.mean(r['temperatureStartC'] for r in members if condition(r)==c) for c in conditions},
+                         conditionMeanStartBatteryPercent={c: statistics.mean(r['batteryStartPercent'] for r in members if condition(r)==c) for c in conditions})
+        result.append(block)
+    return result
+
 
 def main():
     p = argparse.ArgumentParser()
@@ -178,10 +275,11 @@ def main():
             row['qualified'] = False
         if row['smokeOnly'] or not row['qualified']:
             continue
-        groups.setdefault((row['fixture'], row['mode'], row['surfaceProtocol'], row['measurementCohort']), {}).setdefault(row['engine'], []).append(row)
+        groups.setdefault((row['fixture'], row['mode'], row['surfaceProtocol'], row['measurementCohort'], build_identity(row)), {}).setdefault(row['engine'], []).append(row)
     comparisons = []
-    for (fixture, mode, surface_protocol, cohort), engines in groups.items():
-        result = {'fixture': fixture, 'mode': mode, 'surfaceProtocol': surface_protocol, 'measurementCohort': cohort, 'engines': {}}
+    for (fixture, mode, surface_protocol, cohort, identity), engines in groups.items():
+        result = {'fixture': fixture, 'mode': mode, 'surfaceProtocol': surface_protocol, 'measurementCohort': cohort,
+                  'buildIdentity': dict(zip(('mainApkSha256', 'testApkSha256', 'requestedMpvVideoOutput'), identity)), 'engines': {}}
         for engine, runs in engines.items():
             powers = [r['meanPowerMw'] for r in runs]
             result['engines'][engine] = {'runs': len(runs), 'meanPowerMw': statistics.mean(powers),
@@ -225,7 +323,8 @@ def main():
         'counterNote': 'Raw charge counter kept without assuming API microamp-hour units; no inferred scale is silently applied.',
         'uncertaintyNote': 'P05/P95 describe 1-second power samples, not a confidence interval. Engine summaries use independent leg means.',
         'balancedComparisonNote': 'Planned blocks require all four qualified legs in their declared positions. Order sensitivity is a descriptive drift check, not a confidence interval.',
-        'unreadableJsonFiles': unreadable, 'failedReports': failures, 'runs': rows, 'comparisons': comparisons}
+        'unreadableJsonFiles': unreadable, 'failedReports': failures, 'runs': rows, 'comparisons': comparisons,
+        'pairwisePlannedBlocks': pairwise_planned_blocks(rows)}
     (args.input / 'power-summary.json').write_text(json.dumps(summary, indent=2) + '\n', encoding='utf-8')
     print(json.dumps(comparisons if comparisons else rows, indent=2))
 

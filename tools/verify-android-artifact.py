@@ -314,7 +314,9 @@ def main() -> int:
             args.report.parent.mkdir(parents=True, exist_ok=True)
             args.report.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         if args.libvlc4_experiment:
-            print(f"verified APK: {report['apk']}; 34 native libraries, original C++ runtime, 16-KiB ZIP/ELF alignment, 157 DEX JNI methods")
+            method_count = len(report["dexNativeMethods"]) + sum(
+                len(methods) for methods in report["experimentalDexNativeMethods"].values())
+            print(f"verified APK: {report['apk']}; {len(report['artifacts'])} native libraries, original C++ runtime, 16-KiB ZIP/ELF alignment, {method_count} DEX JNI methods")
         elif args.exoplayer_experiment:
             print(f"verified APK: {report['apk']}; 20 audited + 4 AndroidX + 4 libass libraries, original C++ runtime, 16-KiB ZIP/ELF alignment, 16 mpv + 19 libass DEX JNI methods")
         else:

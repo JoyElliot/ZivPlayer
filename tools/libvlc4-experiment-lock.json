@@ -241,13 +241,13 @@
     "cmake": "3.22.1",
     "sources": {
       "native/libvlc4-seek/CMakeLists.txt": "c44d31b52a1c204bc4f68a7e08bf5471dc8d41ded9f2e9d41bc4aaf78354494c",
-      "native/libvlc4-seek/vlc4_seek.c": "1c1895e3243ab42841997fc8effe820db127b53d94682ff2a5147d189cc4c252",
-      "platform/libmpv-android/src/main/kotlin/io/github/joyelliot/zivplayer/platform/libvlc/VlcSeekBridge.kt": "33e65ef24896f429da6e1677bf2e36f354c6d2a58b0ec8bebd0e68fdf1d1f3d1"
+      "native/libvlc4-seek/vlc4_seek.c": "302eaaec5ce1e0ee22adb93f6a2c5af295440d3ff86adfb7abe456e4de56c484",
+      "platform/libmpv-android/src/main/kotlin/io/github/joyelliot/zivplayer/platform/libvlc/VlcSeekBridge.kt": "ad22238c8e8f8d76c1de30bf2b75e2c0fb76c6ec9bc88bb934e5570fc634351c"
     },
     "libraries": {
       "arm64-v8a/libzivplayer_vlc4.so": {
-        "sizeBytes": 30040,
-        "sha256": "13a3803d09bef656bfcb4bf9940b5938e1c05e9852277cfd672a7f230c76a815",
+        "sizeBytes": 33768,
+        "sha256": "481ab61118a01c6d477b8a8df1e332511736860ae0beeb10c4dcf157a4f911d6",
         "soname": "libzivplayer_vlc4.so",
         "needed": [
           "libdl.so",
@@ -256,8 +256,8 @@
         ]
       },
       "x86_64/libzivplayer_vlc4.so": {
-        "sizeBytes": 29120,
-        "sha256": "0f95c6030ddcb94c0fa1e9f6269c893c7453698faa765d97e68cb495ada8b68a",
+        "sizeBytes": 32736,
+        "sha256": "9e610fe4e4a4756be4c4842adb589d4c3c2755038951e3a6be87d75ed11db6fa",
         "soname": "libzivplayer_vlc4.so",
         "needed": [
           "libdl.so",
@@ -269,7 +269,8 @@
     "bindings": {
       "Lio/github/joyelliot/zivplayer/platform/libvlc/VlcSeekBridge;": {
         "nativeOpen": "(J)J",
-        "nativeSeek": "(JJJZ)I",
+        "nativeSeek": "(JJJZZ)I",
+        "nativePosition": "(J)J",
         "nativeClose": "(J)V"
       }
     }

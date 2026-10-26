@@ -26,6 +26,25 @@ class IntegrationTest(unittest.TestCase):
         self.assertAlmostEqual(row['integratedChargeMah'], 1000 * 2 / 3600)
         self.assertTrue(row['qualified'])
 
+    def test_hardware_requirement_rejects_software_or_unknown_without_rewriting_history(self):
+        for actual in (True, None):
+            data = report()
+            data.update(requireHardwareDecoder=True, actualSoftwareDecoder=actual)
+            self.assertFalse(module.summarize(data, 1)['qualified'])
+            data['requireHardwareDecoder'] = False
+            self.assertTrue(module.summarize(data, 1)['qualified'])
+        data = report()
+        data.update(requireHardwareDecoder=True, actualSoftwareDecoder=False)
+        self.assertTrue(module.summarize(data, 1)['qualified'])
+
+    def test_display_proof_requires_interactive_screen(self):
+        data = report()
+        data['frameProofMethod'] = 'display-crop-v1'
+        self.assertFalse(module.summarize(data, 1)['qualified'])
+        for sample in data['samples']:
+            sample['screenInteractive'] = True
+        self.assertTrue(module.summarize(data, 1)['qualified'])
+
     def test_linearly_increasing_current(self):
         row = module.summarize(report(currents=(1_000_000, 2_000_000, 3_000_000)), 1)
         self.assertAlmostEqual(row['meanPowerMw'], 8000)
@@ -122,6 +141,73 @@ class IntegrationTest(unittest.TestCase):
                 for i, engine in enumerate(order)]
         self.assertEqual(2, len(module.planned_blocks(rows)))
         self.assertFalse(any(block['complete'] for block in module.planned_blocks(rows)))
+
+    def test_vlc_pairwise_blocks_cancel_drift_and_reject_missing_or_mixed_cohort(self):
+        order = ['libmpv', 'vlc', 'vlc', 'libmpv']
+        rows = [dict(comparisonBlock='b', fixture='avc', mode='automatic', surfaceProtocol='current-app',
+                     measurementCohort='night', plannedOrdinal=i+1, plannedOrder=order, engine=e,
+                     qualified=True, runLabel=str(i), meanPowerMw=1000+20*i+(100 if e=='vlc' else 0))
+                for i, e in enumerate(order)]
+        block = module.pairwise_planned_blocks(rows)[0]
+        self.assertTrue(block['complete'])
+        self.assertAlmostEqual(-100, block['aMinusBMw'])
+        self.assertFalse(module.pairwise_planned_blocks(rows[:3])[0]['complete'])
+        rows[-1]['measurementCohort'] = 'other'
+        self.assertFalse(any(b['complete'] for b in module.pairwise_planned_blocks(rows)))
+
+    def test_same_cohort_cannot_complete_blocks_across_apks_or_renderers(self):
+        order = ['exo', 'libmpv', 'libmpv', 'exo']
+        for field in ('mainApkSha256', 'testApkSha256', 'requestedMpvVideoOutput'):
+            rows = [dict(comparisonBlock='same', fixture='avc', mode='automatic', surfaceProtocol='current-app',
+                         measurementCohort='same', plannedOrdinal=i+1, plannedOrder=order, engine=e,
+                         qualified=True, runLabel=str(i), meanPowerMw=1000,
+                         temperatureStartC=30, temperatureEndC=30,
+                         mainApkSha256='main-a', testApkSha256='test-a', requestedMpvVideoOutput='gpu-next')
+                    for i, e in enumerate(order)]
+            rows[2][field] = 'different'
+            self.assertFalse(any(b['complete'] for b in module.pairwise_planned_blocks(rows)), field)
+            self.assertFalse(any(b['complete'] for b in module.planned_blocks(rows)), field)
+            self.assertTrue(all('buildIdentity' in b for b in module.pairwise_planned_blocks(rows)))
+
+    def test_renderer_end_must_be_observed_and_match(self):
+        data = report()
+        data.update(requestedEngine='libmpv', requestedMpvVideoOutput='gpu-next',
+                    diagnosticsStart={'decoder':'mediacodec', 'videoOutput':'gpu-next'}, diagnosticsEnd=None)
+        self.assertFalse(module.summarize(data, 1)['qualified'])
+        data['diagnosticsEnd'] = {'videoOutput':'gpu'}
+        self.assertFalse(module.summarize(data, 1)['qualified'])
+        data['diagnosticsEnd'] = {'videoOutput':'gpu-next'}
+        row = module.summarize(data, 1)
+        self.assertTrue(row['qualified'])
+        self.assertEqual('gpu-next', row['actualVideoOutputEnd'])
+
+    def test_explicit_renderer_blocks_cancel_drift_without_mixing_apks(self):
+        for order in [['libmpv@gpu-next','libmpv@gpu','libmpv@gpu','libmpv@gpu-next'],
+                      ['libmpv@gpu','libmpv@gpu-next','libmpv@gpu-next','libmpv@gpu']]:
+            rows=[]
+            for i, condition in enumerate(order):
+                renderer=condition.split('@')[1]
+                rows.append(dict(comparisonBlock='render-block', fixture='av1', fixtureSha256='fixture',
+                    mode='software', surfaceProtocol='current-app', measurementCohort='new-night',
+                    mainApkSha256='main', testApkSha256='test', engine='libmpv',
+                    requestedMpvVideoOutput=renderer, actualVideoOutput=renderer, actualVideoOutputEnd=renderer,
+                    plannedConditions=order, plannedOrdinal=i+1, runLabel=str(i), qualified=True,
+                    temperatureStartC=33, batteryStartPercent=70-i,
+                    meanPowerMw=1000+20*i+(100 if renderer=='gpu' else 0)))
+            block=module.controlled_condition_blocks(rows)[0]
+            self.assertTrue(block['complete'])
+            self.assertAlmostEqual(100,block['aMinusBMw'])
+            self.assertFalse(module.controlled_condition_blocks(rows[:3])[0]['complete'])
+            for field in ['mainApkSha256','testApkSha256','fixtureSha256','measurementCohort','plannedOrdinal','actualVideoOutputEnd']:
+                changed=[dict(r) for r in rows]
+                changed[2][field]='wrong'
+                self.assertFalse(any(b['complete'] for b in module.controlled_condition_blocks(changed)),field)
+
+    def test_known_legacy_renderer_differences_are_not_pooled(self):
+        a = dict(engine='libmpv', actualVideoOutput='gpu')
+        b = dict(engine='libmpv', actualVideoOutput='gpu-next')
+        self.assertNotEqual(module.build_identity(a), module.build_identity(b))
+        self.assertNotEqual(module.build_identity(a), module.build_identity(dict(engine='libmpv')))
 
 if __name__ == '__main__':
     unittest.main()
