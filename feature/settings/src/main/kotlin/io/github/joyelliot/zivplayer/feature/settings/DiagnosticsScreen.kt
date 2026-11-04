@@ -25,7 +25,7 @@ fun DiagnosticsScreen(snapshot: PlaybackDiagnostics?, device: String, message: S
         }
         val data = snapshot ?: PlaybackDiagnostics()
         listOf(
-            "mpv" to data.engineVersion, "FFmpeg" to data.ffmpegVersion,
+            "ExoPlayer" to data.engineVersion,
             stringResource(R.string.diagnostics_video_codec) to data.videoCodec,
             stringResource(R.string.diagnostics_audio_codec) to data.audioCodec,
             stringResource(R.string.diagnostics_decoder) to data.decoder,
