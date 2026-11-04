@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Verify APK native bytes, 16-KiB ZIP alignment, and the actual DEX JNI descriptors."""
+"""校验当前 Exo APK；也可显式核验历史 libmpv 产物。"""
 from __future__ import annotations
 
 import argparse
@@ -157,25 +157,46 @@ def platform_libraries(abis: set[str]) -> dict[str, dict]:
     return result
 
 
-def verify(apk: Path) -> dict:
-    lock = staging.read_json(staging.DEFAULT_LOCK)[0]
-    staging.verify(staging.DEFAULT_STAGE, lock)
-    receipt = staging.read_json(staging.DEFAULT_STAGE / staging.RECEIPT_NAME)[0]
-    expected = {f"lib/{item['abi']}/{item['library']}": item for item in receipt["artifacts"]}
-    platform = platform_libraries({item["abi"] for item in receipt["artifacts"]})
+def verify(apk: Path, engine: str = "exo") -> dict:
+    contract = None
+    lock = None
+    expected_methods = None
+    engine_marker = None
+    required_classes = set()
+    if engine == "libmpv":
+        lock = staging.read_json(staging.DEFAULT_LOCK)[0]
+        staging.verify(staging.DEFAULT_STAGE, lock)
+        receipt = staging.read_json(staging.DEFAULT_STAGE / staging.RECEIPT_NAME)[0]
+        expected = {f"lib/{item['abi']}/{item['library']}": item for item in receipt["artifacts"]}
+        abis = {item["abi"] for item in receipt["artifacts"]}
+        contract = tomllib.loads((ROOT / "native/wrapper/jni-contract.toml").read_text(encoding="utf-8"))
+        expected_methods = {item["name"]: item["descriptor"] for item in contract["methods"]}
+        require(contract["schemaVersion"] == 1 and contract["kind"] == "zivplayer-libmpv-jni-contract" and
+                contract["methodCount"] == 16 and
+                len(contract["methods"]) == len(expected_methods) == 16,
+                "JNI contract schema, cardinality or method uniqueness differs")
+    else:
+        require(engine == "exo", "unknown playback engine")
+        abis = {"arm64-v8a", "x86_64"}
+        expected = {}
+        dependency_lock = (ROOT / "apps/android/gradle.lockfile").read_text(encoding="utf-8")
+        version = tomllib.loads((ROOT / "gradle/libs.versions.toml").read_text(encoding="utf-8"))["versions"]["media3"]
+        require(any(line.startswith(f"androidx.media3:media3-exoplayer:{version}=") and
+                    {"debugRuntimeClasspath", "previewRuntimeClasspath"} <= set(line.split("=", 1)[1].split(","))
+                    for line in dependency_lock.splitlines()), "ExoPlayer runtime lock differs from the version catalog")
+        engine_marker = f"Media3 ExoPlayer {version}"
+        # Manifest entry points keep their names in the optimized APK; Exo internals may be obfuscated.
+        required_classes = {"Lio/github/joyelliot/zivplayer/ZivPlayerApplication;",
+                            "Lio/github/joyelliot/zivplayer/platform/playback/PlaybackService;"}
+    platform = platform_libraries(abis)
     expected.update(platform)
-    contract = tomllib.loads((ROOT / "native/wrapper/jni-contract.toml").read_text(encoding="utf-8"))
-    expected_methods = {item["name"]: item["descriptor"] for item in contract["methods"]}
-    require(contract["schemaVersion"] == 1 and contract["kind"] == "zivplayer-libmpv-jni-contract" and
-            contract["methodCount"] == 16 and
-            len(contract["methods"]) == len(expected_methods) == 16,
-            "JNI contract schema, cardinality or method uniqueness differs")
     native_records, bindings = [], []
+    found_classes, found_engine_marker = set(), False
     with zipfile.ZipFile(apk) as archive, apk.open("rb") as raw_apk:
         names = archive.namelist()
         require(len(names) == len(set(names)), "APK has duplicate ZIP entry names")
         require({name for name in names if name.endswith(".so")} == set(expected),
-                "APK native inventory differs from the twenty audited libraries and four locked AndroidX helpers")
+                "APK native inventory differs from the selected engine and locked AndroidX helpers")
         for name, item in expected.items():
             info = archive.getinfo(name)
             require(info.compress_type == zipfile.ZIP_STORED, f"native library is compressed: {name}")
@@ -196,26 +217,46 @@ def verify(apk: Path) -> dict:
                                    "source": platform[name]["source"] if name in platform else "native-execution-receipt"})
         for name in names:
             if re.fullmatch(r"classes(?:[0-9]+)?\.dex", name):
-                bindings.extend(Dex(archive.read(name)).find_binding(f"L{contract['bindingsClass']};"))
-    require(bindings == [expected_methods], "APK DEX JNI class or sixteen native method descriptors differ")
+                dex = Dex(archive.read(name))
+                if contract is not None:
+                    bindings.extend(dex.find_binding(f"L{contract['bindingsClass']};"))
+                else:
+                    found_engine_marker = found_engine_marker or any(dex.string(i) == engine_marker for i in range(dex.string_count))
+                    for index in range(dex.class_count):
+                        descriptor = dex.type(dex.u32(dex.class_offset + index * 32))
+                        if descriptor in required_classes:
+                            found_classes.add(descriptor)
+                        require(not descriptor.startswith(("Lio/github/joyelliot/zivplayer/platform/libmpv/", "Ldev/jdtech/mpv/")),
+                                "A retired mpv class is still packaged")
+    if contract is not None:
+        require(bindings == [expected_methods], "APK DEX JNI class or sixteen native method descriptors differ")
+    else:
+        require(found_classes == required_classes, "APK is missing ZivPlayer application/service entry points")
+        require(found_engine_marker, "APK is missing the expected ExoPlayer engine version marker")
     apk_sha, apk_size = staging.digest(apk)
-    return {"schemaVersion": 1, "apk": apk.name, "apkSha256": apk_sha, "apkSizeBytes": apk_size,
-            "nativeReceiptSha256": lock["receiptSha256"], "artifacts": native_records,
-            "bindingsClass": contract["bindingsClass"], "dexNativeMethods": expected_methods,
-            "runtimeRegistrationEvidence": "pending-device-art-smoke", "releaseInput": False}
+    report = {"schemaVersion": 2, "engine": engine, "apk": apk.name, "apkSha256": apk_sha,
+              "apkSizeBytes": apk_size, "artifacts": native_records,
+              "devicePlaybackEvidence": "not-verified", "releaseInput": False}
+    if engine_marker is not None:
+        report.update(engineVersion=engine_marker, applicationClasses=sorted(found_classes))
+    if contract is not None:
+        report.update(nativeReceiptSha256=lock["receiptSha256"], bindingsClass=contract["bindingsClass"],
+                      dexNativeMethods=expected_methods, runtimeRegistrationEvidence="pending-device-art-smoke")
+    return report
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("apk", type=Path)
     parser.add_argument("--report", type=Path)
+    parser.add_argument("--engine", choices=("exo", "libmpv"), default="exo")
     args = parser.parse_args()
     try:
-        report = verify(args.apk)
+        report = verify(args.apk, args.engine)
         if args.report:
             args.report.parent.mkdir(parents=True, exist_ok=True)
             args.report.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-        print(f"verified APK: {report['apk']}; 20 audited libraries + 4 locked AndroidX helpers, 16-KiB ZIP alignment, 16 DEX JNI methods")
+        print(f"verified APK: {report['apk']}; engine={args.engine}; {len(report['artifacts'])} verified native libraries; 16-KiB ZIP alignment")
         print(f"SHA-256: {report['apkSha256']}")
         return 0
     except (OSError, ValueError, KeyError, IndexError, struct.error, zipfile.BadZipFile) as error:
