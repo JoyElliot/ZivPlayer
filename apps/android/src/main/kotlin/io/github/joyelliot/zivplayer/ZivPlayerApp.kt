@@ -524,6 +524,10 @@ fun ZivPlayerApp(
                             PersistentVideoStage(controller, playerState.canRenderVideo, playerState.videoAspectRatio,
                                 logicalWindow, frame, progress, visible = playerState.hasVideo && (expanded || !settingsPages.canPop),
                                 miniCornerRadius = if (navigationStyle == ZivNavigationStyle.LIQUID_GLASS) 12.dp else 8.dp,
+                                useSurfaceView = preferDirectVideoOutput(pictureInPicture, pictureInPictureTransition,
+                                    playerOpen, presentation.atExpanded, presentation.dragging, rotationAtTarget,
+                                    isVideoAlignedWithWindow(targetRotation, canvas.compensation)),
+                                options = preferences.options,
                                 onBounds = onVideoBounds)
                             if (!pictureInPicture && (expanded || !settingsPages.canPop) &&
                                 (!showsControls || presentation.dragging) && playerState.hasVideo)

@@ -29,11 +29,13 @@ import androidx.media3.session.MediaController
 import kotlin.math.max
 import kotlin.math.roundToInt
 
-/** One AndroidView call site for mini, expanded, rotation and the system PiP window. */
+/** 迷你、完整展示、旋转和 PiP 共用同一个视频容器。 */
 @Composable
 internal fun PersistentVideoStage(controller: MediaController?, canRender: Boolean, aspect: Float,
     window: IntSize, frame: () -> VideoFrame, progress: () -> Float, visible: Boolean = true,
-    miniCornerRadius: Dp = 8.dp, onBounds: (Rect) -> Unit) {
+    miniCornerRadius: Dp = 8.dp, useSurfaceView: Boolean = false,
+    options: io.github.joyelliot.zivplayer.core.model.PlaybackOptions = io.github.joyelliot.zivplayer.core.model.PlaybackOptions(),
+    onBounds: (Rect) -> Unit) {
     val density = LocalDensity.current
     val edge = remember { max(window.width, window.height).coerceIn(256, 4096) }
     val ratio = aspect.takeIf { it.isFinite() && it > 0 } ?: (16f / 9)
@@ -45,7 +47,7 @@ internal fun PersistentVideoStage(controller: MediaController?, canRender: Boole
             // Includes both the animated video layer and the system-direction compensation.
             val bounds = coordinates.boundsInWindow
             if (bounds.width > 0 && bounds.height > 0) currentBounds(Rect(bounds.left, bounds.top, bounds.right, bounds.bottom))
-        }, ratio)
+        }, ratio, useSurfaceView = useSurfaceView && visible, options = options)
     }) { measurables, constraints ->
         val video = measurables.single().measure(Constraints.fixed(width, height))
         layout(constraints.maxWidth, constraints.maxHeight) {
