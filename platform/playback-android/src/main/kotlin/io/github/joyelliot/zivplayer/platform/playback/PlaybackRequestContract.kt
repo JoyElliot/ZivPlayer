@@ -3,6 +3,8 @@
 package io.github.joyelliot.zivplayer.platform.playback
 
 import java.util.concurrent.atomic.AtomicLong
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 object PlaybackRequestMetadata {
     const val TOKEN_EXTRA = "io.github.joyelliot.zivplayer.extra.PLAYBACK_REQUEST_TOKEN"
@@ -30,11 +32,14 @@ object VideoSurfaceRequestContract {
 object VideoSurfaceRequests {
     private val sequence = AtomicLong(0L)
     private val active = AtomicLong(0L)
+    private val rendered = MutableStateFlow(0L)
+    val renderedToken = rendered.asStateFlow()
 
-    fun claim(): Long = sequence.incrementAndGet().also(active::set)
+    fun claim(): Long = sequence.incrementAndGet().also { active.set(it); rendered.value = 0L }
     fun current(): Long = active.get()
     fun isCurrent(token: Long): Boolean = token > 0L && token == active.get()
     fun release(token: Long): Boolean = token > 0L && active.compareAndSet(token, 0L)
+    fun markRendered(token: Long) { if (isCurrent(token)) rendered.value = token }
 }
 
 /** Process-scoped ordering shared by the app UI and its in-process playback service. */

@@ -25,12 +25,12 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import io.github.joyelliot.zivplayer.core.player.runtime.DefaultPlayerSession
-import io.github.joyelliot.zivplayer.platform.libmpv.LibmpvBackend
+import io.github.joyelliot.zivplayer.platform.exoplayer.ExoPlayerBackend
 
 /** Sole owner of the native player, core session, Media3 player, and MediaSession. */
 class PlaybackService : MediaSessionService() {
     private var mediaSession: MediaSession? = null
-    private var player: MpvSessionPlayer? = null
+    private var player: RuntimeSessionPlayer? = null
     private var diagnosticsOperation: ListenableFuture<io.github.joyelliot.zivplayer.core.model.PlaybackDiagnostics>? = null
     private val foregroundGate = PlaybackForegroundGate(this)
 
@@ -39,7 +39,7 @@ class PlaybackService : MediaSessionService() {
         setMediaNotificationProvider(DefaultMediaNotificationProvider(this).apply {
             setSmallIcon(android.R.drawable.ic_media_play)
         })
-        var createdPlayer: MpvSessionPlayer? = null
+        var createdPlayer: RuntimeSessionPlayer? = null
         var createdSession: MediaSession? = null
         try {
             val historyProvider = application as? PlaybackHistoryProvider
@@ -50,7 +50,7 @@ class PlaybackService : MediaSessionService() {
                     Log.w(LOG_TAG, "Playback progress could not be persisted.", failure)
                 },
             )
-            createdPlayer = MpvSessionPlayer(
+            createdPlayer = RuntimeSessionPlayer(
                 applicationLooper = mainLooper,
                 context = this,
                 progressRecorder = progressRecorder,
@@ -67,13 +67,14 @@ class PlaybackService : MediaSessionService() {
                     }
                 },
             ) {
-                val backend = LibmpvBackend(this)
+                val backend = ExoPlayerBackend(this) { surface -> createdPlayer?.onVideoFrameRendered(surface) }
                 PlaybackEngine(
                     session = DefaultPlayerSession(backend, onAutomaticTransition = { from, _ ->
                         createdPlayer?.advanceAfterCompletion(from)
                     }),
                     surfacePort = backend,
                     configurationPort = backend,
+                    captionPort = backend,
                 )
             }
             val sessionBuilder = MediaSession.Builder(this, createdPlayer)
@@ -124,7 +125,7 @@ class PlaybackService : MediaSessionService() {
         }
     }
 
-    private fun beginPlayerShutdown(ownedPlayer: MpvSessionPlayer?): Result<Unit> = runCatching {
+    private fun beginPlayerShutdown(ownedPlayer: RuntimeSessionPlayer?): Result<Unit> = runCatching {
         if (ownedPlayer != null) {
             val shutdownFuture = ownedPlayer.shutdownAsync()
             shutdownFuture.addListener(

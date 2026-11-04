@@ -2,11 +2,24 @@
 
 package io.github.joyelliot.zivplayer.platform.playback
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class VideoSurfaceRequestsTest {
+    @Test fun oldFirstFrameCannotRevealTheReplacementSurface() {
+        val old = VideoSurfaceRequests.claim()
+        VideoSurfaceRequests.markRendered(old)
+        assertEquals(old, VideoSurfaceRequests.renderedToken.value)
+        val current = VideoSurfaceRequests.claim()
+        VideoSurfaceRequests.markRendered(old)
+        assertEquals(0L, VideoSurfaceRequests.renderedToken.value)
+        VideoSurfaceRequests.markRendered(current)
+        assertEquals(current, VideoSurfaceRequests.renderedToken.value)
+        VideoSurfaceRequests.release(current)
+    }
+
     @Test
     fun oldResizeAndDisposalCannotAffectTheReplacementSurface() {
         val old = VideoSurfaceRequests.claim()

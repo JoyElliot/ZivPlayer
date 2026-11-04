@@ -92,6 +92,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.android)
     implementation(libs.androidx.media3.common)
     implementation(libs.androidx.media3.session)
+    implementation(libs.androidx.media3.ui)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.foundation)

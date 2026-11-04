@@ -37,7 +37,7 @@ kotlin {
 dependencies {
     api(project(":core:media-api"))
     implementation(project(":core:player-runtime"))
-    implementation(project(":platform:libmpv-android"))
+    implementation(project(":platform:exoplayer-android"))
 
     implementation(libs.androidx.media3.common)
     implementation(libs.androidx.core.ktx)

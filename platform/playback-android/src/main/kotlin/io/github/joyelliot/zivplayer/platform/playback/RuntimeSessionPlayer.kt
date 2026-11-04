@@ -10,7 +10,6 @@ import android.content.Context
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
-import android.os.ParcelFileDescriptor
 import android.provider.OpenableColumns
 import android.util.Log
 import android.view.Surface
@@ -54,10 +53,10 @@ import io.github.joyelliot.zivplayer.core.player.PlayerError
 import io.github.joyelliot.zivplayer.core.player.PlayerSession
 import io.github.joyelliot.zivplayer.core.player.PlayerStatus
 import io.github.joyelliot.zivplayer.core.player.RepeatMode
-import io.github.joyelliot.zivplayer.platform.libmpv.LibmpvSurfaceLease
-import io.github.joyelliot.zivplayer.platform.libmpv.LibmpvSurfacePort
-import io.github.joyelliot.zivplayer.platform.libmpv.LibmpvConfigurationPort
-import io.github.joyelliot.zivplayer.platform.libmpv.LibmpvResourcePaths
+import io.github.joyelliot.zivplayer.platform.exoplayer.PlaybackSurfaceLease
+import io.github.joyelliot.zivplayer.platform.exoplayer.PlaybackSurfacePort
+import io.github.joyelliot.zivplayer.platform.exoplayer.PlaybackConfigurationPort
+import io.github.joyelliot.zivplayer.platform.exoplayer.PlaybackResourcePaths
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -87,8 +86,9 @@ private const val MILLIS_TO_MICROS = 1_000L
 
 internal data class PlaybackEngine(
     val session: PlayerSession,
-    val surfacePort: LibmpvSurfacePort,
-    val configurationPort: LibmpvConfigurationPort? = null,
+    val surfacePort: PlaybackSurfacePort,
+    val configurationPort: PlaybackConfigurationPort? = null,
+    val captionPort: io.github.joyelliot.zivplayer.platform.exoplayer.PlaybackCaptionPort? = null,
 )
 
 internal class QueueItemIdGenerator(
@@ -148,7 +148,7 @@ internal class SetMediaRequestFence(
     }
 }
 
-internal class MpvSessionPlayer(
+internal class RuntimeSessionPlayer(
     applicationLooper: Looper,
     private val context: Context,
     private val queueItemIdGenerator: QueueItemIdGenerator = QueueItemIdGenerator(),
@@ -166,6 +166,7 @@ internal class MpvSessionPlayer(
         SupervisorJob() + applicationHandler.asCoroutineDispatcher("ZivMedia3Player"),
     )
     private val shutdownStarted = AtomicBoolean(false)
+    private var surfaceShutdownRequested = false
     private val shutdownCompletion = CompletableDeferred<Unit>()
     private val operationGate = Mutex()
     // Media3 can issue another edit against its optimistic playlist before the
@@ -189,14 +190,15 @@ internal class MpvSessionPlayer(
     private var videoOutput: Any? = null
     private var videoSurfaceRequestToken = 0L
     private var videoSurfaceSize: Pair<Int, Int>? = null
-    private var surfaceLease: LibmpvSurfaceLease? = null
+    private var surfaceLease: PlaybackSurfaceLease? = null
     private var retainedMediaItems: Map<QueueItemId, Media3MediaItem> = emptyMap()
     private val activeMediaItem: Media3MediaItem? get() = retainedMediaItems[engine.session.snapshot.value.queue.currentItem?.id]
     private var lastMarkedOccurrence: Pair<Long, QueueItemId>? = null
-    private val subtitleDescriptors = mutableListOf<ParcelFileDescriptor>()
+    private val subtitleUris = mutableSetOf<String>()
     private var subtitleRequestGeneration = 0L
     private var snapshotCollector: Job
     private var eventCollector: Job
+    private var captionCollector: Job? = null
     private var configurationJob: Job? = null
     private val configurationReady = CompletableDeferred<Unit>()
     private var preferences = PlayerPreferences()
@@ -255,6 +257,7 @@ internal class MpvSessionPlayer(
         progressRecorder.bind(engineEpoch, snapshot)
         snapshotCollector = startSnapshotCollector(engine, engineEpoch)
         eventCollector = startEventCollector(engine, engineEpoch)
+        captionCollector = startCaptionCollector(engine)
         configurationJob = scope.launch {
             val repository = preferencesProvider?.playerPreferencesRepository
             if (repository == null) { configurationReady.complete(Unit); return@launch }
@@ -297,6 +300,12 @@ internal class MpvSessionPlayer(
             .setTrackSelectionParameters(snapshot.queue.currentItem?.id?.value?.let {
                 snapshot.tracks.toMedia3SelectionParameters(it)
             } ?: TrackSelectionParameters.DEFAULT)
+
+        val captions = engine.captionPort?.captions?.value
+        builder.setCurrentCues(captions?.takeIf {
+            it.itemId == snapshot.queue.currentItem?.id && snapshot.status !in setOf(
+                PlayerStatus.IDLE, PlayerStatus.ERROR, PlayerStatus.ENDED, PlayerStatus.CLOSED)
+        }?.cues ?: androidx.media3.common.text.CueGroup.EMPTY_TIME_ZERO)
 
         if (projection.exposesError) {
             builder.setPlayerError(snapshot.error?.toPlaybackException())
@@ -469,29 +478,46 @@ internal class MpvSessionPlayer(
             return failedFuture("Only direct Surface output is supported.")
         }
         val token = VideoSurfaceRequests.current()
-        return launchFuture {
+        return surfaceOperation {
+            // MediaSession 在 void Player 调用返回后就确认输出切换，不等待 pending future。
+            val nextLease = if (!requiresEngineReset() && engine.session.snapshot.value.status != PlayerStatus.CLOSED)
+                engine.surfacePort.attachSurfaceNow(videoOutput) else {
+                surfaceLease?.let(engine.surfacePort::detachSurfaceNow)
+                null
+            }
             if (videoSurfaceRequestToken != token) videoSurfaceSize = null
             videoSurfaceRequestToken = token
             this.videoOutput = videoOutput
-            if (!requiresEngineReset()) {
-                surfaceLease = engine.surfacePort.attachSurface(videoOutput)
-            }
+            surfaceLease = nextLease
         }
     }
 
     override fun handleClearVideoOutput(videoOutput: Any?): ListenableFuture<*> {
-        return launchFuture {
+        return surfaceOperation(allowAfterShutdown = true) {
             if (videoOutput != null && videoOutput !== this.videoOutput) {
-                return@launchFuture
+                return@surfaceOperation
             }
+            surfaceLease?.let(engine.surfacePort::detachSurfaceNow)
+            surfaceLease = null
             this.videoOutput = null
             videoSurfaceRequestToken = 0L
             videoSurfaceSize = null
-            if (!requiresEngineReset()) {
-                surfaceLease?.let(engine.surfacePort::detachSurface)
-                surfaceLease = null
-            }
         }
+    }
+
+    private fun surfaceOperation(allowAfterShutdown: Boolean = false, block: () -> Unit): ListenableFuture<*> {
+        if ((shutdownStarted.get() || surfaceShutdownRequested) && !allowAfterShutdown)
+            return failedFuture("The playback service is shutting down.")
+        return try {
+            check(Looper.myLooper() === applicationLooper)
+            // 不经过会被字幕导入/磁盘读取持有的 operationGate；后端同主线程串行维护租约。
+            block()
+            Futures.immediateVoidFuture()
+        } catch (failure: Throwable) { failedFuture(failure) }
+    }
+
+    internal fun onVideoFrameRendered(surface: Surface) {
+        if (surface === videoOutput) VideoSurfaceRequests.markRendered(videoSurfaceRequestToken)
     }
 
     internal fun resizeVideoSurface(token: Long, width: Int, height: Int): ListenableFuture<*> = launchFuture {
@@ -568,7 +594,7 @@ internal class MpvSessionPlayer(
                             playWhenReady = false,
                         ),
                     )
-                    clearSubtitleDescriptors()
+                    clearSubtitleSources()
                     if (retainInstallation()) prepareCurrentItem(requestTicket)
                     scheduleTrackRestore()
                     scheduleImportedChoice()
@@ -700,7 +726,7 @@ internal class MpvSessionPlayer(
             if (before.queue.currentItem != null) progressRecorder.flushStop(engineEpoch, before)
             rebuildEngineIfRequired()
             dispatchOrThrow(PlayerCommand.ClearQueue)
-            clearSubtitleDescriptors()
+            clearSubtitleSources()
             retainedMediaItems = emptyMap()
             pendingDefaultRate = null
             invalidateState()
@@ -766,7 +792,7 @@ internal class MpvSessionPlayer(
                     retainedMediaItems = media
                     dispatchOrThrow(PlayerCommand.SetQueue(items, index, Milliseconds(positionMs), false))
                     retainedMediaItems = retainedMediaItems.filterKeys { id -> items.any { it.id == id } }
-                    clearSubtitleDescriptors()
+                    clearSubtitleSources()
                     prepareCurrentItem(ticket)
                     invalidateState()
                 }
@@ -829,6 +855,15 @@ internal class MpvSessionPlayer(
     }
 
     internal fun shutdownAsync(): ListenableFuture<*> {
+        // 服务会紧接着 release MediaSession；不能把解绑排在正在等待 I/O 的命令后。
+        surfaceShutdownRequested = true
+        videoOutput = null
+        videoSurfaceRequestToken = 0L
+        videoSurfaceSize = null
+        val surfaceFailure = runCatching {
+            surfaceLease?.let(engine.surfacePort::detachSurfaceNow)
+            surfaceLease = null
+        }.exceptionOrNull()
         setMediaRequestFence.invalidate()
         subtitleRequestGeneration++
         ++trackIntentGeneration
@@ -836,7 +871,11 @@ internal class MpvSessionPlayer(
         pendingImportedChoice = null
         releaseAudioFocus()
         return launchFuture(allowAfterShutdown = true) {
-            shutdown()
+            try { shutdown() } catch (failure: Throwable) {
+                surfaceFailure?.let(failure::addSuppressed)
+                throw failure
+            }
+            surfaceFailure?.let { throw it }
         }
     }
 
@@ -849,8 +888,10 @@ internal class MpvSessionPlayer(
         temporaryRateLease = null
         retiredTemporaryTokens.clear()
 
-        var shutdownFailure: Throwable? = null
-        val leaseToDetach = surfaceLease
+        // 先同步解绑，再等待历史记录落盘；视图无需为数据库 I/O 延长消费端寿命。
+        var shutdownFailure: Throwable? = runCatching {
+            surfaceLease?.let(engine.surfacePort::detachSurfaceNow)
+        }.exceptionOrNull()
         surfaceLease = null
         val engineToClose = engine
         try {
@@ -861,16 +902,10 @@ internal class MpvSessionPlayer(
                         snapshot = engineToClose.session.snapshot.value,
                     )
                 }
-            }.exceptionOrNull()?.let { shutdownFailure = it }
+            }.exceptionOrNull()?.let { failure ->
+                shutdownFailure?.addSuppressed(failure) ?: run { shutdownFailure = failure }
+            }
             withContext(Dispatchers.IO) {
-                leaseToDetach?.let { lease ->
-                    runCatching { engineToClose.surfacePort.detachSurface(lease) }
-                        .exceptionOrNull()
-                        ?.let { failure ->
-                            shutdownFailure?.addSuppressed(failure)
-                                ?: run { shutdownFailure = failure }
-                        }
-                }
                 try {
                     engineToClose.session.close()
                 } catch (failure: Throwable) {
@@ -882,7 +917,8 @@ internal class MpvSessionPlayer(
         } finally {
             snapshotCollector.cancel()
             eventCollector.cancel()
-            clearSubtitleDescriptors()
+            captionCollector?.cancel()
+            clearSubtitleSources()
             retainedMediaItems = emptyMap()
             videoOutput = null
             shutdownFailure?.let(shutdownCompletion::completeExceptionally)
@@ -943,6 +979,10 @@ internal class MpvSessionPlayer(
             }
         }
 
+    private fun startCaptionCollector(observedEngine: PlaybackEngine): Job? = observedEngine.captionPort?.let { port ->
+        scope.launch { port.captions.collect { if (engine === observedEngine) invalidateState() } }
+    }
+
     private suspend fun rebuildEngineIfRequired() {
         val authoritativeSnapshot = engine.session.snapshot.value
         if (authoritativeSnapshot.error?.recovery != ErrorRecovery.RESET) {
@@ -956,10 +996,11 @@ internal class MpvSessionPlayer(
         progressRecorder.flushAndDetach(previousEpoch, authoritativeSnapshot)
         snapshotCollector.cancelAndJoin()
         eventCollector.cancelAndJoin()
+        captionCollector?.cancelAndJoin()
         withContext(Dispatchers.IO) {
             previousEngine.session.close()
         }
-        clearSubtitleDescriptors()
+        clearSubtitleSources()
         retainedMediaItems = emptyMap()
         surfaceLease = null
 
@@ -971,6 +1012,7 @@ internal class MpvSessionPlayer(
         progressRecorder.bind(engineEpoch, snapshot)
         snapshotCollector = startSnapshotCollector(replacement, engineEpoch)
         eventCollector = startEventCollector(replacement, engineEpoch)
+        captionCollector = startCaptionCollector(replacement)
         val surface = videoOutput as? Surface
         if (surface?.isValid == true) {
             surfaceLease = replacement.surfacePort.attachSurface(surface)
@@ -988,8 +1030,7 @@ internal class MpvSessionPlayer(
         val port = engine.configurationPort ?: return
         try {
             val paths = preferencesProvider?.resolvePlaybackResources(preferences.options) ?: PlaybackResourceLocations()
-            withContext(Dispatchers.IO) { port.configure(preferences.options, LibmpvResourcePaths(paths.fontsDirectory, paths.shaderFiles)) }
-            configurationMessage = null
+            configurationMessage = port.configure(preferences.options, PlaybackResourcePaths(paths.fontsDirectory, paths.shaderFiles))
         } catch (failure: CancellationException) { throw failure
         } catch (failure: Exception) {
             configurationMessage = "部分播放设置未能应用：${failure.message}"
@@ -1031,47 +1072,35 @@ internal class MpvSessionPlayer(
             check(isCurrent()) { "The selected media changed while choosing a subtitle." }
             clearPendingTrackRestore()
             pendingImportedChoice = null
-            check(subtitleDescriptors.size < 16) { "At most 16 external subtitles may be attached." }
+            check(subtitleUris.size < 16) { "At most 16 external subtitles may be attached." }
             val managed = preferencesProvider?.takeIf { it.mediaPlaybackPreferencesRepository != null }
                 ?.importSubtitleResource(uri)
             check(isCurrent()) { "The selected media changed while importing a subtitle." }
-            val (descriptor, displayName) = withContext(NonCancellable + Dispatchers.IO) {
-                val displayName = managed?.title ?: title?.takeIf(String::isNotBlank) ?: runCatching {
+            val displayName = managed?.title ?: title?.takeIf(String::isNotBlank) ?: withContext(Dispatchers.IO) {
+                runCatching {
                     context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
                         if (cursor.moveToFirst()) cursor.getString(0)?.takeIf(String::isNotBlank) else null
                     }
                 }.getOrNull() ?: uri.lastPathSegment ?: "External subtitle"
-                checkNotNull(context.contentResolver.openFileDescriptor(managed?.uri ?: uri, READ_ONLY_MODE)) {
-                    "The subtitle could not be opened."
-                } to displayName
             }
-            try {
-                check(isCurrent()) { "The selected media changed while opening a subtitle." }
-                dispatchOrThrow(PlayerCommand.AddSubtitle(SubtitleSource(
-                    "$FILE_DESCRIPTOR_URI_PREFIX${descriptor.fd}", displayName,
-                )))
-                subtitleDescriptors += descriptor
-                if (managed != null) persistChoice {
-                    preferencesProvider.mediaPlaybackPreferencesRepository?.saveSubtitle(MediaId(expectedMediaId),
-                        SavedSubtitle(managed.id, displayName))
-                    if (intent == trackIntentGeneration) pendingImportedChoice = PendingImportedChoice(checkNotNull(itemId), displayName, intent)
-                    scheduleImportedChoice()
-                }
-            } catch (failure: Throwable) {
-                runCatching { descriptor.close() }.exceptionOrNull()?.let(failure::addSuppressed)
-                throw failure
+            check(isCurrent()) { "The selected media changed while opening a subtitle." }
+            val locator = (managed?.uri ?: uri).toString()
+            dispatchOrThrow(PlayerCommand.AddSubtitle(SubtitleSource(locator, displayName)))
+            subtitleUris += locator
+            if (managed != null) persistChoice {
+                preferencesProvider.mediaPlaybackPreferencesRepository?.saveSubtitle(MediaId(expectedMediaId),
+                    SavedSubtitle(managed.id, displayName))
+                if (intent == trackIntentGeneration) pendingImportedChoice = PendingImportedChoice(checkNotNull(itemId), displayName, intent)
+                scheduleImportedChoice()
             }
         }
     }
 
-    private fun clearSubtitleDescriptors() {
+    private fun clearSubtitleSources() {
         subtitleRequestGeneration++
         clearPendingTrackRestore()
         pendingImportedChoice = null
-        subtitleDescriptors.forEach { descriptor ->
-            runCatching { descriptor.close() }.onFailure { Log.w("ZivMedia3Player", "Subtitle handle could not be closed.", it) }
-        }
-        subtitleDescriptors.clear()
+        subtitleUris.clear()
     }
 
     private suspend fun persistChoice(block: suspend () -> Unit): Boolean {
@@ -1159,23 +1188,14 @@ internal class MpvSessionPlayer(
                         val resource = preferencesProvider?.findSubtitleResource(saved.resourceId)
                         if (resource == null) { pending.externalIndex++; continue }
                         if (!pending.isCurrent()) return@persistChoice
-                        // Provider and database I/O must not hold up Pause, replacement,
-                        // shutdown, or the two-second best-effort restoration deadline.
-                        val descriptor = withContext(NonCancellable + Dispatchers.IO) {
-                            checkNotNull(context.contentResolver.openFileDescriptor(resource.uri, READ_ONLY_MODE))
-                        }
-                        var retained = false
-                        try {
-                            operationGate.withLock {
-                                if (pending.isCurrent()) {
-                                    dispatchOrThrow(PlayerCommand.AddSubtitle(SubtitleSource(
-                                        "$FILE_DESCRIPTOR_URI_PREFIX${descriptor.fd}", saved.title)))
-                                    subtitleDescriptors += descriptor
-                                    retained = true
-                                    pending.externalIndex++
-                                }
+                        operationGate.withLock {
+                            if (pending.isCurrent()) {
+                                val locator = resource.uri.toString()
+                                dispatchOrThrow(PlayerCommand.AddSubtitle(SubtitleSource(locator, saved.title)))
+                                subtitleUris += locator
+                                pending.externalIndex++
                             }
-                        } finally { if (!retained) runCatching { descriptor.close() } }
+                        }
                         if (!pending.isCurrent()) return@persistChoice
                     }
                     operationGate.withLock {
@@ -1399,10 +1419,7 @@ internal class MpvSessionPlayer(
         const val MIN_RATE_PERMILLE = 250
         const val MAX_RATE_PERMILLE = 4_000
         const val CONTENT_SCHEME = "content"
-        const val READ_ONLY_MODE = "r"
-        // Borrow the granted descriptor. Reopening /proc/self/fd can fail Android access checks;
-        // fdclose:// would instead transfer ownership and break replay and our PFD cleanup.
-        const val FILE_DESCRIPTOR_URI_PREFIX = "fd://"
+
     }
 }
 
