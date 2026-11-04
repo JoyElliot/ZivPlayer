@@ -1,6 +1,6 @@
 # ADR 0002: libmpv is the playback engine; Media3 is a system adapter
 
-- Status: Accepted
+- Status: Superseded by [ADR 0024](0024-exoplayer-playback.md) for the current Android application
 - Date: 2026-08-30
 
 ## Context

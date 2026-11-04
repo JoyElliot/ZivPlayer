@@ -5,6 +5,14 @@ ZivPlayer. Exact resolved versions, artifact checksums, source revisions, and
 transitive components are generated and reviewed with the build lockfiles and
 SBOM before distribution.
 
+The current Android application uses AndroidX Media3 ExoPlayer 1.11.1
+(Apache-2.0), including its exoplayer, common, container, datasource, extractor, decoder,
+database, session and UI modules. It does not bundle the retired mpv/FFmpeg/libass native
+stack. The native build descriptions and mpv-related component rows below
+remain the inventory for historical libmpv artifacts and retained source
+tooling. AndroidX (including DataStore), UI and language runtime rows still
+apply to the current APK. The application license remains GPL-3.0-or-later.
+
 The intended native source closure is now locked in
 [`native/source-manifest.toml`](native/source-manifest.toml). It records exact
 archive bytes, revisions, licenses, linkage roles, and upstream submodules, but
@@ -52,7 +60,7 @@ product notices as explicit pending gates.
 | FangFeishu liquid navigation / Kyant0 AndroidLiquidGlass adaptations | Press/drag animation, refracted tab capture, lens, highlights and inner shadow | Apache-2.0 | Ported from FangFeishu `8676095d`, retaining its attribution to [Kyant0/AndroidLiquidGlass](https://github.com/Kyant0/AndroidLiquidGlass). Source files retain notices and mark ZivPlayer modifications. See the [license](licenses/Apache-2.0.txt); license and notice are also packaged in the UI module's `assets/licenses`. |
 | FangFeishu layered page navigation | Page-cover motion, parent scale/translation and per-layer scrims | Apache-2.0 | Adapted from `FfPageStack.kt` and the shared transition parameters in FangFeishu `8676095d`. ZivPlayer owns the route-state implementation, saved-state handling, input isolation and physical window corner tracking. Source attribution and the notice are packaged in the UI module. |
 | mpv-android upstream sources | Locked build scripts and Android integration reference; Maven bootstrap retired | MIT for the reviewed subset | ZivPlayer now builds its own GPL-3.0-or-later JNI bridge. The complete locked mpv-android source also contains MPL-2.0/LGPL-3.0-or-later file-picker files, Apache-2.0 Gradle bootstrap code, and a Mozilla-derived CA bundle whose redistribution notice/license remains a release gate; the upstream wrapper license does not cover those files or the embedded native dependency stack. |
-| mpv/libmpv | Playback engine | GPL-2.0-or-later in the selected GPL-compatible libmpv build | Corresponding source and build configuration must accompany distributions. |
+| mpv/libmpv | Historical libmpv playback engine | GPL-2.0-or-later in the selected GPL-compatible libmpv build | Corresponding source and build configuration must accompany distributions. |
 | FFmpeg | Demuxing and codecs | GPL-3.0-or-later in the selected GPL + version3 build | `--enable-nonfree` is prohibited. Exact configuration must be published. |
 | libass | ASS/SSA subtitle renderer | ISC AND Unlicense for the selected source set | Preserve the ISC notice and the compiled wyhash Unlicense notice. |
 | libplacebo | GPU rendering and color processing | LGPL-2.1-or-later | Preserve license and corresponding-source obligations for the chosen linkage. |

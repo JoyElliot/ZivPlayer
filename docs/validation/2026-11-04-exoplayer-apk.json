@@ -1,0 +1,44 @@
+{
+  "apk": "android-preview.apk",
+  "apkSha256": "681d156090bf7e243266fb64a521de678f9050ebdf647ba5ed1cd0d6863800e5",
+  "apkSizeBytes": 5260177,
+  "applicationClasses": [
+    "Lio/github/joyelliot/zivplayer/ZivPlayerApplication;",
+    "Lio/github/joyelliot/zivplayer/platform/playback/PlaybackService;"
+  ],
+  "artifacts": [
+    {
+      "dataOffset": 4751360,
+      "path": "lib/arm64-v8a/libandroidx.graphics.path.so",
+      "sha256": "41e9a793c43a0f4fddb19e33f346bace464f30f888ba7b9eaf96294ea115bfb6",
+      "sizeBytes": 10096,
+      "source": "androidx.graphics:graphics-path:1.0.1"
+    },
+    {
+      "dataOffset": 4784128,
+      "path": "lib/x86_64/libandroidx.graphics.path.so",
+      "sha256": "4e56c996f13670e70082658de7880c4020eabf4f25e43387f88ed78a713fc9f0",
+      "sizeBytes": 10760,
+      "source": "androidx.graphics:graphics-path:1.0.1"
+    },
+    {
+      "dataOffset": 4767744,
+      "path": "lib/arm64-v8a/libdatastore_shared_counter.so",
+      "sha256": "11bd2537cc881528f7a249a74e42b87ff779ef99617b7cb93146ae9c1866a2d6",
+      "sizeBytes": 10376,
+      "source": "androidx.datastore:datastore-core-android:1.3.0"
+    },
+    {
+      "dataOffset": 4800512,
+      "path": "lib/x86_64/libdatastore_shared_counter.so",
+      "sha256": "e52c438933dd5b7347199cedd14d4c2fb552d300e190282405d5f022dc4d73d9",
+      "sizeBytes": 7424,
+      "source": "androidx.datastore:datastore-core-android:1.3.0"
+    }
+  ],
+  "devicePlaybackEvidence": "not-verified",
+  "engine": "exo",
+  "engineVersion": "Media3 ExoPlayer 1.11.1",
+  "releaseInput": false,
+  "schemaVersion": 2
+}

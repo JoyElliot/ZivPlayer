@@ -1,0 +1,400 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-04",
+  "baselineCommit": "1db64fc",
+  "branch": "codex/exo-migration",
+  "uncommittedImplementation": false,
+  "version": {
+    "code": 15,
+    "name": "0.1.0-dev.exo4",
+    "engine": "Media3 ExoPlayer 1.11.1"
+  },
+  "device": {
+    "model": "23049RAD8C",
+    "product": "marble",
+    "android": 15,
+    "sdk": 35,
+    "transport": "USB"
+  },
+  "host": {
+    "jvmTests": 195,
+    "failures": 0,
+    "skipped": 0,
+    "lintErrors": 0,
+    "lintWarnings": 10,
+    "optimizedApkVerified": true
+  },
+  "deviceRuns": [
+    {
+      "suite": "app UI, playback, continuous handoffs and nine-format matrix",
+      "tests": 65,
+      "failures": 0,
+      "skipped": 0,
+      "log": "build/exo-device-20261104/app-final-usb.txt",
+      "logSha256": "3b77536af31d79755539137e2f5626a091b2984f4df26f6ccc155ed0bef35a6d"
+    },
+    {
+      "suite": "Exo adapters, parser boundaries, actual audio/subtitle playback",
+      "tests": 13,
+      "failures": 0,
+      "skipped": 0,
+      "log": "build/exo-device-20261104/exo-final-lazy-usb.txt",
+      "logSha256": "1593a8fc3c338dd33d1718827a8593cb2e4c83d2c88b397b89a5d965be8c91d0"
+    }
+  ],
+  "continuousPlayback": {
+    "completed": true,
+    "playingStateInterruptionsDuringHandoffs": 0,
+    "observations": [
+      {
+        "stage": "mini-live",
+        "timestamps": 5,
+        "pixelHashes": 5
+      },
+      {
+        "stage": "expanded-live",
+        "timestamps": 0,
+        "pixelHashes": 5
+      },
+      {
+        "stage": "mini-after-collapse",
+        "timestamps": 5,
+        "pixelHashes": 5
+      },
+      {
+        "stage": "pip-live",
+        "timestamps": 0,
+        "pixelHashes": 5
+      },
+      {
+        "stage": "automatic-pip-live",
+        "timestamps": 0,
+        "pixelHashes": 5
+      },
+      {
+        "stage": "paused-scrub",
+        "firstPresentedPreviewMs": 182,
+        "finalControllerPositionMs": 21578,
+        "releaseToFinalPositionMs": 179
+      },
+      {
+        "stage": "system-volume",
+        "hardwareKeyIndices": [
+          3,
+          13
+        ],
+        "minimum": 0,
+        "maximum": 150,
+        "interpolationApplicable": false,
+        "interpolatedGain": 1,
+        "afterHardwareKeyIndex": 13
+      }
+    ]
+  },
+  "formatDiagnostics": {
+    "audio-flac.flac": {
+      "schemaVersion": 1,
+      "sampledAtEpochMs": 1793774529614,
+      "exportedAtEpochMs": 1793774529614,
+      "videoCodec": null,
+      "audioCodec": "audio/flac",
+      "decoder": null,
+      "videoWidth": null,
+      "videoHeight": null,
+      "sourceFramesPerSecond": null,
+      "displayFramesPerSecond": null,
+      "droppedFrames": null,
+      "decoderDroppedFrames": null,
+      "cacheUsedBytes": null,
+      "cacheDurationSeconds": 3.915,
+      "audioVideoSyncSeconds": null,
+      "colorPrimaries": null,
+      "transferFunction": null,
+      "pixelFormat": null,
+      "videoBitrate": null,
+      "audioBitrate": null,
+      "engineVersion": "Media3 ExoPlayer 1.11.1",
+      "ffmpegVersion": null
+    },
+    "audio-opus.opus": {
+      "schemaVersion": 1,
+      "sampledAtEpochMs": 1793774528318,
+      "exportedAtEpochMs": 1793774528318,
+      "videoCodec": null,
+      "audioCodec": "audio/opus",
+      "decoder": null,
+      "videoWidth": null,
+      "videoHeight": null,
+      "sourceFramesPerSecond": null,
+      "displayFramesPerSecond": null,
+      "droppedFrames": null,
+      "decoderDroppedFrames": null,
+      "cacheUsedBytes": null,
+      "cacheDurationSeconds": 3.918,
+      "audioVideoSyncSeconds": null,
+      "colorPrimaries": null,
+      "transferFunction": null,
+      "pixelFormat": null,
+      "videoBitrate": null,
+      "audioBitrate": null,
+      "engineVersion": "Media3 ExoPlayer 1.11.1",
+      "ffmpegVersion": null
+    },
+    "audio-pcm.wav": {
+      "schemaVersion": 1,
+      "sampledAtEpochMs": 1793774530907,
+      "exportedAtEpochMs": 1793774530907,
+      "videoCodec": null,
+      "audioCodec": "audio/raw",
+      "decoder": null,
+      "videoWidth": null,
+      "videoHeight": null,
+      "sourceFramesPerSecond": null,
+      "displayFramesPerSecond": null,
+      "droppedFrames": null,
+      "decoderDroppedFrames": null,
+      "cacheUsedBytes": null,
+      "cacheDurationSeconds": 3.921,
+      "audioVideoSyncSeconds": null,
+      "colorPrimaries": null,
+      "transferFunction": null,
+      "pixelFormat": null,
+      "videoBitrate": null,
+      "audioBitrate": 1536000,
+      "engineVersion": "Media3 ExoPlayer 1.11.1",
+      "ffmpegVersion": null
+    },
+    "av1-opus.webm": {
+      "schemaVersion": 1,
+      "sampledAtEpochMs": 1793774521583,
+      "exportedAtEpochMs": 1793774521583,
+      "videoCodec": "video/av01",
+      "audioCodec": "audio/opus",
+      "decoder": "c2.android.av1-dav1d.decoder",
+      "videoWidth": 1920,
+      "videoHeight": 1080,
+      "sourceFramesPerSecond": null,
+      "displayFramesPerSecond": null,
+      "droppedFrames": 0,
+      "decoderDroppedFrames": 0,
+      "cacheUsedBytes": null,
+      "cacheDurationSeconds": 4.769,
+      "audioVideoSyncSeconds": null,
+      "colorPrimaries": null,
+      "transferFunction": null,
+      "pixelFormat": null,
+      "videoBitrate": null,
+      "audioBitrate": null,
+      "engineVersion": "Media3 ExoPlayer 1.11.1",
+      "ffmpegVersion": null
+    },
+    "avc-1080p50mbps.mp4": {
+      "schemaVersion": 1,
+      "sampledAtEpochMs": 1793774518336,
+      "exportedAtEpochMs": 1793774518336,
+      "videoCodec": "video/avc",
+      "audioCodec": "audio/mp4a-latm",
+      "decoder": "c2.qti.avc.decoder",
+      "videoWidth": 1920,
+      "videoHeight": 1080,
+      "sourceFramesPerSecond": 30.0,
+      "displayFramesPerSecond": null,
+      "droppedFrames": 0,
+      "decoderDroppedFrames": 0,
+      "cacheUsedBytes": null,
+      "cacheDurationSeconds": 4.768,
+      "audioVideoSyncSeconds": null,
+      "colorPrimaries": null,
+      "transferFunction": null,
+      "pixelFormat": null,
+      "videoBitrate": 50000000,
+      "audioBitrate": 128000,
+      "engineVersion": "Media3 ExoPlayer 1.11.1",
+      "ffmpegVersion": null
+    },
+    "hdr-hlg-main10.mkv": {
+      "schemaVersion": 1,
+      "sampledAtEpochMs": 1793774526121,
+      "exportedAtEpochMs": 1793774526121,
+      "videoCodec": "video/hevc",
+      "audioCodec": "audio/mp4a-latm",
+      "decoder": "c2.qti.hevc.decoder",
+      "videoWidth": 1920,
+      "videoHeight": 1080,
+      "sourceFramesPerSecond": null,
+      "displayFramesPerSecond": null,
+      "droppedFrames": 0,
+      "decoderDroppedFrames": 0,
+      "cacheUsedBytes": null,
+      "cacheDurationSeconds": 4.804,
+      "audioVideoSyncSeconds": null,
+      "colorPrimaries": "BT.2020",
+      "transferFunction": "HLG",
+      "pixelFormat": null,
+      "videoBitrate": null,
+      "audioBitrate": null,
+      "engineVersion": "Media3 ExoPlayer 1.11.1",
+      "ffmpegVersion": null
+    },
+    "hdr-pq-main10.mkv": {
+      "schemaVersion": 1,
+      "sampledAtEpochMs": 1793774524379,
+      "exportedAtEpochMs": 1793774524379,
+      "videoCodec": "video/hevc",
+      "audioCodec": "audio/mp4a-latm",
+      "decoder": "c2.qti.hevc.decoder",
+      "videoWidth": 1920,
+      "videoHeight": 1080,
+      "sourceFramesPerSecond": null,
+      "displayFramesPerSecond": null,
+      "droppedFrames": 0,
+      "decoderDroppedFrames": 0,
+      "cacheUsedBytes": null,
+      "cacheDurationSeconds": 4.787,
+      "audioVideoSyncSeconds": null,
+      "colorPrimaries": "BT.2020",
+      "transferFunction": "PQ",
+      "pixelFormat": null,
+      "videoBitrate": null,
+      "audioBitrate": null,
+      "engineVersion": "Media3 ExoPlayer 1.11.1",
+      "ffmpegVersion": null
+    },
+    "hevc-2160p30.mkv": {
+      "schemaVersion": 1,
+      "sampledAtEpochMs": 1793774523003,
+      "exportedAtEpochMs": 1793774523003,
+      "videoCodec": "video/hevc",
+      "audioCodec": "audio/mp4a-latm",
+      "decoder": "c2.qti.hevc.decoder",
+      "videoWidth": 3840,
+      "videoHeight": 2160,
+      "sourceFramesPerSecond": null,
+      "displayFramesPerSecond": null,
+      "droppedFrames": 0,
+      "decoderDroppedFrames": 0,
+      "cacheUsedBytes": null,
+      "cacheDurationSeconds": 2.759,
+      "audioVideoSyncSeconds": null,
+      "colorPrimaries": null,
+      "transferFunction": null,
+      "pixelFormat": null,
+      "videoBitrate": null,
+      "audioBitrate": null,
+      "engineVersion": "Media3 ExoPlayer 1.11.1",
+      "ffmpegVersion": null
+    },
+    "hevc-main10-flac.mkv": {
+      "schemaVersion": 1,
+      "sampledAtEpochMs": 1793774520183,
+      "exportedAtEpochMs": 1793774520183,
+      "videoCodec": "video/hevc",
+      "audioCodec": "audio/flac",
+      "decoder": "c2.qti.hevc.decoder",
+      "videoWidth": 1920,
+      "videoHeight": 1080,
+      "sourceFramesPerSecond": null,
+      "displayFramesPerSecond": null,
+      "droppedFrames": 0,
+      "decoderDroppedFrames": 0,
+      "cacheUsedBytes": null,
+      "cacheDurationSeconds": 4.758,
+      "audioVideoSyncSeconds": null,
+      "colorPrimaries": null,
+      "transferFunction": null,
+      "pixelFormat": null,
+      "videoBitrate": null,
+      "audioBitrate": null,
+      "engineVersion": "Media3 ExoPlayer 1.11.1",
+      "ffmpegVersion": null
+    }
+  },
+  "artifacts": {
+    "preview": {
+      "apk": "android-preview.apk",
+      "apkSha256": "a47c46e88e4869b13bcf78317ff717b20bf93e97cc67a8e6629918d42c010346",
+      "apkSizeBytes": 5260177,
+      "applicationClasses": [
+        "Lio/github/joyelliot/zivplayer/ZivPlayerApplication;",
+        "Lio/github/joyelliot/zivplayer/platform/playback/PlaybackService;"
+      ],
+      "artifacts": [
+        {
+          "dataOffset": 4751360,
+          "path": "lib/arm64-v8a/libandroidx.graphics.path.so",
+          "sha256": "41e9a793c43a0f4fddb19e33f346bace464f30f888ba7b9eaf96294ea115bfb6",
+          "sizeBytes": 10096,
+          "source": "androidx.graphics:graphics-path:1.0.1"
+        },
+        {
+          "dataOffset": 4784128,
+          "path": "lib/x86_64/libandroidx.graphics.path.so",
+          "sha256": "4e56c996f13670e70082658de7880c4020eabf4f25e43387f88ed78a713fc9f0",
+          "sizeBytes": 10760,
+          "source": "androidx.graphics:graphics-path:1.0.1"
+        },
+        {
+          "dataOffset": 4767744,
+          "path": "lib/arm64-v8a/libdatastore_shared_counter.so",
+          "sha256": "11bd2537cc881528f7a249a74e42b87ff779ef99617b7cb93146ae9c1866a2d6",
+          "sizeBytes": 10376,
+          "source": "androidx.datastore:datastore-core-android:1.3.0"
+        },
+        {
+          "dataOffset": 4800512,
+          "path": "lib/x86_64/libdatastore_shared_counter.so",
+          "sha256": "e52c438933dd5b7347199cedd14d4c2fb552d300e190282405d5f022dc4d73d9",
+          "sizeBytes": 7424,
+          "source": "androidx.datastore:datastore-core-android:1.3.0"
+        }
+      ],
+      "devicePlaybackEvidence": "not-verified",
+      "engine": "exo",
+      "engineVersion": "Media3 ExoPlayer 1.11.1",
+      "releaseInput": false,
+      "schemaVersion": 2
+    },
+    "debug": {
+      "sha256": "a4ee4133b22319971f6b6d9d49415c46c978124809cac4983c3c4b7cab7b0d2e"
+    },
+    "androidTest": {
+      "sha256": "8409e0a596d83b5c5ae7ea4e527959f1c5832ae79295bf3ba0bc2778be85908a"
+    },
+    "exoAndroidTest": {
+      "sha256": "e86a9876025b606cabccddf6914baaaa5b59d9945c4d1219618adcedd895a297"
+    }
+  },
+  "installedVariant": "preview",
+  "previewColdLaunch": "passed",
+  "deviceRegressionVariant": "debug",
+  "stateRestoration": {
+    "restored": true,
+    "backupSha256": "c9e37d7404578e2ba88bed34444ae6b5de44324e05bfaa3f6147f403aafe3de9",
+    "entriesVerified": 18,
+    "fileBytesOwnershipAndModeMatch": true,
+    "databaseIntegrityCheck": "ok",
+    "oldPowerExperimentDirectoriesTouched": false
+  },
+  "musicVolumeRestored": 0,
+  "appLeftStopped": true,
+  "limits": {
+    "physicalAudioVideoOffsetMeasurement": "not performed",
+    "hdrDolbyDisplayOutput": "not verified; PQ/HLG source decoding only",
+    "powerBenchmark": "not performed",
+    "longDurationStress": "not performed",
+    "fullLibassEffects": "not implemented"
+  },
+  "productionFixes": [
+    "synchronous main-thread Surface detach before consumer destruction and MediaSession release",
+    "preserve lazy sidecar loading and final-cue seeks with finite terminal cue markers"
+  ],
+  "sourceSha256": {
+    "platform/exoplayer-android/src/main/kotlin/io/github/joyelliot/zivplayer/platform/exoplayer/SidecarSubtitleParserFactory.kt": "913c8c8f792c85d637a3e4404084ed9e8130187d815c32e0c7b04720f10a330f",
+    "platform/exoplayer-android/src/main/kotlin/io/github/joyelliot/zivplayer/platform/exoplayer/SubtitleOffsetMediaSource.kt": "d8d5fbd5c548bca3710fc58a6d08aff83d7482622d6a0be125731b1c2c6ba1ce",
+    "platform/exoplayer-android/src/main/kotlin/io/github/joyelliot/zivplayer/platform/exoplayer/ExoPlayerBackend.kt": "698401d8d30b0449263fe93bdeea15781b50156ff3d97c05890a4f633fe9755d",
+    "platform/playback-android/src/main/kotlin/io/github/joyelliot/zivplayer/platform/playback/RuntimeSessionPlayer.kt": "fe9a474fd62d13e3470936a7e072cf9215a7aa2039a27ca797abf31058b56b49"
+  },
+  "validationWorktreeWasUncommitted": true,
+  "implementationCommit": "dcb832a0c14b017964a52dc9f5a716595629b4bc",
+  "deliveryStatus": "local commits only; not pushed or released"
+}
