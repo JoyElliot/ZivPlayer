@@ -57,6 +57,10 @@ class ManagedPlaybackResources internal constructor(
                 val safeTitle = title.filterNot(Char::isISOControl).take(240).ifBlank { kind.name.lowercase() }
                 val extension = safeTitle.substringAfterLast('.', "").lowercase()
                 require(extension in extensions(kind)) { "Unsupported ${kind.name.lowercase()} file." }
+                // 保留旧 SUB 资源以便导出，但不再导入当前播放器不能解析的格式。
+                require(kind != PlaybackResourceKind.SUBTITLE || extension != "sub") {
+                    "Use a text subtitle file (SRT, ASS, SSA, VTT or TTML)."
+                }
                 val current = dao.all()
                 require(current.size < MAX_RESOURCES) { "Remove an imported file before adding another." }
                 val limit = limitBytes(kind)
@@ -69,7 +73,7 @@ class ManagedPlaybackResources internal constructor(
                     val family = if (kind == PlaybackResourceKind.FONT) FontMetadata.family(bytes) else null
                     if (kind == PlaybackResourceKind.SHADER) validateShader(bytes)
                     if (kind == PlaybackResourceKind.SUBTITLE) require(bytes.none { it == 0.toByte() }) {
-                        "Use a text subtitle file (SRT, ASS, SSA, VTT or SUB)."
+                        "Use a text subtitle file (SRT, ASS, SSA, VTT or TTML)."
                     }
                     val digest = MessageDigest.getInstance("SHA-256")
                     digest.update(kind.name.toByteArray(Charsets.US_ASCII))
@@ -228,7 +232,7 @@ class ManagedPlaybackResources internal constructor(
     private fun extensions(kind: PlaybackResourceKind) = when (kind) {
         PlaybackResourceKind.FONT -> setOf("ttf", "otf", "ttc")
         PlaybackResourceKind.SHADER -> setOf("glsl", "hook")
-        PlaybackResourceKind.SUBTITLE -> setOf("srt", "ass", "ssa", "vtt", "sub")
+        PlaybackResourceKind.SUBTITLE -> setOf("srt", "ass", "ssa", "vtt", "ttml", "xml", "sub")
     }
     private fun limitBytes(kind: PlaybackResourceKind): Long = when (kind) {
         PlaybackResourceKind.FONT -> 20L * 1024 * 1024

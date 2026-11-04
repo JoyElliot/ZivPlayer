@@ -68,6 +68,11 @@ internal object PlayerPreferencesCodec {
                 subtitleFontFamily = family?.takeIf { font != null },
                 shaders = ShaderChain(shaders),
                 cacheSizeMiB = integer("cache-mib", 128, 16..512),
+                decoderFallback = boolean("decoder-fallback", true),
+                matchFrameRate = boolean("match-frame-rate", true),
+                skipSilence = boolean("skip-silence", false),
+                preferredAudioLanguage = enum(p, "audio-language", TrackLanguage.MEDIA_DEFAULT),
+                preferredSubtitleLanguage = enum(p, "subtitle-language", TrackLanguage.MEDIA_DEFAULT),
             ),
         )
     }
@@ -103,6 +108,11 @@ internal object PlayerPreferencesCodec {
             string("subtitle-font", subtitleFont?.value); string("subtitle-font-family", subtitleFontFamily)
             string("shaders", shaders.ids.joinToString(",") { it.value })
             integer("cache-mib", cacheSizeMiB)
+            boolean("decoder-fallback", decoderFallback)
+            boolean("match-frame-rate", matchFrameRate)
+            boolean("skip-silence", skipSilence)
+            string("audio-language", preferredAudioLanguage.name)
+            string("subtitle-language", preferredSubtitleLanguage.name)
         }
     }
 }

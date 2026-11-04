@@ -10,6 +10,10 @@ enum class VideoFit { FIT, FILL, STRETCH }
 enum class DeinterlaceMode { OFF, AUTOMATIC, ON }
 enum class ToneMappingMode { AUTOMATIC, BT2390, HABLE, CLIP }
 enum class SubtitleColor { WHITE, YELLOW, GREEN }
+enum class TrackLanguage(val tag: String) {
+    MEDIA_DEFAULT(""), CHINESE("zh"), ENGLISH("en"), JAPANESE("ja"), KOREAN("ko"),
+    FRENCH("fr"), GERMAN("de"), SPANISH("es"), RUSSIAN("ru"),
+}
 
 /** Identifies an imported app-owned resource, never an arbitrary path or provider URI. */
 @JvmInline
@@ -42,6 +46,11 @@ data class PlaybackOptions(
     val subtitleFontFamily: String? = null,
     val shaders: ShaderChain = ShaderChain(),
     val cacheSizeMiB: Int = 128,
+    val decoderFallback: Boolean = true,
+    val matchFrameRate: Boolean = true,
+    val skipSilence: Boolean = false,
+    val preferredAudioLanguage: TrackLanguage = TrackLanguage.MEDIA_DEFAULT,
+    val preferredSubtitleLanguage: TrackLanguage = TrackLanguage.MEDIA_DEFAULT,
 ) {
     init {
         require(audioDelayMs in -10_000..10_000)

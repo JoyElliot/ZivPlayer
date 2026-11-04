@@ -10,6 +10,22 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class PlayerPreferencesCodecTest {
+    @Test fun exoPreferencesAndSignedOffsetsRoundTripWithoutLosingLegacyFields() {
+        val stored = mutablePreferencesOf()
+        val value = PlayerPreferences(options = PlaybackOptions(decoderFallback = false,
+            matchFrameRate = false, skipSilence = true, preferredAudioLanguage = TrackLanguage.JAPANESE,
+            preferredSubtitleLanguage = TrackLanguage.CHINESE, audioDelayMs = -250,
+            subtitleDelayMs = 1500, quality = RenderQuality.HIGH))
+        PlayerPreferencesCodec.encode(value, stored)
+        assertEquals(value, PlayerPreferencesCodec.decode(stored))
+        stored[stringPreferencesKey("audio-language")] = "obsolete-language"
+        val recovered = PlayerPreferencesCodec.decode(stored)
+        assertEquals(TrackLanguage.MEDIA_DEFAULT, recovered.options.preferredAudioLanguage)
+        assertEquals(TrackLanguage.CHINESE, recovered.options.preferredSubtitleLanguage)
+        assertEquals(-250, recovered.options.audioDelayMs)
+        assertFalse(recovered.options.decoderFallback)
+    }
+
     @Test fun wrongStoredValueTypesRecoverToDefaults() {
         val stored = mutablePreferencesOf(stringPreferencesKey("speed") to "fast",
             intPreferencesKey("shaders") to 42, stringPreferencesKey("resume") to "true",
