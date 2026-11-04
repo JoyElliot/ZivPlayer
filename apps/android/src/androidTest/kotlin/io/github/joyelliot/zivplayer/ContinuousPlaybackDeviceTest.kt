@@ -89,7 +89,16 @@ class ContinuousPlaybackDeviceTest {
                 controller.repeatMode = Player.REPEAT_MODE_ONE
                 controller.prepare()
             }
-            await("native prepared tracks") { controller.currentTracks.groups.isNotEmpty() }
+            await("prepared tracks") { controller.currentTracks.groups.isNotEmpty() && controller.duration > 0 }
+            // pause 会使尚未安装的媒体请求序列失效；先等本次媒体安装，再建立暂停测试条件。
+            onMain { controller.pause() }
+            await("prepared paused") { !controller.playWhenReady && !controller.isPlaying }
+            // READY 尚未播放时拖到末尾，再返回；之后的进度与 repeat 必须继续工作。
+            onMain { controller.seekTo(controller.duration) }
+            await("prepared seek reaches end") { !controller.isLoading && controller.currentPosition >= controller.duration - 100 }
+            SystemClock.sleep(400)
+            onMain { controller.seekTo(0) }
+            await("prepared seek returns from end") { controller.playbackState == Player.STATE_READY && controller.currentPosition < 200 }
             onMain { controller.play() }
             await("initial native playback") { controller.isPlaying && controller.currentPosition > 400 && vm().playerState.value.hasVideo }
             val diagnostics = onMain { controller.sendCustomCommand(
@@ -105,7 +114,8 @@ class ContinuousPlaybackDeviceTest {
             val texture = onMain { checkNotNull(findTexture(activity.activity.window.decorView)) }
             await("surface available") { texture.isAvailable }
             val surface = onMain { texture.surfaceTexture }
-            fun assertSurface(label: String) {
+            fun assertSurface(label: String, direct: Boolean? = null) {
+                if (direct != null) await("$label output mode") { (texture.parent as? VideoViewport)?.directOutputActive == direct }
                 onMain {
                     assertSame(label, texture, findTexture(activity.activity.window.decorView))
                     assertSame(label, surface, texture.surfaceTexture)
@@ -121,7 +131,7 @@ class ContinuousPlaybackDeviceTest {
                 activity.activity.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
             }
             activity.onNodeWithContentDescription(app.getString(PlayerR.string.player_rotate)).assertIsDisplayed()
-            assertSurface("mini to expanded")
+            assertSurface("mini to expanded", direct = true)
             assertLiveFrames("expanded-live", texture)
             capture("expanded")
 
@@ -152,7 +162,7 @@ class ContinuousPlaybackDeviceTest {
             }
             activity.waitUntil(5_000) { activity.onAllNodesWithTag("mini_player", useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
             mini().assertExists()
-            assertSurface("collapsed")
+            assertSurface("collapsed", direct = false)
             assertLiveFrames("mini-after-collapse", texture)
             capture("mini")
             mini().performTouchInput {
@@ -163,13 +173,13 @@ class ContinuousPlaybackDeviceTest {
             }
             SystemClock.sleep(650)
             mini().assertExists()
-            assertSurface("reversed mini drag")
+            assertSurface("reversed mini drag", direct = false)
             mini().performTouchInput { swipe(center, center + Offset(0f, -windowHeight * 0.75f), 700) }
             await("drag expansion chooses landscape again") {
                 activity.activity.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
             }
             button(PlayerR.string.player_rotate).assertIsDisplayed()
-            assertSurface("drag expanded")
+            assertSurface("drag expanded", direct = true)
 
             // Enter/return through the actual system PiP window.
             revealControls()
@@ -177,7 +187,7 @@ class ContinuousPlaybackDeviceTest {
             activity.onNodeWithText(app.getString(PlayerR.string.player_pip)).performScrollTo().performClick()
             await("system PiP entry") { activity.activity.isInPictureInPictureMode }
             SystemClock.sleep(800)
-            assertSurface("PiP")
+            assertSurface("PiP", direct = true)
             assertLiveFrames("pip-live", texture)
             capture("pip")
             DeviceForegroundRule.startActivity("${app.packageName}/.MainActivity")
@@ -191,7 +201,7 @@ class ContinuousPlaybackDeviceTest {
             shell("input keyevent KEYCODE_HOME")
             await("automatic PiP entry") { activity.activity.isInPictureInPictureMode }
             SystemClock.sleep(650)
-            assertSurface("automatic PiP")
+            assertSurface("automatic PiP", direct = true)
             assertLiveFrames("automatic-pip-live", texture)
             capture("automatic-pip")
             DeviceForegroundRule.startActivity("${app.packageName}/.MainActivity")
@@ -206,20 +216,18 @@ class ContinuousPlaybackDeviceTest {
             await("paused beginning") { !controller.playWhenReady && controller.currentPosition < 200 }
             SystemClock.sleep(400)
             revealControls()
-            val previewStart = frameStamp(texture)
             val previewHash = frameHash(texture)
             val startedAt = SystemClock.elapsedRealtime()
             timeline().performTouchInput {
                 down(Offset(width * 0.1f, center.y))
                 moveTo(Offset(width * 0.94f, center.y), 200)
             }
-            await("first frame before releasing timeline") { frameStamp(texture) != previewStart && frameHash(texture) != previewHash }
+            await("first frame before releasing timeline") { frameHash(texture) != previewHash }
             val firstPreviewMs = SystemClock.elapsedRealtime() - startedAt
             assertFalse(onMain { controller.playWhenReady })
-            val nextStamp = frameStamp(texture)
             val nextHash = frameHash(texture)
             timeline().performTouchInput { moveTo(Offset(width * 0.48f, center.y), 200) }
-            await("reverse frame before releasing timeline") { frameStamp(texture) != nextStamp && frameHash(texture) != nextHash }
+            await("reverse frame before releasing timeline") { frameHash(texture) != nextHash }
             assertFalse(onMain { controller.playWhenReady })
             val finalPreviewHash = frameHash(texture)
             val finalStartedAt = SystemClock.elapsedRealtime()
@@ -265,7 +273,10 @@ class ContinuousPlaybackDeviceTest {
             activity.activityRule.scenario.recreate()
             await("paused Activity recreation") { !vm().playerState.value.playWhenReady && vm().playerState.value.hasVideo }
             val recreated = onMain { checkNotNull(findTexture(activity.activity.window.decorView)) }
-            await("recreated paused surface") { recreated.isAvailable && frameStamp(recreated) > 0 }
+            await("recreated paused surface") { recreated.isAvailable && capturePlaybackFrame(recreated, 96, 54)?.let { bitmap ->
+                try { (0 until bitmap.width).map { bitmap.getPixel(it, bitmap.height / 2) }.toSet().size > 8 }
+                finally { bitmap.recycle() }
+            } == true }
             capture("recreated-paused")
             report.put("completed", true)
         } catch (failure: Throwable) {
@@ -289,9 +300,8 @@ class ContinuousPlaybackDeviceTest {
             SystemClock.sleep(400)
         }
     }
-    private fun frameStamp(texture: TextureView): Long = onMain { texture.surfaceTexture?.timestamp ?: 0 }
     private fun frameHash(texture: TextureView): Int = onMain {
-        val bitmap = checkNotNull(texture.getBitmap(96, 54))
+        val bitmap = checkNotNull(capturePlaybackFrame(texture, 96, 54))
         val pixels = IntArray(bitmap.width * bitmap.height)
         bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
         bitmap.recycle()
@@ -303,8 +313,8 @@ class ContinuousPlaybackDeviceTest {
         val hashes = mutableSetOf<Int>()
         repeat(5) {
             onMain {
-                stamps += texture.surfaceTexture?.timestamp ?: 0
-                val bitmap = checkNotNull(texture.getBitmap(96, 54))
+                playbackTextureTimestamp(texture)?.let(stamps::add)
+                val bitmap = checkNotNull(capturePlaybackFrame(texture, 96, 54))
                 val pixels = IntArray(bitmap.width * bitmap.height)
                 bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
                 assertTrue("$label non-black content", pixels.toSet().size > 8)
@@ -314,7 +324,7 @@ class ContinuousPlaybackDeviceTest {
             SystemClock.sleep(160)
         }
         observations.put(JSONObject().put("stage", label).put("timestamps", stamps.size).put("pixelHashes", hashes.size))
-        assertTrue("$label receives new frames", stamps.size > 1)
+        if (stamps.isNotEmpty()) assertTrue("$label receives new texture frames", stamps.size > 1)
         assertTrue("$label pixels change", hashes.size > 1)
     }
     private fun capture(label: String) {

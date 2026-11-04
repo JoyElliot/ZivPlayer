@@ -54,11 +54,14 @@ class PlayerUiContractTest {
     @Test fun miniPlayerNavigatesBackWithoutChangingPlaybackAndItsButtonDoesNotNavigate() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         var playbackClicks = 0
+        val fullscreen = mutableStateOf(false)
         composeRule.setContent {
             ZivPlayerApp(playerState = PlayerUiState(
                 connectionStatus = PlayerConnectionStatus.CONNECTED, playbackStatus = PlayerPlaybackStatus.PAUSED,
                 mediaId = "fixture", title = "Navigation fixture", hasVideo = true, canPlayPause = true,
-            ), onPlayPause = { playbackClicks++ })
+                playbackIdentity = "fixture", sourceUri = "fixture:navigation", orientationAspectRatio = 16f / 9,
+            ), fullscreen = fullscreen.value, rotationBasis = PlayerRotationBasis(0, false),
+                onFullscreenChange = { fullscreen.value = it }, onPlayPause = { playbackClicks++ })
         }
         val video = context.getString(PlayerR.string.player_video_area)
         composeRule.onNodeWithText("Navigation fixture").performClick()

@@ -91,53 +91,60 @@ class PersonalDevicePlaybackTest {
     }
 
     @Test fun formatMatrixPlaysThroughGrantedDocumentsAndExportsDiagnostics() = withController { controller ->
-        val samples = listOf(
-            Sample("avc-1080p50mbps.mp4", "h264", "aac", 1920, 1080),
-            Sample("hevc-main10-flac.mkv", "hevc", "flac", 1920, 1080),
-            Sample("av1-opus.webm", "av1", "opus", 1920, 1080),
-            Sample("hevc-2160p30.mkv", "hevc", "aac", 3840, 2160),
-            Sample("hdr-pq-main10.mkv", "hevc", "aac", 1920, 1080, "pq"),
-            Sample("hdr-hlg-main10.mkv", "hevc", "aac", 1920, 1080, "hlg"),
-            Sample("audio-opus.opus", null, "opus"),
-            Sample("audio-flac.flac", null, "flac"),
-            Sample("audio-pcm.wav", null, "pcm_s16le"),
-        )
-        samples.forEach { sample ->
-            open(controller, sample.name)
-            onMain { controller.play() }
-            await(controller, "${sample.name} advancing") { isPlaying && currentPosition > 400 }
-            val command = SessionCommand(PlaybackDiagnosticsContract.ACTION_READ, Bundle.EMPTY)
-            assertTrue(onMain { controller.isSessionCommandAvailable(command) })
-            var result: SessionResult? = null
-            val deadline = SystemClock.elapsedRealtime() + 5_000
-            while (SystemClock.elapsedRealtime() < deadline) {
-                val read = onMain { controller.sendCustomCommand(command, Bundle.EMPTY) }.get(5, TimeUnit.SECONDS)
-                if (read.resultCode == SessionResult.RESULT_SUCCESS && read.extras.getString("audioCodec") != null &&
-                    (sample.video == null || read.extras.containsKey("videoWidth"))) { result = read; break }
-                SystemClock.sleep(80)
+        val original = runBlocking { app.playerPreferences.preferences.first() }
+        try {
+            updateConfiguration(controller) { it.copy(options = PlaybackOptions()) }
+            val samples = listOf(
+                Sample("avc-1080p50mbps.mp4", "h264", "aac", 1920, 1080),
+                Sample("hevc-main10-flac.mkv", "hevc", "flac", 1920, 1080),
+                Sample("av1-opus.webm", "av1", "opus", 1920, 1080),
+                Sample("hevc-2160p30.mkv", "hevc", "aac", 3840, 2160),
+                Sample("hdr-pq-main10.mkv", "hevc", "aac", 1920, 1080, "pq"),
+                Sample("hdr-hlg-main10.mkv", "hevc", "aac", 1920, 1080, "hlg"),
+                Sample("audio-opus.opus", null, "opus"),
+                Sample("audio-flac.flac", null, "flac"),
+                Sample("audio-pcm.wav", null, "pcm_s16le"),
+            )
+            samples.forEach { sample ->
+                open(controller, sample.name)
+                onMain { controller.play() }
+                await(controller, "${sample.name} advancing") { isPlaying && currentPosition > 400 }
+                val command = SessionCommand(PlaybackDiagnosticsContract.ACTION_READ, Bundle.EMPTY)
+                assertTrue(onMain { controller.isSessionCommandAvailable(command) })
+                var result: SessionResult? = null
+                val deadline = SystemClock.elapsedRealtime() + 5_000
+                while (SystemClock.elapsedRealtime() < deadline) {
+                    val read = onMain { controller.sendCustomCommand(command, Bundle.EMPTY) }.get(5, TimeUnit.SECONDS)
+                    if (read.resultCode == SessionResult.RESULT_SUCCESS && read.extras.getString("audioCodec") != null &&
+                        (sample.video == null || read.extras.containsKey("videoWidth"))) { result = read; break }
+                    SystemClock.sleep(80)
+                }
+                val observed = checkNotNull(result) { "${sample.name}: diagnostics never became available" }
+                assertNull("Playback configuration failed", observed.extras.getString(PlaybackDiagnosticsContract.SETTINGS_MESSAGE))
+                val diagnostics = PlaybackDiagnosticsContract.decode(observed.extras)
+                File(app.cacheDir, "format-${sample.name}.json").writeText(diagnostics.toDiagnosticJson(System.currentTimeMillis(), System.currentTimeMillis()))
+                assertTrue("${sample.name}: ${diagnostics.audioCodec}", codecMatches(diagnostics.audioCodec, sample.audio))
+                if (sample.video == null) {
+                    assertNull(diagnostics.videoCodec)
+                    assertNull(diagnostics.videoWidth)
+                    assertTrue(onMain { controller.currentTracks.groups.none { it.type == C.TRACK_TYPE_VIDEO } })
+                } else {
+                    assertTrue("${sample.name}: ${diagnostics.videoCodec}", codecMatches(diagnostics.videoCodec, sample.video))
+                    assertEquals(sample.width, diagnostics.videoWidth)
+                    assertEquals(sample.height, diagnostics.videoHeight)
+                    sample.transfer?.let { assertEquals(it, diagnostics.transferFunction?.lowercase()) }
+                }
+                onMain { controller.pause() }
+                await(controller, "${sample.name} paused") { !isPlaying && !playWhenReady }
+                capture("format-${sample.name}.png")
+                onMain { controller.seekTo(1_000) }
+                await(controller, "${sample.name} seek") { currentPosition in 800..1_250 }
+                onMain { controller.stop() }
+                await(controller, "${sample.name} stopped") { playbackState == Player.STATE_IDLE }
             }
-            val observed = checkNotNull(result) { "${sample.name}: diagnostics never became available" }
-            assertNull("Playback configuration failed", observed.extras.getString(PlaybackDiagnosticsContract.SETTINGS_MESSAGE))
-            val diagnostics = PlaybackDiagnosticsContract.decode(observed.extras)
-            File(app.cacheDir, "format-${sample.name}.json").writeText(diagnostics.toDiagnosticJson(System.currentTimeMillis(), System.currentTimeMillis()))
-            assertTrue("${sample.name}: ${diagnostics.audioCodec}", codecMatches(diagnostics.audioCodec, sample.audio))
-            if (sample.video == null) {
-                assertNull(diagnostics.videoCodec)
-                assertNull(diagnostics.videoWidth)
-                assertTrue(onMain { controller.currentTracks.groups.none { it.type == C.TRACK_TYPE_VIDEO } })
-            } else {
-                assertTrue("${sample.name}: ${diagnostics.videoCodec}", codecMatches(diagnostics.videoCodec, sample.video))
-                assertEquals(sample.width, diagnostics.videoWidth)
-                assertEquals(sample.height, diagnostics.videoHeight)
-                sample.transfer?.let { assertEquals(it, diagnostics.transferFunction) }
-            }
-            onMain { controller.pause() }
-            await(controller, "${sample.name} paused") { !isPlaying && !playWhenReady }
-            capture("format-${sample.name}.png")
-            onMain { controller.seekTo(1_000) }
-            await(controller, "${sample.name} seek") { currentPosition in 800..1_250 }
+        } finally {
             onMain { controller.stop() }
-            await(controller, "${sample.name} stopped") { playbackState == Player.STATE_IDLE }
+            runBlocking { app.playerPreferences.update { original } }
         }
     }
 
@@ -323,7 +330,7 @@ class PersonalDevicePlaybackTest {
         }
     }
 
-    @Test fun importedFontAndShaderApplyDuringPlayback() = withController { controller ->
+    @Test fun importedFontAppliesAndUnsupportedShaderIsPreserved() = withController { controller ->
         val original = runBlocking { app.playerPreferences.preferences.first() }
         val existingResources = runBlocking { app.mediaRepositories.resources.resources.first().map { it.id }.toSet() }
         val imported = mutableListOf<io.github.joyelliot.zivplayer.core.model.PlaybackResourceId>()
@@ -363,10 +370,10 @@ class PersonalDevicePlaybackTest {
             assertTrue(fontPath.isFile)
             val fontEntry = File(app.filesDir, "playback-resources/font/${font.id.value}.${font.extension}")
             File(app.cacheDir, "resource-paths.txt").writeText("entry=${fontEntry.absolutePath}\ncanonical=${fontEntry.canonicalPath}\nresolved=${fontPath.absolutePath}\n")
-            updateConfiguration(controller) { it.copy(options = it.options.copy(shaders = ShaderChain(listOf(shader.id)))) }
-            val inverted = captureVideoFrame("resource-video-inverted.png")
-            assertTrue("Shader must visibly change the fixed video frame", frameDifference(normal, inverted) > 40)
-            capture("resource-shader-inverted.png")
+            updateConfiguration(controller, expectedWarning = "shader") { it.copy(options = it.options.copy(shaders = ShaderChain(listOf(shader.id)))) }
+            val unchanged = captureVideoFrame("resource-video-unsupported-shader.png")
+            assertTrue("Unsupported shader must leave the paused frame intact", frameDifference(normal, unchanged) < 4)
+            capture("resource-shader-unsupported.png")
             updateConfiguration(controller) { it.copy(options = it.options.copy(shaders = ShaderChain())) }
             val disabled = captureVideoFrame("resource-video-disabled.png")
             assertTrue("Disabling the shader must restore the same frame", frameDifference(normal, disabled) < 4)
@@ -515,12 +522,12 @@ class PersonalDevicePlaybackTest {
         finally { bitmap.recycle() }
     }
 
-    /** Reads native video pixels directly from the texture, independent of player state. */
+    /** Reads pixels from the active video output, independent of player state. */
     private fun captureVideoFrame(name: String): List<Int> {
         val deadline = SystemClock.elapsedRealtime() + 15_000
         while (SystemClock.elapsedRealtime() < deadline) {
             val surface = onMain { findSurface(activity.activity.window.decorView) }
-            val bitmap = surface?.let { onMain { if (it.isAvailable) it.bitmap else null } }
+            val bitmap = surface?.let { onMain { capturePlaybackFrame(it) } }
             if (bitmap != null) {
                 try {
                         val samples = (1..9).flatMap { x -> (1..3).map { y -> bitmap.getPixel(bitmap.width * x / 10, bitmap.height * y / 4) } }
@@ -571,7 +578,7 @@ class PersonalDevicePlaybackTest {
 
     private fun processIdentity() = "${android.os.Process.myPid()}:${android.os.Process.getStartElapsedRealtime()}"
 
-    private fun updateConfiguration(controller: MediaController, transform: (PlayerPreferences) -> PlayerPreferences) {
+    private fun updateConfiguration(controller: MediaController, expectedWarning: String? = null, transform: (PlayerPreferences) -> PlayerPreferences) {
         val original = runBlocking { app.playerPreferences.preferences.first() }
         val target = transform(original)
         if (target == original) return
@@ -581,12 +588,14 @@ class PersonalDevicePlaybackTest {
             assertEquals("Stored preferences were normalized unexpectedly", target, app.playerPreferences.preferences.first())
         }
         }
-        awaitCondition("native configuration acknowledgement") { configurationEvents.get() > generation }
+        awaitCondition("playback configuration acknowledgement") { configurationEvents.get() > generation }
         val result = onMain { controller.sendCustomCommand(
             SessionCommand(PlaybackDiagnosticsContract.ACTION_READ, Bundle.EMPTY), Bundle.EMPTY,
         ) }.get(5, TimeUnit.SECONDS)
         assertEquals(SessionResult.RESULT_SUCCESS, result.resultCode)
-        assertNull(result.extras.getString(PlaybackDiagnosticsContract.SETTINGS_MESSAGE))
+        val warning = result.extras.getString(PlaybackDiagnosticsContract.SETTINGS_MESSAGE)
+        if (expectedWarning == null) assertNull(warning)
+        else assertTrue("Expected explicit unsupported setting: $warning", warning?.contains(expectedWarning) == true)
     }
 
     private fun shell(command: String): String = ParcelFileDescriptor.AutoCloseInputStream(
@@ -602,13 +611,16 @@ class PersonalDevicePlaybackTest {
         error("$description timed out")
     }
 
-    // mpv's codec properties are human-readable decoder descriptions, including punctuation.
-    private fun codecMatches(observed: String?, expected: String): Boolean {
-        val normalized = observed.orEmpty().lowercase().replace(Regex("[^a-z0-9]"), "")
-        return when (expected) {
-            "pcm_s16le" -> "pcms16le" in normalized || "pcmsigned16bitlittleendian" in normalized
-            else -> expected in normalized
-        }
+    // 当前 Exo 诊断给出 MIME；这是编码家族检查，不从 MIME 推断 PCM 位深。
+    private fun codecMatches(observed: String?, expected: String): Boolean = observed == when (expected) {
+        "h264" -> "video/avc"
+        "hevc" -> "video/hevc"
+        "av1" -> "video/av01"
+        "aac" -> "audio/mp4a-latm"
+        "flac" -> "audio/flac"
+        "opus" -> "audio/opus"
+        "pcm_s16le" -> "audio/raw"
+        else -> expected
     }
 
     private fun <T> onMain(action: () -> T): T {

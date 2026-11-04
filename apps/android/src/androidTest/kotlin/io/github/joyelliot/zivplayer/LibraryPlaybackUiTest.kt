@@ -209,7 +209,7 @@ class LibraryPlaybackUiTest {
             is ViewGroup -> (0 until view.childCount).firstNotNullOfOrNull { findTexture(view.getChildAt(it)) }
             else -> null
         }
-        val bitmap = onMain { checkNotNull(checkNotNull(findTexture(activity.activity.window.decorView)).bitmap) }
+        val bitmap = onMain { checkNotNull(capturePlaybackFrame(checkNotNull(findTexture(activity.activity.window.decorView)))) }
         return try { framePixels(bitmap) } finally { bitmap.recycle() }
     }
 

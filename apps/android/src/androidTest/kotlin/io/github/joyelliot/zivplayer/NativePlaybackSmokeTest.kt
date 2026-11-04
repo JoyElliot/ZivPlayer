@@ -34,10 +34,11 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
-/** Real service/JNI/codec smoke. Frame quality, audible output and device controls also need visual acceptance. */
+/** Real service/Exo/codec smoke. Frame quality, audible output and device controls also need visual acceptance. */
 class NativePlaybackSmokeTest {
-    @get:Rule(order = 0) val foreground = DeviceForegroundRule()
-    @get:Rule(order = 1) val activity = createAndroidComposeRule<MainActivity>()
+    @get:Rule(order = 0) val engineLog = ExoTestLogRule()
+    @get:Rule(order = 1) val foreground = DeviceForegroundRule()
+    @get:Rule(order = 2) val activity = createAndroidComposeRule<MainActivity>()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
 
     @Test
